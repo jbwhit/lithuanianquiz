@@ -11,6 +11,7 @@ from adaptive_learning_service import AdaptiveLearningService
 from fasthtml.common import *
 from fastlite import database
 from monsterui.all import *
+from session_manager import add_session_cookie, get_session, maybe_cleanup_sessions, save_session
 
 #########################
 # 1) Type Definitions
@@ -45,6 +46,7 @@ class DatabaseService:
         self.numbers = self.db.t["numbers"]
         self.attempts = self.db.t["attempts"]
         self._rows_cache = None
+        self._row_by_number_cache = {}  # Cache for get_row_by_number lookups
 
     @property
     def rows(self) -> list[dict[str, Any]]:
@@ -54,12 +56,15 @@ class DatabaseService:
         return self._rows_cache
 
     def get_row_by_number(self, number: int) -> dict[str, Any]:
-        """Get a specific row by its number value."""
-        for row in self.rows:
-            if row["number"] == number:
-                return row
-        raise ValueError(f"No row found for number: {number}")
-
+        """Get a specific row by its number value with caching."""
+        if number not in self._row_by_number_cache:
+            for row in self.rows:
+                if row["number"] == number:
+                    self._row_by_number_cache[number] = row
+                    break
+            else:
+                raise ValueError(f"No row found for number: {number}")
+        return self._row_by_number_cache[number]
 
 #########################
 # 5) Exercise Logic
@@ -165,79 +170,102 @@ class SessionManager:
 
     def ensure_initialized(self):
         """Initialize session with default values if needed."""
+        defaults = {
+            "history": [],
+            "correct_count": 0,
+            "incorrect_count": 0
+        }
+
+        # Update session with defaults for missing keys
+        for key, value in defaults.items():
+            if key not in self.session:
+                self.session[key] = value
+
+        # Generate a question if needed
         if "current_question" not in self.session:
             self.pick_new_question()
-        if "history" not in self.session:
-            self.session["history"] = []
-        if "correct_count" not in self.session:
-            self.session["correct_count"] = 0
-        if "incorrect_count" not in self.session:
-            self.session["incorrect_count"] = 0
+
+        # Initialize adaptive learning
+        if hasattr(self.exercise_service, 'adaptive') and self.exercise_service.adaptive:
+            self.exercise_service.adaptive.initialize_performance_tracking(self.session)
 
     def pick_new_question(self):
         """Generate and store a new question in the session using adaptive learning."""
-        # Use session for adaptive learning if available
-        ex_type, price, item, row = self.exercise_service.generate_exercise(self.session)
+        try:
+            # Use session for adaptive learning if available
+            ex_type, price, item, row = self.exercise_service.generate_exercise(self.session)
 
-        # Store exercise details for performance tracking
-        self.session["exercise_type"] = ex_type
-        self.session["price"] = price
-        self.session["item"] = item
-        self.session["row_id"] = row["number"]
+            # Store exercise details for performance tracking
+            self.session["exercise_type"] = ex_type
+            self.session["price"] = price
+            self.session["item"] = item
+            self.session["row_id"] = row["number"]
 
-        # Add adaptive learning metadata if the service is available
-        if hasattr(self.exercise_service, 'adaptive') and self.exercise_service.adaptive:
-            # Determine grammatical case and number pattern for tracking
-            self.session["grammatical_case"] = "accusative" if ex_type == "kiek" else "nominative"
-            self.session["number_pattern"] = self.exercise_service.adaptive._determine_number_pattern(row["number"])
+            # Add adaptive learning metadata if the service is available
+            if hasattr(self.exercise_service, 'adaptive') and self.exercise_service.adaptive:
+                # Determine grammatical case and number pattern for tracking
+                self.session["grammatical_case"] = "accusative" if ex_type == "kiek" else "nominative"
+                self.session["number_pattern"] = self.exercise_service.adaptive._determine_number_pattern(row["number"])
 
-        # Generate question text
-        self.session["current_question"] = self.exercise_service.format_question(ex_type, price, item)
+            # Generate question text
+            self.session["current_question"] = self.exercise_service.format_question(ex_type, price, item)
+        except Exception as e:
+            print(f"Error picking new question: {e}")
+            # If anything goes wrong, create a simple fallback question
+            self.session["exercise_type"] = "kokia"
+            self.session["price"] = "€1"
+            self.session["item"] = None
+            row = self.exercise_service.db.rows[0]  # Use first row as fallback
+            self.session["row_id"] = row["number"]
+            self.session["current_question"] = "Kokia kaina? (€1)"
 
     def record_answer(self, user_answer, correct_answer):
         """Record user answer and update adaptive learning model."""
-        # Existing answer recording logic
-        user_str = user_answer.strip()
-        correct_str = correct_answer.strip()
-        is_correct = self.exercise_service.check_answer(user_str, correct_str)
+        try:
+            user_str = user_answer.strip()
+            correct_str = correct_answer.strip()
+            is_correct = self.exercise_service.check_answer(user_str, correct_str)
 
-        # Generate diffs for display (existing code)
+            diff_user, diff_correct = self._generate_diffs(user_str, correct_str, is_correct)
+            self._update_counters(is_correct)
+            self._update_history(user_str, correct_str, diff_user, diff_correct, is_correct)
+            self._update_adaptive_learning(is_correct)
+            self.pick_new_question()
+        except Exception as e:
+            print(f"Error recording answer: {e}")
+            self.reset()
+
+    def _generate_diffs(self, user_str, correct_str, is_correct):
         if is_correct:
-            diff_user = f"<span class='text-success font-bold'>{html.escape(user_str)}</span>"
-            diff_correct = html.escape(correct_str)
-        else:
-            # Fix capitalization issues in the difference highlighting
-            user_esc = html.escape(user_str.lower())
-            corr_esc = html.escape(correct_str.lower())
+            return (f"<span class='text-success font-bold'>{html.escape(user_str)}</span>",
+                    html.escape(correct_str))
 
-            sm = SequenceMatcher(None, user_esc, corr_esc)
-            out_user, out_corr = [], []
+        user_esc = html.escape(user_str.lower())
+        corr_esc = html.escape(correct_str.lower())
+        sm = SequenceMatcher(None, user_esc, corr_esc)
+        out_user, out_corr = [], []
 
-            for tag, i1, i2, j1, j2 in sm.get_opcodes():
-                seg_u = html.escape(user_str[i1:i2])  # Use original case for display
-                seg_c = html.escape(correct_str[j1:j2])  # Use original case for display
+        for tag, i1, i2, j1, j2 in sm.get_opcodes():
+            seg_u = html.escape(user_str[i1:i2])
+            seg_c = html.escape(correct_str[j1:j2])
+            if tag == "equal":
+                out_user.append(seg_u)
+                out_corr.append(seg_c)
+            elif tag == "replace":
+                out_user.append(f"<span class='text-error font-bold'>{seg_u}</span>")
+                out_corr.append(f"<span class='text-success font-bold'>{seg_c}</span>")
+            elif tag == "delete":
+                out_user.append(f"<span class='text-error font-bold'>{seg_u}</span>")
+            elif tag == "insert":
+                out_corr.append(f"<span class='text-success font-bold'>{seg_c}</span>")
 
-                if tag == "equal":
-                    out_user.append(seg_u)
-                    out_corr.append(seg_c)
-                elif tag == "replace":
-                    out_user.append(f"<span class='text-error font-bold'>{seg_u}</span>")
-                    out_corr.append(f"<span class='text-success font-bold'>{seg_c}</span>")
-                elif tag == "delete":
-                    out_user.append(f"<span class='text-error font-bold'>{seg_u}</span>")
-                elif tag == "insert":
-                    out_corr.append(f"<span class='text-success font-bold'>{seg_c}</span>")
+        return "".join(out_user), "".join(out_corr)
 
-            diff_user = "".join(out_user)
-            diff_correct = "".join(out_corr)
+    def _update_counters(self, is_correct):
+        key = "correct_count" if is_correct else "incorrect_count"
+        self.session[key] = self.session.get(key, 0) + 1
 
-        # Update counters
-        if is_correct:
-            self.session["correct_count"] = self.session.get("correct_count", 0) + 1
-        else:
-            self.session["incorrect_count"] = self.session.get("incorrect_count", 0) + 1
-
-        # Add to history
+    def _update_history(self, user_str, correct_str, diff_user, diff_correct, is_correct):
         history_entry = {
             "question": self.session["current_question"],
             "answer": user_str,
@@ -246,26 +274,35 @@ class SessionManager:
             "diff_correct": diff_correct,
             "true_answer": correct_str
         }
-        self.session["history"].append(history_entry)
+        history = self.session.get("history", [])
+        history.append(history_entry)
+        self.session["history"] = history[-500:]
 
-        # Update adaptive learning with this attempt
-        if hasattr(self.exercise_service, 'adaptive') and self.exercise_service.adaptive:
-            exercise_info = {
-                "exercise_type": self.session["exercise_type"],
-                "grammatical_case": self.session.get("grammatical_case"),
-                "number_pattern": self.session.get("number_pattern"),
-                "row_id": self.session["row_id"]
-            }
-            self.exercise_service.adaptive.update_performance(
-                self.session, exercise_info, is_correct
-            )
-
-        # Pick a new question
-        self.pick_new_question()
+    def _update_adaptive_learning(self, is_correct):
+        if hasattr(self.exercise_service, "adaptive") and self.exercise_service.adaptive:
+            try:
+                exercise_info = {
+                    "exercise_type": self.session["exercise_type"],
+                    "grammatical_case": self.session.get("grammatical_case"),
+                    "number_pattern": self.session.get("number_pattern"),
+                    "row_id": self.session["row_id"]
+                }
+                self.exercise_service.adaptive.update_performance(self.session, exercise_info, is_correct)
+            except Exception as e:
+                print(f"Error updating adaptive model: {e}")
 
     def reset(self):
         """Clear session and initialize a new question."""
+        # Only keep certain keys when resetting
+        feedback_data = self.session.get("feedback_data", {})
         self.session.clear()
+
+        # Restore feedback data so toast messages aren't lost
+        if feedback_data:
+            self.session["feedback_data"] = feedback_data
+
+        # Initialize empty history
+        self.session["history"] = []
 
         # Reinitialize adaptive learning if available
         if hasattr(self.exercise_service, 'adaptive') and self.exercise_service.adaptive:
@@ -336,6 +373,32 @@ class UIComponents:
         )
 
     @staticmethod
+    def question_form(question: str) -> Form:
+        """Create the question form."""
+        return Form(
+            TextArea(
+                id="user_answer",
+                name="user_answer",
+                placeholder="Type your answer in Lithuanian...",
+                cls="w-full p-4 h-24 border rounded-md focus:ring-2 focus:ring-primary focus:border-primary transition-all bg-base-100"
+            ),
+            DivFullySpaced(
+                Div(),  # Empty div to maintain spacing
+                Button(
+                    UkIcon("send", cls="mr-2"),
+                    "Submit Answer",
+                    type="submit",
+                    cls=(ButtonT.primary, "px-6 hover:bg-primary/90 transition-colors")
+                ),
+                cls="mt-4"
+            ),
+            action="/answer",
+            method="post",
+            hx_boost="true",
+            onkeydown="if(event.ctrlKey && event.key==='Enter') { this.submit(); }"
+        )
+
+    @staticmethod
     def question_card(question: str) -> Card:
         """Create exercise question card with answer form."""
         return Card(
@@ -346,25 +409,7 @@ class UIComponents:
             CardBody(
                 Div(
                     P(question, cls=(TextT.lead, "mb-6 text-xl font-medium")),
-                    Form(
-                        TextArea(
-                            id="user_answer",
-                            placeholder="Type your answer in Lithuanian...",
-                            cls="w-full p-4 h-24 border rounded-md focus:ring-2 focus:ring-primary focus:border-primary transition-all bg-base-100"
-                        ),
-                        DivFullySpaced(
-                            Div(),  # Empty div to maintain spacing
-                            Button(
-                                UkIcon("send", cls="mr-2"),
-                                "Submit Answer",
-                                cls=(ButtonT.primary, "px-6 hover:bg-primary/90 transition-colors")
-                            ),
-                            cls="mt-4"
-                        ),
-                        action="/answer",
-                        method="post",
-                        onkeydown="if(event.ctrlKey && event.key==='Enter') { this.submit(); }"
-                    ),
+                    UIComponents.question_form(question),  # Use the new method here
                     cls="space-y-4"
                 )
             ),
@@ -372,10 +417,43 @@ class UIComponents:
         )
 
     @staticmethod
+    def stat_metric(icon: str, value: str, label: str, color_class: str = "text-primary") -> Card:
+        """Render a single stat metric."""
+        return Card(
+            CardBody(
+                DivCentered(
+                    UkIcon(icon, cls=f"{color_class} mb-2", height=24, width=24),
+                    H4(value, cls=(TextT.xl, TextT.bold, f"text-center text-2xl {color_class}")),
+                    P(label, cls=TextPresets.muted_sm)
+                )
+            ),
+            cls="shadow-sm"
+        )
+
+    @staticmethod
+    def accuracy_progress(accuracy: float) -> Div:
+        """Render the accuracy progress bar."""
+        progress_color = "bg-error" if accuracy < 60 else "bg-warning" if accuracy < 80 else "bg-success"
+
+        return Div(
+            P(f"Accuracy: {accuracy:.1f}%", cls=(TextT.bold, "mb-1")),
+            Progress(
+                value=int(min(100, accuracy)),
+                max=100,
+                cls=f"h-3 rounded-full {progress_color}"
+            ),
+            cls="mt-4 space-y-2"
+        )
+
+    @staticmethod
     def stats_card(stats: dict[str, Any]) -> Card:
         """Create statistics card with user progress."""
-        accuracy = stats['accuracy']
-        progress_color = "bg-error" if accuracy < 60 else "bg-warning" if accuracy < 80 else "bg-success"
+        metrics = [
+            UIComponents.stat_metric("list", f"{stats['total']}", "Total Exercises"),
+            UIComponents.stat_metric("check", f"{stats['correct']}", "Correct", "text-success"),
+            UIComponents.stat_metric("x", f"{stats['incorrect']}", "Incorrect", "text-error"),
+            UIComponents.stat_metric("flame", f"{stats['current_streak']}", "Streak", "text-warning")
+        ]
 
         return Card(
             CardHeader(
@@ -383,59 +461,9 @@ class UIComponents:
                 Subtitle("Track your learning journey")
             ),
             CardBody(
-                Grid(
-                    Card(
-                        CardBody(
-                            DivCentered(
-                                UkIcon("list", cls="text-primary mb-2", height=24, width=24),
-                                H4(f"{stats['total']}", cls=(TextT.xl, TextT.bold, "text-center text-2xl")),
-                                P("Total Exercises", cls=TextPresets.muted_sm)
-                            )
-                        ),
-                        cls="shadow-sm"
-                    ),
-                    Card(
-                        CardBody(
-                            DivCentered(
-                                UkIcon("check", cls="text-success mb-2", height=24, width=24),
-                                H4(f"{stats['correct']}", cls=(TextT.xl, TextT.bold, "text-center text-2xl text-success")),
-                                P("Correct", cls=TextPresets.muted_sm)
-                            )
-                        ),
-                        cls="shadow-sm"
-                    ),
-                    Card(
-                        CardBody(
-                            DivCentered(
-                                UkIcon("x", cls="text-error mb-2", height=24, width=24),
-                                H4(f"{stats['incorrect']}", cls=(TextT.xl, TextT.bold, "text-center text-2xl text-error")),
-                                P("Incorrect", cls=TextPresets.muted_sm)
-                            )
-                        ),
-                        cls="shadow-sm"
-                    ),
-                    Card(
-                        CardBody(
-                            DivCentered(
-                                UkIcon("flame", cls="text-warning mb-2", height=24, width=24),
-                                H4(f"{stats['current_streak']}", cls=(TextT.xl, TextT.bold, "text-center text-2xl text-warning")),
-                                P("Streak", cls=TextPresets.muted_sm)
-                            )
-                        ),
-                        cls="shadow-sm"
-                    ),
-                    cols=4, cols_sm=2, gap=4, cls="mb-4"
-                ),
-                Div(
-                    P(f"Accuracy: {stats['accuracy']:.1f}%", cls=(TextT.bold, "mb-1")),
-                    Progress(
-                        value=int(min(100, accuracy)),
-                        max=100,
-                        cls=f"h-3 rounded-full {progress_color}"
-                    ),
-                    Label(f"🔥 {stats['current_streak']}", cls=LabelT.warning) if stats['current_streak'] > 5 else "",
-                    cls="mt-4 space-y-2"
-                ),
+                Grid(*metrics, cols=4, cols_sm=2, gap=4, cls="mb-4"),
+                UIComponents.accuracy_progress(stats['accuracy']),
+                Label(f"🔥 {stats['current_streak']}", cls=LabelT.warning) if stats['current_streak'] > 5 else "",
                 Modal(
                     ModalHeader(H3("Reset Progress?")),
                     ModalBody(P("This will clear all your history. Are you sure?")),
@@ -456,37 +484,46 @@ class UIComponents:
         )
 
     @staticmethod
-    def history_card(history_items: list[dict[str, Any]]) -> Card:
-        """Create history card showing past exercises as a timeline."""
-        total_items = len(history_items)
+    def history_item(entry: dict, index: int, total: int) -> Div:
+        """Render a single history item."""
+        return Div(
+            Div(
+                UkIcon("check-circle" if entry["correct"] else "x-circle",
+                    cls=f"{'text-success' if entry['correct'] else 'text-error'} mr-2"),
+                Span(f"Q{total - index}", cls=(TextT.bold, "mr-2")),
+                Span(entry['question'], cls=TextT.medium),
+                cls="flex items-center"
+            ),
+            Div(
+                P("Your answer:", cls=(TextT.gray, TextT.bold, "text-sm mt-2")),
+                P(NotStr(entry['diff_user']), cls="ml-4"),
+                P("Correct answer:", cls=(TextT.gray, TextT.bold, "text-sm mt-2")),
+                P(NotStr(entry['diff_correct']), cls="ml-4"),
+                cls="ml-8 mt-1"
+            ),
+            cls=f"border-l-4 {'border-success' if entry['correct'] else 'border-error'} pl-4 py-2 mb-6"
+        )
 
-        # Create the most recent items first (reversed order)
-        history_items_reversed = list(reversed(history_items))
-
-        history_content = Div(
-            *[Div(
-                Div(
-                    UkIcon("check-circle" if entry["correct"] else "x-circle",
-                          cls=f"{'text-success' if entry['correct'] else 'text-error'} mr-2"),
-                    Span(f"Q{total_items - i}", cls=(TextT.bold, "mr-2")),
-                    Span(entry['question'], cls=TextT.medium),
-                    cls="flex items-center"
-                ),
-                Div(
-                    P("Your answer:", cls=(TextT.gray, TextT.bold, "text-sm mt-2")),
-                    P(NotStr(entry['diff_user']), cls="ml-4"),
-                    P("Correct answer:", cls=(TextT.gray, TextT.bold, "text-sm mt-2")),
-                    P(NotStr(entry['diff_correct']), cls="ml-4"),
-                    cls="ml-8 mt-1"
-                ),
-                cls=f"border-l-4 {'border-success' if entry['correct'] else 'border-error'} pl-4 py-2 mb-6"
-            ) for i, entry in enumerate(history_items_reversed)]
-        ) if history_items else DivCentered(
+    @staticmethod
+    def empty_history() -> DivCentered:
+        """Render empty history state."""
+        return DivCentered(
             UkIcon("history", height=40, width=40, cls="text-muted mb-2"),
             P("No history yet", cls=TextPresets.muted_lg),
             P("Your exercise history will appear here", cls=TextPresets.muted_sm),
             cls="py-16"
         )
+
+    @staticmethod
+    def history_card(history_items: list[dict[str, Any]]) -> Card:
+        """Create history card showing past exercises as a timeline."""
+        total_items = len(history_items)
+
+        # Use the refactored components
+        history_content = Div(
+            *[UIComponents.history_item(entry, i, total_items)
+            for i, entry in enumerate(reversed(history_items))]
+        ) if history_items else UIComponents.empty_history()
 
         return Card(
             CardHeader(
@@ -549,7 +586,46 @@ class UIComponents:
         )
 
     @staticmethod
-    def weak_areas_card(weak_areas):
+    def weak_area_item(area: dict) -> Li:
+        """Render a single weak area item."""
+        success_rate = area['success_rate'] * 100
+        color_class = 'bg-error' if success_rate < 60 else 'bg-warning' if success_rate < 80 else 'bg-success'
+
+        return Li(
+            Div(
+                P(f"{area['name'].replace('_', ' ').title()}", cls=TextT.medium),
+                Progress(
+                    value=int(success_rate),
+                    max=100,
+                    cls=f"h-2 rounded-full {color_class}"
+                ),
+                P(f"{success_rate:.1f}% success rate", cls=TextPresets.muted_sm),
+                cls="w-full"
+            ),
+            cls="mb-3"
+        )
+
+    @staticmethod
+    def weak_area_section(category: str, areas: list[dict]) -> Div:
+        """Render a section of weak areas for a category."""
+        return Div(
+            H4(category, cls=(TextT.bold, "mb-2")),
+            Ul(*[UIComponents.weak_area_item(area) for area in areas], cls="space-y-2"),
+            cls="mb-4"
+        )
+
+    @staticmethod
+    def empty_weak_areas() -> DivCentered:
+        """Render empty weak areas state."""
+        return DivCentered(
+            UkIcon("target", height=40, width=40, cls="text-muted mb-2"),
+            P("Not enough data yet", cls=TextPresets.muted_lg),
+            P("Complete more exercises to identify your weak areas", cls=TextPresets.muted_sm),
+            cls="py-8"
+        )
+
+    @staticmethod
+    def weak_areas_card(weak_areas: dict) -> Card:
         """Create a card showing the user's weak areas based on Thompson sampling."""
         if not weak_areas:
             return Card(
@@ -557,47 +633,14 @@ class UIComponents:
                     H3("Weak Areas", cls=TextT.lg),
                     Subtitle("Areas that need more practice")
                 ),
-                CardBody(
-                    DivCentered(
-                        UkIcon("target", height=40, width=40, cls="text-muted mb-2"),
-                        P("Not enough data yet", cls=TextPresets.muted_lg),
-                        P("Complete more exercises to identify your weak areas", cls=TextPresets.muted_sm),
-                        cls="py-8"
-                    )
-                ),
+                CardBody(UIComponents.empty_weak_areas()),
                 cls=(CardT.hover, "shadow-lg border-t-4 border-t-warning h-full")
             )
 
-        weak_area_sections = []
-        for category, areas in weak_areas.items():
-            area_items = []
-            for area in areas:
-                # Calculate color based on success rate
-                success_rate = area['success_rate'] * 100
-                color_class = 'bg-error' if success_rate < 60 else 'bg-warning' if success_rate < 80 else 'bg-success'
-
-                area_items.append(
-                    Li(
-                        Div(
-                            P(f"{area['name'].replace('_', ' ').title()}", cls=TextT.medium),
-                            Progress(
-                                value=int(success_rate),
-                                max=100,
-                                cls=f"h-2 rounded-full {color_class}"
-                            ),
-                            P(f"{success_rate:.1f}% success rate", cls=TextPresets.muted_sm),
-                            cls="w-full"
-                        ),
-                        cls="mb-3"
-                    )
-                )
-
-            section = Div(
-                H4(category, cls=(TextT.bold, "mb-2")),
-                Ul(*area_items, cls="space-y-2"),
-                cls="mb-4"
-            )
-            weak_area_sections.append(section)
+        weak_area_sections = [
+            UIComponents.weak_area_section(category, areas)
+            for category, areas in weak_areas.items()
+        ]
 
         return Card(
             CardHeader(
@@ -609,6 +652,34 @@ class UIComponents:
         )
 
     @staticmethod
+    def performance_item(name: str, rate: float, correct: int, total: int) -> Div:
+        """Render a single performance item."""
+        rate_percent = rate * 100
+        color_class = 'bg-error' if rate_percent < 60 else 'bg-warning' if rate_percent < 80 else 'bg-success'
+
+        return Div(
+            DivFullySpaced(
+                P(name, cls=TextT.medium),
+                P(f"{correct}/{total}", cls=TextPresets.muted_sm)
+            ),
+            Progress(
+                value=int(rate_percent),
+                max=100,
+                cls=f"h-2 rounded-full {color_class}"
+            ),
+            cls="mb-4"
+        )
+
+    @staticmethod
+    def empty_performance() -> DivCentered:
+        """Render empty performance state."""
+        return DivCentered(
+            UkIcon("bar-chart", height=40, width=40, cls="text-muted mb-2"),
+            P("No data available", cls=TextPresets.muted_lg),
+            cls="py-8"
+        )
+
+    @staticmethod
     def performance_by_category(category_data, title):
         """Create a card showing performance by category."""
         if not category_data:
@@ -617,13 +688,7 @@ class UIComponents:
                     H3(title, cls=TextT.lg),
                     Subtitle(f"Your performance by {title.lower()}")
                 ),
-                CardBody(
-                    DivCentered(
-                        UkIcon("bar-chart", height=40, width=40, cls="text-muted mb-2"),
-                        P("No data available", cls=TextPresets.muted_lg),
-                        cls="py-8"
-                    )
-                ),
+                CardBody(UIComponents.empty_performance()),
                 cls=(CardT.hover, "shadow-lg border-t-4 border-t-primary h-full")
             )
 
@@ -643,26 +708,16 @@ class UIComponents:
         # Sort by success rate ascending (worst first)
         success_rates.sort(key=lambda x: x["rate"])
 
-        category_items = []
-        for item in success_rates:
-            # Calculate color based on success rate
-            rate_percent = item["rate"] * 100
-            color_class = 'bg-error' if rate_percent < 60 else 'bg-warning' if rate_percent < 80 else 'bg-success'
-
-            category_items.append(
-                Div(
-                    DivFullySpaced(
-                        P(item["name"], cls=TextT.medium),
-                        P(f"{item['correct']}/{item['total']}", cls=TextPresets.muted_sm)
-                    ),
-                    Progress(
-                        value=int(rate_percent),
-                        max=100,
-                        cls=f"h-2 rounded-full {color_class}"
-                    ),
-                    cls="mb-4"
-                )
+        # Build performance items
+        category_items = [
+            UIComponents.performance_item(
+                item["name"],
+                item["rate"],
+                item["correct"],
+                item["total"]
             )
+            for item in success_rates
+        ]
 
         return Card(
             CardHeader(
@@ -672,7 +727,6 @@ class UIComponents:
             CardBody(*category_items),
             cls=(CardT.hover, "shadow-lg border-t-4 border-t-primary h-full")
         )
-
 #########################
 # 8) Thompson Sampling Testing
 #########################
@@ -766,11 +820,25 @@ db_service = DatabaseService()
 adaptive_service = AdaptiveLearningService(exploration_rate=0.2)
 exercise_service = ExerciseService(db_service, adaptive_service)
 
+def handle_not_found(req, exc):
+    """Handle 404 errors."""
+    return Titled("Not Found", P("The page you're looking for doesn't exist."))
+
+def handle_server_error(req, exc):
+    """Handle 500 errors."""
+    return Titled("Server Error", P("Something went wrong. Please try again later."))
+
 app, rt = fast_app(
     hdrs=Theme.green.headers(daisy=True),
-    session_cookie="lithuanian_price_exercise2",
-    title=""  # Set empty title to remove the "Title" text
+    session_cookie="lithuanian_price_exercise2025-02-282",
+    max_age=86400,
+    title="",
+    exception_handlers={
+        404: handle_not_found,
+        500: handle_server_error
+    }
 )
+
 setup_toasts(app)  # Enable toasts for feedback
 
 #########################
@@ -778,15 +846,27 @@ setup_toasts(app)  # Enable toasts for feedback
 #########################
 
 @rt("/")
-def main_page(sess):
+def main_page(request):
     """Main page route - display exercise interface with adaptive learning."""
+    # Get session from database first
+    sess, session_id = get_session(request)
+
+    # Now you can print the session info
+    print(f"Session ID: {session_id}")  # Changed from id(sess) to session_id
+    print(f"Session history length: {len(sess.get('history', []))}")
+
+    # Occasionally clean up old sessions
+    maybe_cleanup_sessions()
+
+    # Create the session manager with our persistent session
     session_manager = SessionManager(sess, exercise_service)
     session_manager.ensure_initialized()
 
+    # Your existing rendering code...
     header = UIComponents.app_header()
     question = UIComponents.question_card(sess["current_question"])
     stats = UIComponents.stats_card(session_manager.get_stats())
-    history = UIComponents.history_card(sess["history"])
+    history = UIComponents.history_card(sess.get("history", []))
     loading = UIComponents.loading_indicator()
     footer = UIComponents.footer()
 
@@ -801,8 +881,11 @@ def main_page(sess):
         )
         sess["feedback_data"]["show"] = False
 
-    # Return the entire page structure
-    return Div(
+    # Save updated session back to database
+    save_session(session_id, sess)
+
+    # Return response with session cookie
+    response = Div(
         header,
         Container(
             feedback_component,
@@ -820,9 +903,15 @@ def main_page(sess):
         cls="min-h-screen bg-gradient-to-b from-base-100 to-base-200"
     )
 
+    return add_session_cookie(response, session_id)
+
+
 @rt("/reset")
-def reset_progress(sess):
+def reset_progress(request):
     """Handle progress reset, also clears adaptive learning data."""
+    # Get session from database
+    sess, session_id = get_session(request)
+
     session_manager = SessionManager(sess, exercise_service)
 
     # Clear performance data if it exists
@@ -830,19 +919,40 @@ def reset_progress(sess):
         del sess["performance"]
 
     session_manager.reset()
-    return RedirectResponse("/", status_code=303)
+
+    # Save the reset session
+    save_session(session_id, sess)
+
+    # Create redirect response with cookie
+    response = RedirectResponse("/", status_code=303)
+    return add_session_cookie(response, session_id)
 
 @rt("/answer")
-def submit_answer(sess, user_answer: str):
+def submit_answer(request, user_answer: str = ""):
     """Handle answer submission with adaptive learning updates."""
+    # Get session from database
+    sess, session_id = get_session(request)
+
+    # Create session manager
+    session_manager = SessionManager(sess, exercise_service)
+
+    # Ensure session is properly initialized
+    if not all(k in sess for k in ["row_id", "exercise_type"]):
+        session_manager.ensure_initialized()
+        save_session(session_id, sess)
+        response = RedirectResponse("/", status_code=303)
+        return add_session_cookie(response, session_id)
+
     try:
-        session_manager = SessionManager(sess, exercise_service)
+        # Get the row from database
         row_id = sess["row_id"]
         row = db_service.get_row_by_number(row_id)
+
+        # Process answer
         correct_answer = exercise_service.get_correct_answer(sess["exercise_type"], row)
         is_correct = exercise_service.check_answer(user_answer, correct_answer)
 
-        # Store feedback data for toast
+        # Store feedback for toast
         sess["feedback_data"] = {
             "is_correct": is_correct,
             "user_answer": user_answer,
@@ -850,18 +960,31 @@ def submit_answer(sess, user_answer: str):
             "show": True
         }
 
-        # Record answer (will also update adaptive learning model)
+        # Record answer and update adaptive learning model
         session_manager.record_answer(user_answer, correct_answer)
 
-        return RedirectResponse("/", status_code=303)
+        # Save updated session back to database
+        save_session(session_id, sess)
+
+        # Create redirect response with cookie
+        response = RedirectResponse("/", status_code=303)
+        return add_session_cookie(response, session_id)
+
     except Exception as e:
         print(f"Error processing answer: {e}")
-        return RedirectResponse("/", status_code=303)
+        session_manager.reset()
+        save_session(session_id, sess)
+        response = RedirectResponse("/", status_code=303)
+        return add_session_cookie(response, session_id)
+
 
 @rt("/about")
-def about_page():
+def about_page(request):
     """About page with navigation back to main page."""
-    return Container(
+    # Get session from database if needed
+    sess, session_id = get_session(request)
+
+    response = Container(
         H2("About This App", cls=TextT.xl),
         P("Learn Lithuanian price expressions with this interactive tool!", cls=TextPresets.muted_lg),
         P("This application helps you practice how to express prices in Lithuanian through interactive exercises.",
@@ -883,10 +1006,16 @@ def about_page():
         cls="max-w-5xl mx-auto py-6",
         id="main-content"
     )
+    save_session(session_id, sess)
+
+    return add_session_cookie(response, session_id)
 
 @rt("/stats")
-def stats_page(sess):
+def stats_page(request):
     """Enhanced stats page with adaptive learning insights."""
+    # Get session from database
+    sess, session_id = get_session(request)
+
     session_manager = SessionManager(sess, exercise_service)
     stats = session_manager.get_stats()
 
@@ -919,7 +1048,9 @@ def stats_page(sess):
                 UIComponents.performance_by_category(perf["grammatical_cases"], "Grammatical Cases")
             )
 
-    return Container(
+    save_session(session_id, sess)
+
+    response = Container(
         UIComponents.app_header(),
         Container(
             H2("Your Statistics", cls=TextT.xl),
@@ -957,10 +1088,14 @@ def stats_page(sess):
         UIComponents.footer(),
         cls="min-h-screen bg-gradient-to-b from-base-100 to-base-200"
     )
+    return add_session_cookie(response, session_id)
 
 @rt("/admin/test-sampling")
-def admin_test_sampling():
+def admin_test_sampling(request):
     """Admin route to test Thompson sampling."""
+    # Get session if needed
+    sess, session_id = get_session(request)
+
     results = test_thompson_sampling()
 
     # Create a visual representation of the test results
@@ -998,7 +1133,7 @@ def admin_test_sampling():
             )
         )
 
-    return Container(
+    response = Container(
         UIComponents.app_header(),
         Container(
             H2("Thompson Sampling Test Results", cls=TextT.xl),
@@ -1036,6 +1171,8 @@ def admin_test_sampling():
         UIComponents.footer(),
         cls="min-h-screen bg-gradient-to-b from-base-100 to-base-200"
     )
+
+    return add_session_cookie(response, session_id)
 
 #########################
 # 11) Application Entry Point
