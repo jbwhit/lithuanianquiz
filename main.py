@@ -346,17 +346,22 @@ class SessionManager:
 # 7) UI Components
 #########################
 
+"""
+Fixed UI Components for the Lithuanian Language Learning App
+"""
+
 class UIComponents:
     """Reusable UI components for the application."""
 
     @staticmethod
     def app_header() -> Container:
         """Create the app header with title, subtitle, and navigation."""
-        # Create our custom brand element to override the default "Title"
+        # Create our custom brand element
         brand_element = DivLAligned(
-            H3("Lithuanian Price Exercises", cls=(TextT.xl, TextT.bold, "text-primary")),
-            Div(UkIcon("languages", height=40, width=40, cls="text-primary"), cls="bg-primary/10 p-2 rounded-full"),
-            cls="items-center space-x-4"
+            UkIcon("languages", height=30, width=30, cls="text-primary mr-3"),
+            H3("Lithuanian", cls=(TextT.xl, TextT.bold, "text-primary")),
+            P("Price Exercises", cls=TextT.muted),
+            cls="items-center"
         )
 
         return Container(
@@ -364,12 +369,11 @@ class UIComponents:
                 Button("Home", cls=ButtonT.ghost, hx_get="/", hx_target="body"),
                 Button("About", cls=ButtonT.ghost, hx_get="/about", hx_target="body"),
                 Button("Stats", cls=ButtonT.ghost, hx_get="/stats", hx_target="body"),
-                # Explicitly set the brand parameter to override the default "Title"
                 brand=brand_element,
                 sticky=True,
-                cls="bg-base-200 shadow-md py-2"
+                cls="py-2"
             ),
-            cls="max-w-5xl mx-auto py-4"
+            cls="max-w-6xl mx-auto"
         )
 
     @staticmethod
@@ -380,17 +384,15 @@ class UIComponents:
                 id="user_answer",
                 name="user_answer",
                 placeholder="Type your answer in Lithuanian...",
-                cls="w-full p-4 h-24 border rounded-md focus:ring-2 focus:ring-primary focus:border-primary transition-all bg-base-100"
+                cls="w-full p-4 h-24 border rounded-md focus:ring-2 focus:ring-primary focus:border-primary transition-all"
             ),
-            DivFullySpaced(
-                Div(),  # Empty div to maintain spacing
+            DivRAligned(
                 Button(
                     UkIcon("send", cls="mr-2"),
                     "Submit Answer",
                     type="submit",
-                    cls=(ButtonT.primary, "px-6 hover:bg-primary/90 transition-colors")
-                ),
-                cls="mt-4"
+                    cls=(ButtonT.primary, "px-6 hover:bg-primary/90 transition-colors mt-4")
+                )
             ),
             action="/answer",
             method="post",
@@ -403,31 +405,31 @@ class UIComponents:
         """Create exercise question card with answer form."""
         return Card(
             CardHeader(
-                H3("Current Exercise", cls=TextT.lg),
-                Subtitle("Practice your Lithuanian price expressions")
+                DivFullySpaced(
+                    H3("Current Exercise", cls=TextT.lg),
+                    Label("Practice", cls=LabelT.primary)
+                )
             ),
             CardBody(
                 Div(
-                    P(question, cls=(TextT.lead, "mb-6 text-xl font-medium")),
-                    UIComponents.question_form(question),  # Use the new method here
+                    P(question, cls="text-center text-xl font-medium p-4 rounded-lg mb-6"),
+                    UIComponents.question_form(question),
                     cls="space-y-4"
                 )
             ),
-            cls=(CardT.hover, "shadow-lg border-t-4 border-t-primary transition-all hover:shadow-xl")
+            cls="shadow-lg border-t-4 border-t-primary transition-all hover:shadow-xl"
         )
 
     @staticmethod
-    def stat_metric(icon: str, value: str, label: str, color_class: str = "text-primary") -> Card:
+    def stat_metric(icon: str, value: str, label: str, color_class: str = "text-primary") -> Div:
         """Render a single stat metric."""
-        return Card(
-            CardBody(
-                DivCentered(
-                    UkIcon(icon, cls=f"{color_class} mb-2", height=24, width=24),
-                    H4(value, cls=(TextT.xl, TextT.bold, f"text-center text-2xl {color_class}")),
-                    P(label, cls=TextPresets.muted_sm)
-                )
+        return Div(
+            DivCentered(
+                UkIcon(icon, cls=f"{color_class} mb-1", height=24, width=24),
+                H4(value, cls=(TextT.xl, TextT.bold, f"text-center text-2xl {color_class}")),
+                P(label, cls=TextPresets.muted_sm)
             ),
-            cls="shadow-sm"
+            cls="p-3 rounded-md"
         )
 
     @staticmethod
@@ -449,7 +451,7 @@ class UIComponents:
     def stats_card(stats: dict[str, Any]) -> Card:
         """Create statistics card with user progress."""
         metrics = [
-            UIComponents.stat_metric("list", f"{stats['total']}", "Total Exercises"),
+            UIComponents.stat_metric("list", f"{stats['total']}", "Total", "text-primary"),
             UIComponents.stat_metric("check", f"{stats['correct']}", "Correct", "text-success"),
             UIComponents.stat_metric("x", f"{stats['incorrect']}", "Incorrect", "text-error"),
             UIComponents.stat_metric("flame", f"{stats['current_streak']}", "Streak", "text-warning")
@@ -464,23 +466,9 @@ class UIComponents:
                 Grid(*metrics, cols=4, cols_sm=2, gap=4, cls="mb-4"),
                 UIComponents.accuracy_progress(stats['accuracy']),
                 Label(f"🔥 {stats['current_streak']}", cls=LabelT.warning) if stats['current_streak'] > 5 else "",
-                Modal(
-                    ModalHeader(H3("Reset Progress?")),
-                    ModalBody(P("This will clear all your history. Are you sure?")),
-                    ModalFooter(
-                        Button("Cancel", cls=ButtonT.ghost, data_uk_toggle="target: #reset-modal"),
-                        Button("Reset", cls=ButtonT.destructive, hx_post="/reset", hx_target="#main-content")
-                    ),
-                    id="reset-modal"
-                ),
-                Button(
-                    UkIcon("refresh", cls="mr-2"),
-                    "Reset Progress",
-                    cls=(ButtonT.destructive, "mt-4"),
-                    data_uk_toggle="target: #reset-modal"
-                )
+                cls="p-4"
             ),
-            cls=(CardT.hover, "shadow-lg border-t-4 border-t-secondary h-full")
+            cls="shadow-lg border-t-4 border-t-secondary h-full"
         )
 
     @staticmethod
@@ -497,11 +485,11 @@ class UIComponents:
             Div(
                 P("Your answer:", cls=(TextT.gray, TextT.bold, "text-sm mt-2")),
                 P(NotStr(entry['diff_user']), cls="ml-4"),
-                P("Correct answer:", cls=(TextT.gray, TextT.bold, "text-sm mt-2")),
-                P(NotStr(entry['diff_correct']), cls="ml-4"),
+                P("Correct answer:", cls=(TextT.gray, TextT.bold, "text-sm mt-2")) if not entry["correct"] else "",
+                P(NotStr(entry['diff_correct']), cls="ml-4") if not entry["correct"] else "",
                 cls="ml-8 mt-1"
             ),
-            cls=f"border-l-4 {'border-success' if entry['correct'] else 'border-error'} pl-4 py-2 mb-6"
+            cls=f"border-l-4 {'border-success' if entry['correct'] else 'border-error'} pl-4 py-2 mb-4"
         )
 
     @staticmethod
@@ -522,67 +510,22 @@ class UIComponents:
         # Use the refactored components
         history_content = Div(
             *[UIComponents.history_item(entry, i, total_items)
-            for i, entry in enumerate(reversed(history_items))]
+            for i, entry in enumerate(reversed(history_items[-5:]))]  # Show only the most recent 5
         ) if history_items else UIComponents.empty_history()
 
         return Card(
             CardHeader(
                 DivFullySpaced(
-                    H3("Exercise History", cls=TextT.lg),
-                    Label(f"{total_items}", cls=(LabelT.primary, "px-3 py-1"))
+                    H3("Recent Exercises", cls=TextT.lg),
+                    Button("View All", cls=ButtonT.ghost, hx_get="/stats", hx_target="body")
                 ),
                 Subtitle("Review your previous exercises")
             ),
             CardBody(
-                Div(
-                    history_content,
-                    cls="max-h-[400px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-primary scrollbar-track-base-200"
-                )
+                history_content,
+                cls="max-h-[400px] overflow-y-auto pr-2"
             ),
-            cls=(CardT.hover, "shadow-lg border-t-4 border-t-accent")
-        )
-
-    @staticmethod
-    def answer_feedback(is_correct: bool, user_answer: str, correct_answer: str) -> Toast:
-        """Create feedback toast for answer submission."""
-        return Toast(
-            DivLAligned(
-                UkIcon("check" if is_correct else "alert-triangle", cls=f"text-{'success' if is_correct else 'error'} mr-2"),
-                Div(
-                    P("Correct!" if is_correct else "Not quite right", cls=TextT.bold),
-                    P(f"Your answer: {user_answer}", cls=TextT.sm),
-                    P(f"Correct: {correct_answer}", cls=TextT.sm) if not is_correct else ""
-                )
-            ),
-            cls=(ToastHT.end, ToastVT.bottom, "bg-base-100 shadow-lg text-base-content border-l-4 z-50" +
-                (" border-success" if is_correct else " border-error")),
-            duration=3000
-        )
-
-    @staticmethod
-    def loading_indicator() -> Loading:
-        """Create a loading indicator for HTMX requests."""
-        return Loading(
-            htmx_indicator=True,
-            type=LoadingT.dots,
-            cls="fixed top-4 right-4 z-50"
-        )
-
-    @staticmethod
-    def footer() -> Container:
-        """Create the app footer."""
-        return Container(
-            DividerSplit(cls="mt-8"),
-            DivCentered(
-                P("Lithuanian Price Exercise App © 2025", cls=TextPresets.muted_lg),
-                DivLAligned(
-                    UkIconLink("github", cls="text-muted hover:text-primary"),
-                    UkIconLink("info", cls="text-muted hover:text-primary"),
-                    cls="space-x-4"
-                ),
-                cls="py-6"
-            ),
-            cls="max-w-5xl mx-auto shadow-sm"
+            cls="shadow-lg border-t-4 border-t-accent h-full"
         )
 
     @staticmethod
@@ -599,7 +542,7 @@ class UIComponents:
                     max=100,
                     cls=f"h-2 rounded-full {color_class}"
                 ),
-                P(f"{success_rate:.1f}% success rate", cls=TextPresets.muted_sm),
+                P(f"{success_rate:.1f}%", cls=TextPresets.muted_sm),
                 cls="w-full"
             ),
             cls="mb-3"
@@ -630,11 +573,11 @@ class UIComponents:
         if not weak_areas:
             return Card(
                 CardHeader(
-                    H3("Weak Areas", cls=TextT.lg),
-                    Subtitle("Areas that need more practice")
+                    H3("Areas to Improve", cls=TextT.lg),
+                    Subtitle("Focus on these areas")
                 ),
                 CardBody(UIComponents.empty_weak_areas()),
-                cls=(CardT.hover, "shadow-lg border-t-4 border-t-warning h-full")
+                cls="shadow-lg border-t-4 border-t-warning h-full"
             )
 
         weak_area_sections = [
@@ -644,89 +587,88 @@ class UIComponents:
 
         return Card(
             CardHeader(
-                H3("Weak Areas", cls=TextT.lg),
-                Subtitle("Areas that need more practice")
+                H3("Areas to Improve", cls=TextT.lg),
+                Subtitle("Focus on these areas")
             ),
             CardBody(*weak_area_sections),
-            cls=(CardT.hover, "shadow-lg border-t-4 border-t-warning h-full")
+            cls="shadow-lg border-t-4 border-t-warning h-full"
         )
 
     @staticmethod
-    def performance_item(name: str, rate: float, correct: int, total: int) -> Div:
-        """Render a single performance item."""
-        rate_percent = rate * 100
-        color_class = 'bg-error' if rate_percent < 60 else 'bg-warning' if rate_percent < 80 else 'bg-success'
+    def loading_indicator() -> Loading:
+        """Create a loading indicator for HTMX requests."""
+        return Loading(
+            htmx_indicator=True,
+            type=LoadingT.dots,
+            cls="fixed top-0 left-0 w-full h-1 z-50"
+        )
 
+    @staticmethod
+    def answer_feedback(is_correct: bool, user_answer: str, correct_answer: str) -> Toast:
+        """Create feedback toast for answer submission."""
+        return Toast(
+            DivLAligned(
+                UkIcon("check" if is_correct else "alert-triangle", cls=f"text-{'success' if is_correct else 'error'} mr-2"),
+                Div(
+                    P("Correct!" if is_correct else "Not quite right", cls=TextT.bold),
+                    P(f"Your answer: {user_answer}", cls=TextT.sm),
+                    P(f"Correct: {correct_answer}", cls=TextT.sm) if not is_correct else ""
+                )
+            ),
+            cls=(ToastHT.end, ToastVT.bottom, "bg-base-100 shadow-lg text-base-content border-l-4 z-50" +
+                (" border-success" if is_correct else " border-error")),
+            duration=3000
+        )
+
+    @staticmethod
+    def footer() -> Container:
+        """Create the app footer."""
         return Div(
-            DivFullySpaced(
-                P(name, cls=TextT.medium),
-                P(f"{correct}/{total}", cls=TextPresets.muted_sm)
-            ),
-            Progress(
-                value=int(rate_percent),
-                max=100,
-                cls=f"h-2 rounded-full {color_class}"
-            ),
-            cls="mb-4"
-        )
-
-    @staticmethod
-    def empty_performance() -> DivCentered:
-        """Render empty performance state."""
-        return DivCentered(
-            UkIcon("bar-chart", height=40, width=40, cls="text-muted mb-2"),
-            P("No data available", cls=TextPresets.muted_lg),
-            cls="py-8"
-        )
-
-    @staticmethod
-    def performance_by_category(category_data, title):
-        """Create a card showing performance by category."""
-        if not category_data:
-            return Card(
-                CardHeader(
-                    H3(title, cls=TextT.lg),
-                    Subtitle(f"Your performance by {title.lower()}")
+            DividerLine(),
+            DivCentered(
+                P("Lithuanian Price Exercise App © 2025", cls=TextPresets.muted_lg),
+                DivLAligned(
+                    UkIconLink("github", cls="text-muted hover:text-primary"),
+                    UkIconLink("info", cls="text-muted hover:text-primary"),
+                    cls="space-x-4"
                 ),
-                CardBody(UIComponents.empty_performance()),
-                cls=(CardT.hover, "shadow-lg border-t-4 border-t-primary h-full")
-            )
+                cls="py-6"
+            ),
+            cls="mt-8"
+        )
 
-        # Calculate success rates
-        success_rates = []
+    # Add a performance_by_category method for the stats page
+    @staticmethod
+    def performance_by_category(category_data: dict, title: str) -> Card:
+        """Create a card showing performance by category."""
+        items = []
         for key, stats in category_data.items():
             total = stats["correct"] + stats["incorrect"]
-            if total > 1:  # Only include categories with actual data
-                rate = stats["correct"] / total
-                success_rates.append({
-                    "name": key.replace('_', ' ').title(),
-                    "rate": rate,
-                    "correct": stats["correct"],
-                    "total": total
-                })
+            success_rate = (stats["correct"] / total) * 100 if total > 0 else 0
+            color_class = 'bg-error' if success_rate < 60 else 'bg-warning' if success_rate < 80 else 'bg-success'
 
-        # Sort by success rate ascending (worst first)
-        success_rates.sort(key=lambda x: x["rate"])
-
-        # Build performance items
-        category_items = [
-            UIComponents.performance_item(
-                item["name"],
-                item["rate"],
-                item["correct"],
-                item["total"]
+            items.append(
+                Div(
+                    P(f"{key.replace('_', ' ').title()}", cls=TextT.medium),
+                    Progress(
+                        value=int(success_rate),
+                        max=100,
+                        cls=f"h-2 rounded-full {color_class}"
+                    ),
+                    P(f"{success_rate:.1f}% ({stats['correct']}/{total})", cls=TextPresets.muted_sm),
+                    cls="mb-3"
+                )
             )
-            for item in success_rates
-        ]
 
         return Card(
             CardHeader(
                 H3(title, cls=TextT.lg),
-                Subtitle(f"Your performance by {title.lower()}")
+                Subtitle("Performance by category")
             ),
-            CardBody(*category_items),
-            cls=(CardT.hover, "shadow-lg border-t-4 border-t-primary h-full")
+            CardBody(*items),
+            cls="shadow-lg border-t-4 border-t-primary h-full"
         )
+
 #########################
 # 8) Thompson Sampling Testing
 #########################
@@ -845,66 +787,299 @@ setup_toasts(app)  # Enable toasts for feedback
 # 10) Routes
 #########################
 
+"""
+This file contains the updated page routes with properly restored headers
+"""
+
 @rt("/")
 def main_page(request):
-    """Main page route - display exercise interface with adaptive learning."""
-    # Get session from database first
+    """Main page route with improved layout."""
+    # Get session and setup
     sess, session_id = get_session(request)
-
-    # Now you can print the session info
-    print(f"Session ID: {session_id}")  # Changed from id(sess) to session_id
-    print(f"Session history length: {len(sess.get('history', []))}")
-
-    # Occasionally clean up old sessions
     maybe_cleanup_sessions()
-
-    # Create the session manager with our persistent session
     session_manager = SessionManager(sess, exercise_service)
     session_manager.ensure_initialized()
 
-    # Your existing rendering code...
-    header = UIComponents.app_header()
-    question = UIComponents.question_card(sess["current_question"])
-    stats = UIComponents.stats_card(session_manager.get_stats())
-    history = UIComponents.history_card(sess.get("history", []))
-    loading = UIComponents.loading_indicator()
-    footer = UIComponents.footer()
+    # Get stats and prepare components
+    stats_data = session_manager.get_stats()
 
-    # Add adaptive feedback toast if available
+    # Quick stats cards
+    metrics_row = Grid(
+        UIComponents.stat_metric("list", str(stats_data['total']), "Total", "text-primary"),
+        UIComponents.stat_metric("check", str(stats_data['correct']), "Correct", "text-success"),
+        UIComponents.stat_metric("x", str(stats_data['incorrect']), "Incorrect", "text-error"),
+        UIComponents.stat_metric("flame", str(stats_data['current_streak']), "Streak", "text-warning"),
+        cols=4, cols_sm=2, gap=4,
+        cls="mb-6"
+    )
+
+    # Question card
+    question_card = UIComponents.question_card(sess["current_question"])
+
+    # Weak areas card
+    weak_areas_card = None
+    if "weak_areas" in stats_data and stats_data["weak_areas"]:
+        weak_areas_card = UIComponents.weak_areas_card(stats_data["weak_areas"])
+    else:
+        weak_areas_card = Card(
+            CardHeader(
+                H3("Areas to Improve", cls=TextT.lg),
+                Subtitle("Focus on these areas")
+            ),
+            CardBody(
+                DivCentered(
+                    UkIcon("target", height=40, width=40, cls="text-muted mb-2"),
+                    P("Complete more exercises", cls=TextPresets.muted_sm),
+                    cls="py-8"
+                )
+            ),
+            cls="shadow-lg border-t-4 border-t-warning h-full"
+        )
+
+    # History card
+    history_card = UIComponents.history_card(sess.get("history", []))
+
+    # Add feedback component if needed
     feedback_component = ""
     if sess.get("feedback_data", {}).get("show", False):
         feedback_data = sess["feedback_data"]
-        feedback_component = UIComponents.answer_feedback(
-            feedback_data["is_correct"],
-            feedback_data["user_answer"],
-            feedback_data["correct_answer"]
+        # Use Modal for feedback instead of Toast
+        feedback_component = Modal(
+            ModalHeader(
+                DivLAligned(
+                    UkIcon("check-circle" if feedback_data["is_correct"] else "x-circle",
+                        cls=f"{'text-success' if feedback_data['is_correct'] else 'text-error'} mr-2",
+                        height=24, width=24),
+                    H3("Correct!" if feedback_data["is_correct"] else "Incorrect",
+                    cls=f"{'text-success' if feedback_data['is_correct'] else 'text-error'}")
+                )
+            ),
+            ModalBody(
+                Div(
+                    Card(
+                        CardBody(
+                            P(feedback_data.get("question", sess.get("current_question", "")),
+                            cls="mb-4 text-lg font-medium")
+                        ),
+                        cls="mb-4 bg-base-200"
+                    ),
+
+                    # Your answer section
+                    Div(
+                        P("Your answer:", cls=TextT.muted),
+                        Card(
+                            CardBody(
+                                P(feedback_data["user_answer"],
+                                cls=f"text-lg {'text-success font-medium' if feedback_data['is_correct'] else ''}")
+                            ),
+                            cls=f"{'border-success' if feedback_data['is_correct'] else 'border-error'} border"
+                        ),
+                        cls="mb-4"
+                    ),
+
+                    # Correct answer if wrong
+                    Div(
+                        P("Correct answer:", cls=TextT.muted),
+                        Card(
+                            CardBody(
+                                P(feedback_data["correct_answer"], cls="text-lg text-success font-medium")
+                            ),
+                            cls="border-success border"
+                        ),
+                        cls="" if not feedback_data["is_correct"] else "hidden"
+                    ),
+                )
+            ),
+            ModalFooter(
+                Button(
+                    "Continue",
+                    cls=ButtonT.primary,
+                    onclick="document.getElementById('answer-feedback-modal').classList.remove('uk-open')"
+                )
+            ),
+            id="answer-feedback-modal",
+            cls="uk-open"
         )
         sess["feedback_data"]["show"] = False
 
-    # Save updated session back to database
-    save_session(session_id, sess)
-
-    # Return response with session cookie
-    response = Div(
-        header,
-        Container(
-            feedback_component,
-            Grid(
-                Div(question, cls="col-span-2"),
-                Div(stats, cls="col-span-1"),
-                cols_md=3, cols_sm=1, gap=6, cls="items-stretch"
-            ),
-            Div(history, cls="mt-8"),
-            loading,
-            cls=(ContainerT.lg, "px-6 py-8"),
-            id="main-content"
+    # Reset modal
+    reset_modal = Modal(
+        ModalHeader(H3("Reset Progress?")),
+        ModalBody(P("This will clear all your history. Are you sure?")),
+        ModalFooter(
+            Button("Cancel", cls=ButtonT.ghost, data_uk_toggle="target: #reset-modal"),
+            Button("Reset", cls=ButtonT.destructive, hx_post="/reset", hx_target="#main-content")
         ),
-        footer,
-        cls="min-h-screen bg-gradient-to-b from-base-100 to-base-200"
+        id="reset-modal"
     )
 
-    return add_session_cookie(response, session_id)
+    # Loading indicator
+    loading = UIComponents.loading_indicator()
 
+    # Main content layout
+    main_content = Container(
+        feedback_component,
+        H2("Lithuanian Price Practice", cls=(TextT.xl, "mb-6")),
+        metrics_row,
+        Div(
+            question_card,
+            cls="mb-6"
+        ),
+        Grid(
+            Div(weak_areas_card, cls="h-full col-span-1"),
+            Div(history_card, cls="h-full col-span-1"),
+            cols_md=2, cols_sm=1, gap=6
+        ),
+        Button(
+            UkIcon("refresh-ccw", cls="mr-2"),
+            "Reset Progress",
+            cls=(ButtonT.destructive, "mt-6"),
+            data_uk_toggle="target: #reset-modal"
+        ),
+        reset_modal,
+        loading,
+        UIComponents.footer(),  # Include the footer directly in the main content
+        cls=(ContainerT.xl, "px-8 py-8"),
+        id="main-content"
+    )
+
+    # RESTORED HEADER here
+    page_container = Div(
+        UIComponents.app_header(),
+        main_content,
+        cls="min-h-screen px-4"
+    )
+
+    # Save updated session and return response
+    save_session(session_id, sess)
+    return add_session_cookie(page_container, session_id)
+
+@rt("/stats")
+def stats_page(request):
+    """Enhanced stats page with adaptive learning insights."""
+    # Get session from database
+    sess, session_id = get_session(request)
+
+    session_manager = SessionManager(sess, exercise_service)
+    stats = session_manager.get_stats()
+
+    # Create basic stats card
+    stats_card = UIComponents.stats_card(stats)
+
+    # Get weak areas if available
+    weak_areas_card = UIComponents.weak_areas_card(stats.get("weak_areas", {}))
+
+    # Get performance by category if available
+    performance_cards = []
+    if "performance" in sess:
+        perf = sess["performance"]
+
+        # Exercise types performance
+        if perf.get("exercise_types"):
+            performance_cards.append(
+                UIComponents.performance_by_category(perf["exercise_types"], "Exercise Types")
+            )
+
+        # Number patterns performance
+        if perf.get("number_patterns"):
+            performance_cards.append(
+                UIComponents.performance_by_category(perf["number_patterns"], "Number Patterns")
+            )
+
+        # Grammatical cases performance
+        if perf.get("grammatical_cases"):
+            performance_cards.append(
+                UIComponents.performance_by_category(perf["grammatical_cases"], "Grammatical Cases")
+            )
+
+    # Main content
+    main_content = Container(
+        H2("Your Statistics", cls=TextT.xl),
+        P("Track your learning progress", cls=TextPresets.muted_lg),
+
+        # Overall stats
+        Div(stats_card, cls="mt-6"),
+
+        # Weak areas section
+        Div(weak_areas_card, cls="mt-6"),
+
+        # Detailed performance section
+        Div(
+            H3("Detailed Performance", cls=(TextT.lg, "mt-8 mb-4")),
+            Grid(*performance_cards, cols_md=1, cols_lg=2, cols_xl=3, gap=6)
+            if performance_cards else
+            DivCentered(
+                UkIcon("info", height=40, width=40, cls="text-muted mb-2"),
+                P("Complete more exercises to see detailed performance", cls=TextPresets.muted_lg),
+                cls="py-8 bg-base-200 rounded-lg mt-4"
+            ),
+            cls="mt-6"
+        ),
+
+        Button(
+            UkIcon("arrow-left", cls="mr-2"),
+            "Back to Practice",
+            cls=(ButtonT.primary, "mt-8"),
+            hx_get="/",
+            hx_target="body"
+        ),
+
+        UIComponents.footer(),  # Include footer here
+
+        cls=(ContainerT.xl, "px-8 py-8"),
+        id="main-content"
+    )
+
+    page_container = Div(
+        UIComponents.app_header(),
+        main_content,
+        cls="min-h-screen px-4"
+    )
+
+    save_session(session_id, sess)
+    return add_session_cookie(page_container, session_id)
+
+@rt("/about")
+def about_page(request):
+    """About page with navigation back to main page."""
+    # Get session from database if needed
+    sess, session_id = get_session(request)
+
+    main_content = Container(
+        H2("About This App", cls=TextT.xl),
+        P("Learn Lithuanian price expressions with this interactive tool!", cls=TextPresets.muted_lg),
+        P("This application helps you practice how to express prices in Lithuanian through interactive exercises.",
+          cls="mt-4"),
+        P("The app features an adaptive learning system that uses Thompson sampling to target exercises to your weak areas.", cls="mt-4"),
+        P("There are two types of exercises:", cls="mt-4"),
+        Ul(
+            Li("'Kokia kaina?' (What is the price?) - You need to express the given price in Lithuanian."),
+            Li("'Kiek kainuoja?' (How much does it cost?) - You need to express how much a specific item costs.")
+        ),
+        P("Practice regularly to improve your Lithuanian language skills!", cls="mt-4"),
+        Button(
+            UkIcon("arrow-left", cls="mr-2"),
+            "Back to Practice",
+            cls=(ButtonT.primary, "mt-6"),
+            hx_get="/",
+            hx_target="body"
+        ),
+
+        UIComponents.footer(),  # Include footer here
+
+        cls=(ContainerT.xl, "px-8 py-8"),
+        id="main-content"
+    )
+
+    # RESTORED HEADER here
+    page_container = Div(
+        UIComponents.app_header(),
+        main_content,
+        cls="min-h-screen px-4"
+    )
+
+    save_session(session_id, sess)
+    return add_session_cookie(page_container, session_id)
 
 @rt("/reset")
 def reset_progress(request):
@@ -976,119 +1151,6 @@ def submit_answer(request, user_answer: str = ""):
         save_session(session_id, sess)
         response = RedirectResponse("/", status_code=303)
         return add_session_cookie(response, session_id)
-
-
-@rt("/about")
-def about_page(request):
-    """About page with navigation back to main page."""
-    # Get session from database if needed
-    sess, session_id = get_session(request)
-
-    response = Container(
-        H2("About This App", cls=TextT.xl),
-        P("Learn Lithuanian price expressions with this interactive tool!", cls=TextPresets.muted_lg),
-        P("This application helps you practice how to express prices in Lithuanian through interactive exercises.",
-          cls="mt-4"),
-        P("The app features an adaptive learning system that uses Thompson sampling to target exercises to your weak areas.", cls="mt-4"),
-        P("There are two types of exercises:", cls="mt-4"),
-        Ul(
-            Li("'Kokia kaina?' (What is the price?) - You need to express the given price in Lithuanian."),
-            Li("'Kiek kainuoja?' (How much does it cost?) - You need to express how much a specific item costs.")
-        ),
-        P("Practice regularly to improve your Lithuanian language skills!", cls="mt-4"),
-        Button(
-            UkIcon("arrow-left", cls="mr-2"),
-            "Back to Practice",
-            cls=(ButtonT.primary, "mt-6"),
-            hx_get="/",
-            hx_target="body"
-        ),
-        cls="max-w-5xl mx-auto py-6",
-        id="main-content"
-    )
-    save_session(session_id, sess)
-
-    return add_session_cookie(response, session_id)
-
-@rt("/stats")
-def stats_page(request):
-    """Enhanced stats page with adaptive learning insights."""
-    # Get session from database
-    sess, session_id = get_session(request)
-
-    session_manager = SessionManager(sess, exercise_service)
-    stats = session_manager.get_stats()
-
-    # Create basic stats card
-    stats_card = UIComponents.stats_card(stats)
-
-    # Get weak areas if available
-    weak_areas_card = UIComponents.weak_areas_card(stats.get("weak_areas", {}))
-
-    # Get performance by category if available
-    performance_cards = []
-    if "performance" in sess:
-        perf = sess["performance"]
-
-        # Exercise types performance
-        if perf.get("exercise_types"):
-            performance_cards.append(
-                UIComponents.performance_by_category(perf["exercise_types"], "Exercise Types")
-            )
-
-        # Number patterns performance
-        if perf.get("number_patterns"):
-            performance_cards.append(
-                UIComponents.performance_by_category(perf["number_patterns"], "Number Patterns")
-            )
-
-        # Grammatical cases performance
-        if perf.get("grammatical_cases"):
-            performance_cards.append(
-                UIComponents.performance_by_category(perf["grammatical_cases"], "Grammatical Cases")
-            )
-
-    save_session(session_id, sess)
-
-    response = Container(
-        UIComponents.app_header(),
-        Container(
-            H2("Your Statistics", cls=TextT.xl),
-            P("Track your learning progress", cls=TextPresets.muted_lg),
-
-            # Overall stats
-            Div(stats_card, cls="mt-6"),
-
-            # Weak areas section
-            Div(weak_areas_card, cls="mt-6"),
-
-            # Detailed performance section
-            Div(
-                H3("Detailed Performance", cls=(TextT.lg, "mt-8 mb-4")),
-                Grid(*performance_cards, cols_md=1, cols_lg=2, cols_xl=3, gap=6)
-                if performance_cards else
-                DivCentered(
-                    UkIcon("info", height=40, width=40, cls="text-muted mb-2"),
-                    P("Complete more exercises to see detailed performance", cls=TextPresets.muted_lg),
-                    cls="py-8 bg-base-200 rounded-lg mt-4"
-                ),
-                cls="mt-6"
-            ),
-
-            Button(
-                UkIcon("arrow-left", cls="mr-2"),
-                "Back to Practice",
-                cls=(ButtonT.primary, "mt-8"),
-                hx_get="/",
-                hx_target="body"
-            ),
-            cls="max-w-5xl mx-auto py-6",
-            id="main-content"
-        ),
-        UIComponents.footer(),
-        cls="min-h-screen bg-gradient-to-b from-base-100 to-base-200"
-    )
-    return add_session_cookie(response, session_id)
 
 @rt("/admin/test-sampling")
 def admin_test_sampling(request):
