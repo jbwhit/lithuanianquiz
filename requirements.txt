@@ -1,0 +1,5 @@
+python-fasthtml
+numpy
+monsterui
+fastlite
+starlette
