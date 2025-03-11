@@ -1,0 +1,17 @@
+# Ignore Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Ignore database backups but keep the main DB
+*.db.*.bak
+sessions.db  # This can be recreated dynamically
+
+# Ignore notebooks
+*.ipynb
+
+# Ignore development files
+llms/
+
+# Ignore package management
+uv.lock
