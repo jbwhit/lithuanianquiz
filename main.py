@@ -103,7 +103,7 @@ def _compute_stats(session: dict[str, Any]) -> dict[str, Any]:
 
 
 @rt("/")
-def get(session: dict[str, Any]) -> Any:
+def get(session) -> Any:
     _ensure_session(session)
     stats = _compute_stats(session)
     history = session.get("history", [])
@@ -145,7 +145,7 @@ def get(session: dict[str, Any]) -> Any:
 
 
 @rt("/answer")
-def post(session: dict[str, Any], user_answer: str = "") -> Any:
+def post(session, user_answer: str = "") -> Any:
     _ensure_session(session)
 
     row = engine.get_row(session["row_id"])
@@ -215,7 +215,7 @@ def post(session: dict[str, Any], user_answer: str = "") -> Any:
 
 
 @rt("/reset")
-def post_reset(session: dict[str, Any]) -> Any:
+def post_reset(session) -> Any:
     # Clear session keys
     for key in list(session.keys()):
         del session[key]
@@ -234,7 +234,7 @@ def post_reset(session: dict[str, Any]) -> Any:
 
 
 @rt("/stats")
-def get_stats(session: dict[str, Any]) -> Any:
+def get_stats(session) -> Any:
     _ensure_session(session)
     stats = _compute_stats(session)
     return page_shell(stats_page_content(stats, session))
