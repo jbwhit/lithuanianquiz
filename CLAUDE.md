@@ -8,7 +8,8 @@ Adaptive Lithuanian price quiz app built with FastHTML + MonsterUI.
 
 ### File structure
 
-- `main.py` — App init, routes, session helpers (~120 lines)
+- `main.py` — App init, routes, session helpers
+- `auth.py` — Google OAuth client, `QuizOAuth`, DB helpers for user/progress persistence
 - `quiz.py` — Exercise engine: generation, answer checking, diffs (no FastHTML dependency)
 - `adaptive.py` — Thompson Sampling adaptive learning engine
 - `ui.py` — UI component functions (plain functions, not classes)
@@ -16,10 +17,14 @@ Adaptive Lithuanian price quiz app built with FastHTML + MonsterUI.
 - `tests/test_adaptive.py` — Tests for adaptive learning
 - `db_manager.py` — Offline tooling for DB updates (kept as-is)
 - `get_csvs.py` — Offline tooling for CSV export (kept as-is)
-- `lithuanian_data.db` — 99 rows of Lithuanian number forms (static data)
+- `lithuanian_data.db` — 99 rows of Lithuanian number forms + `users` + `user_progress` tables
+- `.env` — Local secrets (gitignored): `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
+- `.env.example` — Committed template with empty values
 
 ### Architecture
 
+- **Google OAuth** via `fasthtml.oauth.GoogleAppClient` + `QuizOAuth(OAuth)` — optional login for cross-session persistence
+- **User progress persisted** to `user_progress` table in SQLite (loaded on login, saved on answer/reset)
 - **Cookie sessions** via FastHTML's built-in `SessionMiddleware` (no custom session DB)
 - **HTMX partial swaps** — `/answer` returns inline feedback + next question + OOB stats update
 - **Functions over classes** — UI components are plain functions in `ui.py`

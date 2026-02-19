@@ -4,6 +4,7 @@ import logging
 from typing import Any
 
 from adaptive import AdaptiveLearning
+from auth import QuizOAuth, auth_client, init_db_tables, save_progress
 from fasthtml.common import *
 from fastlite import database
 from monsterui.all import *
@@ -12,6 +13,7 @@ from ui import (
     about_page_content,
     feedback_correct,
     feedback_incorrect,
+    login_page_content,
     page_shell,
     quiz_area,
     stats_page_content,
@@ -25,6 +27,7 @@ log = logging.getLogger(__name__)
 # ------------------------------------------------------------------
 
 _db = database("lithuanian_data.db")
+init_db_tables()
 ALL_ROWS: list[dict[str, Any]] = list(_db.t["numbers"].rows)
 
 adaptive = AdaptiveLearning(exploration_rate=0.2)
@@ -39,6 +42,8 @@ app, rt = fast_app(
     secret_key="lithuanian-quiz-2025",
     title="Lithuanian Price Quiz",
 )
+
+oauth = QuizOAuth(app, auth_client)
 
 # ------------------------------------------------------------------
 # Session helpers
@@ -102,6 +107,13 @@ def _compute_stats(session: dict[str, Any]) -> dict[str, Any]:
 # ------------------------------------------------------------------
 
 
+@rt("/login")
+def get_login(req, session) -> Any:
+    if session.get("auth"):
+        return RedirectResponse("/", status_code=303)
+    return page_shell(login_page_content(oauth.login_link(req)))
+
+
 @rt("/")
 def get(session) -> Any:
     _ensure_session(session)
@@ -141,7 +153,7 @@ def get(session) -> Any:
         cls=(ContainerT.xl, "px-8 py-8"),
     )
 
-    return page_shell(main_content)
+    return page_shell(main_content, user_name=session.get("user_name"))
 
 
 @rt("/answer")
@@ -189,6 +201,10 @@ def post(session, user_answer: str = "") -> Any:
     # Pick next question
     _new_question(session)
 
+    # Persist progress (only when logged in)
+    if session.get("auth"):
+        save_progress(session["auth"], session)
+
     # Build feedback
     if is_correct:
         fb = feedback_correct(user_answer.strip())
@@ -216,10 +232,25 @@ def post(session, user_answer: str = "") -> Any:
 
 @rt("/reset")
 def post_reset(session) -> Any:
-    # Clear session keys
+    # Preserve auth-related keys across reset
+    auth = session.get("auth")
+    user_name = session.get("user_name")
+    user_email = session.get("user_email")
+
     for key in list(session.keys()):
         del session[key]
+
+    if auth:
+        session["auth"] = auth
+    if user_name:
+        session["user_name"] = user_name
+    if user_email:
+        session["user_email"] = user_email
+
     _ensure_session(session)
+
+    if auth:
+        save_progress(auth, session)  # Save cleared state to DB
 
     stats = _compute_stats(session)
     oob_stats = Div(
@@ -237,12 +268,18 @@ def post_reset(session) -> Any:
 def get_stats(session) -> Any:
     _ensure_session(session)
     stats = _compute_stats(session)
-    return page_shell(stats_page_content(stats, session))
+    return page_shell(
+        stats_page_content(stats, session),
+        user_name=session.get("user_name"),
+    )
 
 
 @rt("/about")
-def get_about() -> Any:
-    return page_shell(about_page_content())
+def get_about(session) -> Any:
+    return page_shell(
+        about_page_content(),
+        user_name=session.get("user_name"),
+    )
 
 
 # ------------------------------------------------------------------

@@ -237,6 +237,7 @@ dependencies = [
     { name = "fastlite" },
     { name = "monsterui" },
     { name = "numpy" },
+    { name = "python-dotenv" },
     { name = "python-fasthtml" },
 ]
 
@@ -258,6 +259,7 @@ requires-dist = [
     { name = "pandas", marker = "extra == 'data'", specifier = ">=2.2.3" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.1.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
+    { name = "python-dotenv", specifier = ">=1.0.0" },
     { name = "python-fasthtml", specifier = ">=0.12.1" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.9.6" },
 ]

@@ -11,7 +11,7 @@ from quiz import highlight_diff
 # ------------------------------------------------------------------
 
 
-def page_shell(*content: Any) -> Div:
+def page_shell(*content: Any, user_name: str | None = None) -> Div:
     """Full page wrapper with navbar."""
     brand = DivLAligned(
         UkIcon("languages", height=30, width=30, cls="text-primary mr-3"),
@@ -19,11 +19,21 @@ def page_shell(*content: Any) -> Div:
         P("Price Exercises", cls=TextT.muted),
         cls="items-center",
     )
+    nav_items: list[Any] = [
+        A("Home", href="/", cls="uk-btn uk-btn-ghost"),
+        A("About", href="/about", cls="uk-btn uk-btn-ghost"),
+        A("Stats", href="/stats", cls="uk-btn uk-btn-ghost"),
+    ]
+    if user_name:
+        nav_items.extend([
+            Span(user_name, cls=(TextT.sm, "px-3 py-2")),
+            A("Logout", href="/logout", cls="uk-btn uk-btn-ghost"),
+        ])
+    else:
+        nav_items.append(A("Login", href="/login", cls="uk-btn uk-btn-ghost"))
     nav = Container(
         NavBar(
-            A("Home", href="/", cls="uk-btn uk-btn-ghost"),
-            A("About", href="/about", cls="uk-btn uk-btn-ghost"),
-            A("Stats", href="/stats", cls="uk-btn uk-btn-ghost"),
+            *nav_items,
             brand=brand,
             sticky=True,
             cls="py-2",
@@ -31,6 +41,47 @@ def page_shell(*content: Any) -> Div:
         cls="max-w-6xl mx-auto",
     )
     return Div(nav, *content, cls="min-h-screen px-4")
+
+
+def login_page_content(login_url: str) -> Container:
+    """Centered login card."""
+    return Container(
+        DivCentered(
+            Card(
+                CardHeader(
+                    DivCentered(
+                        UkIcon(
+                            "languages",
+                            height=48,
+                            width=48,
+                            cls="text-primary mb-3",
+                        ),
+                        H2(
+                            "Lithuanian Price Quiz",
+                            cls=(TextT.xl, TextT.bold),
+                        ),
+                        P(
+                            "Sign in to track your progress",
+                            cls=TextPresets.muted_lg,
+                        ),
+                    )
+                ),
+                CardBody(
+                    DivCentered(
+                        A(
+                            UkIcon("log-in", cls="mr-2"),
+                            "Login with Google",
+                            href=login_url,
+                            cls=(ButtonT.primary, "px-8 py-3 text-lg"),
+                        )
+                    )
+                ),
+                cls="shadow-xl border-t-4 border-t-primary w-full max-w-md",
+            ),
+            cls="min-h-[60vh]",
+        ),
+        cls=(ContainerT.xl, "px-8 py-16"),
+    )
 
 
 # ------------------------------------------------------------------

@@ -9,6 +9,7 @@ dependencies = [
     "monsterui>=1.0.7",
     "fastlite>=0.1.1",
     "numpy>=2.2.3",
+    "python-dotenv>=1.0.0",
 ]
 
 [project.optional-dependencies]
