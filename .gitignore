@@ -1,6 +1,12 @@
 # File system files
 .DS_Store
 
+# Session artifacts (no longer used)
+sessions.db
+sessions.db-shm
+sessions.db-wal
+.sesskey
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

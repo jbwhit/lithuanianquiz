@@ -1,48 +1,40 @@
 [project]
-name = "fast"
+name = "lithuanianquiz"
 version = "0.1.0"
-description = "Add your description here"
+description = "Adaptive Lithuanian price quiz"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "fastlite>=0.1.1",
-    "ipykernel>=6.29.5",
-    "jupyter>=1.1.1",
-    "monsterui>=1.0.7",
-    "nbclassic>=1.2.0",
-    "notebook>=7.3.2",
-    "numpy>=2.2.3",
-    "pandas>=2.2.3",
-    "pre-commit>=4.1.0",
     "python-fasthtml>=0.12.1",
-    "ruff>=0.9.6",
-    "seaborn>=0.13.2",
+    "monsterui>=1.0.7",
+    "fastlite>=0.1.1",
+    "numpy>=2.2.3",
 ]
 
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.9.6", "pre-commit>=4.1.0"]
+data = ["pandas>=2.2.3"]
+
 [tool.ruff]
-target-version = "py310"
-line-length = 100
+line-length = 88
 
 [tool.ruff.lint]
 select = [
-    "E",    # pycodestyle errors
-    "F",    # pyflakes
-    "I",    # isort
-    "W",    # pycodestyle warnings
-    "C90",  # mccabe complexity
-    "N",    # pep8-naming
-    "B",    # flake8-bugbear
-    "UP",   # pyupgrade
+    "E",
+    "F",
+    "I",
+    "W",
+    "B",
+    "UP",
 ]
 ignore = [
-    "E501",  # Line too long (handled by formatter)
-    "F405",  # Defined from star imports
-    "F403",  # Unable to detect undefined names from star imports
+    "E501",
+    "F405",
+    "F403",
 ]
-dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 [tool.ruff.lint.isort]
 known-first-party = ["fasthtml", "monsterui", "fastlite"]
 
-[tool.ruff.lint.per-file-ignores]
-"__init__.py" = ["F401"]  # Unused imports in __init__ files
+[tool.pytest.ini_options]
+testpaths = ["tests"]
