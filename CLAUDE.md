@@ -20,6 +20,7 @@ Adaptive Lithuanian price quiz app built with FastHTML + MonsterUI.
 - `lithuanian_data.db` — 99 rows of Lithuanian number forms + `users` + `user_progress` tables
 - `.env` — Local secrets (gitignored): `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
 - `.env.example` — Committed template with empty values
+- `HANDOFF.md` — Full project context doc for onboarding new sessions
 
 ### Architecture
 
@@ -32,11 +33,20 @@ Adaptive Lithuanian price quiz app built with FastHTML + MonsterUI.
 
 ### Commands
 
-- `uv sync` — install dependencies
+- `uv sync --extra dev` — install dependencies including pytest/ruff (`uv sync` alone removes dev tools)
 - `uv run pytest` — run tests
 - `uv run ruff check .` — lint
 - `uv run ruff format .` — format
 - `uv run python main.py` — start dev server on localhost:5001
+
+### Deployment (Railway)
+
+- Project: `lithuanianquiz2`, Service: `lithuanian-practice`
+- Domain: `https://lithuanian-practice.com` — **Railway runs Python 3.12** (local is 3.13)
+- Link: `railway link --project lithuanianquiz2 && railway service link lithuanian-practice`
+- Deploy: `railway up --detach` then poll `railway service status`
+- Env vars: `railway variables --set "KEY=value"` (triggers auto-redeploy)
+- Analytics: GoatCounter at https://jbwhit.goatcounter.com
 
 ## Python Conventions
 
