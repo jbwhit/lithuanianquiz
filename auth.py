@@ -2,7 +2,7 @@
 
 import json
 import os
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from dotenv import load_dotenv
@@ -42,7 +42,7 @@ def init_db_tables() -> None:
 
 
 def _now() -> str:
-    return datetime.now(datetime.UTC).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def upsert_user(google_id: str, email: str, name: str) -> None:
