@@ -11,6 +11,7 @@ from monsterui.all import *
 from quiz import ExerciseEngine, highlight_diff, number_pattern
 from ui import (
     about_page_content,
+    examples_section,
     feedback_correct,
     feedback_incorrect,
     login_page_content,
@@ -164,6 +165,7 @@ def get(session) -> Any:
             " (accusative).",
             cls="text-base-content/60 text-xs mb-6",
         ),
+        examples_section(),
         quiz_area(session["current_question"]),
         Div(stats_panel(stats, history), cls="mt-6"),
         Button(

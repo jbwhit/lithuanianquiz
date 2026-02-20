@@ -23,6 +23,12 @@ def page_shell(*content: Any, user_name: str | None = None) -> Div:
         A("Home", href="/", cls="uk-btn uk-btn-ghost"),
         A("About", href="/about", cls="uk-btn uk-btn-ghost"),
         A("Stats", href="/stats", cls="uk-btn uk-btn-ghost"),
+        A(
+            "Feedback",
+            href="https://github.com/jbwhit/lithuanianquiz/issues/new",
+            cls="uk-btn uk-btn-ghost",
+            target="_blank",
+        ),
     ]
     if user_name:
         nav_items.extend([
@@ -81,6 +87,48 @@ def login_page_content(login_url: str) -> Container:
             cls="min-h-[60vh]",
         ),
         cls=(ContainerT.xl, "px-8 py-16"),
+    )
+
+
+# ------------------------------------------------------------------
+# Examples (collapsible)
+# ------------------------------------------------------------------
+
+
+def examples_section() -> Details:
+    """Collapsible 'Show an example' section."""
+    def _example(question: str, answer: str, case: str) -> Div:
+        return Div(
+            P(question, cls="font-medium text-base-content/80"),
+            P(
+                "→ ",
+                Span(answer, cls="font-bold text-primary"),
+                cls="mt-1",
+            ),
+            P(case, cls="text-xs text-base-content/50 mt-1 italic"),
+            cls="p-3 bg-base-200 rounded-lg",
+        )
+
+    return Details(
+        Summary(
+            UkIcon("help-circle", cls="inline mr-1", height=16, width=16),
+            "Show an example",
+            cls="cursor-pointer text-sm text-base-content/60 hover:text-base-content "
+                "list-none mb-3 select-none",
+        ),
+        Div(
+            _example(
+                "Kokia kaina? (€5)",
+                "penki eurai.",
+                "Nominative — stating the price directly",
+            ),
+            _example(
+                "Kiek kainuoja knyga? (€21)",
+                "dvidešimt vieną eurą.",
+                "Accusative — saying what something costs",
+            ),
+            cls="grid grid-cols-1 gap-3 sm:grid-cols-2 mb-4",
+        ),
     )
 
 
