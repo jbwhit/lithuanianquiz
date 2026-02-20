@@ -100,6 +100,7 @@ def quiz_area(
             name="user_answer",
             placeholder="Type your answer in Lithuanian...",
             autofocus=True,
+            autocomplete="off",
             cls="uk-input uk-form-large w-full",
         ),
         DivRAligned(
