@@ -14,7 +14,7 @@ from quiz import highlight_diff
 def page_shell(*content: Any, user_name: str | None = None) -> Div:
     """Full page wrapper with navbar."""
     brand = DivLAligned(
-        UkIcon("languages", height=30, width=30, cls="text-primary mr-3"),
+        Span("🇱🇹", cls="text-2xl mr-2"),
         H3("Lithuanian", cls=(TextT.xl, TextT.bold, "text-primary")),
         P("Price Exercises", cls=TextT.muted),
         cls="items-center",
@@ -50,18 +50,13 @@ def login_page_content(login_url: str) -> Container:
             Card(
                 CardHeader(
                     DivCentered(
-                        UkIcon(
-                            "languages",
-                            height=48,
-                            width=48,
-                            cls="text-primary mb-3",
-                        ),
+                        Span("🇱🇹", cls="text-5xl mb-3"),
                         H2(
                             "Lithuanian Price Quiz",
                             cls=(TextT.xl, TextT.bold),
                         ),
                         P(
-                            "Sign in to track your progress",
+                            "Practice expressing prices in Lithuanian",
                             cls=TextPresets.muted_lg,
                         ),
                     )
@@ -73,7 +68,12 @@ def login_page_content(login_url: str) -> Container:
                             "Login with Google",
                             href=login_url,
                             cls=(ButtonT.primary, "px-8 py-3 text-lg"),
-                        )
+                        ),
+                        P(
+                            "Free and private. We only store your quiz "
+                            "progress — nothing else.",
+                            cls="text-base-content/50 text-xs mt-4 max-w-xs text-center",
+                        ),
                     )
                 ),
                 cls="shadow-xl border-t-4 border-t-primary w-full max-w-md",
@@ -146,21 +146,54 @@ def quiz_area(
 # Feedback alerts (inline, not modals)
 # ------------------------------------------------------------------
 
+_CASE_LABELS: dict[str, str] = {
+    "nominative": "nominative case (vardininkas)",
+    "accusative": "accusative case (galininkas)",
+}
+_TYPE_LABELS: dict[str, str] = {
+    "kokia": "Kokia kaina?",
+    "kiek": "Kiek kainuoja?",
+}
+_GRAMMAR_HINTS: dict[str, str] = {
+    "nominative": "Nominative: used when stating a price (Kokia kaina?).",
+    "accusative": "Accusative: used when saying what something costs (Kiek kainuoja?).",
+}
 
-def feedback_correct(user_answer: str) -> Div:
+
+def _exercise_context_text(
+    exercise_type: str | None,
+    grammatical_case: str | None,
+) -> str:
+    """One-line description of what this exercise tested."""
+    parts = []
+    if exercise_type:
+        parts.append(_TYPE_LABELS.get(exercise_type, exercise_type))
+    if grammatical_case:
+        parts.append(_CASE_LABELS.get(grammatical_case, grammatical_case))
+    return " — ".join(parts)
+
+
+def feedback_correct(
+    user_answer: str,
+    exercise_type: str | None = None,
+    grammatical_case: str | None = None,
+) -> Div:
     """Green inline alert for correct answer."""
+    ctx = _exercise_context_text(exercise_type, grammatical_case)
     return Div(
         DivLAligned(
             UkIcon("check-circle", cls="text-success mr-2"),
             Div(
                 P("Correct!", cls=(TextT.bold, "text-success")),
-                P(
-                    f"Your answer: {user_answer}",
-                    cls=TextT.sm,
+                P(f"Your answer: {user_answer}", cls=TextT.sm),
+                *(
+                    [P(ctx, cls="text-base-content/60 text-xs mt-1")]
+                    if ctx
+                    else []
                 ),
             ),
         ),
-        cls="alert alert-success mb-4 p-4 rounded-lg border border-success/30 bg-success/10",
+        cls="mb-4 p-4 rounded-lg border-2 border-success/40 bg-success/20 text-base-content",
     )
 
 
@@ -169,8 +202,13 @@ def feedback_incorrect(
     correct_answer: str,
     diff_user: str,
     diff_correct: str,
+    exercise_type: str | None = None,
+    grammatical_case: str | None = None,
+    number_pattern: str | None = None,
 ) -> Div:
-    """Red inline alert with diff highlighting."""
+    """Red inline alert with diff highlighting and grammar context."""
+    ctx = _exercise_context_text(exercise_type, grammatical_case)
+    hint = _GRAMMAR_HINTS.get(grammatical_case or "")
     return Div(
         DivLAligned(
             UkIcon(
@@ -183,14 +221,24 @@ def feedback_incorrect(
         Div(
             P("Your answer:", cls=(TextT.bold, "text-sm mt-2")),
             P(NotStr(diff_user), cls="ml-4"),
-            P(
-                "Correct answer:",
-                cls=(TextT.bold, "text-sm mt-2"),
-            ),
+            P("Correct answer:", cls=(TextT.bold, "text-sm mt-2")),
             P(NotStr(diff_correct), cls="ml-4"),
             cls="mt-2",
         ),
-        cls="alert alert-error mb-4 p-4 rounded-lg border border-error/30 bg-error/10",
+        *(
+            [Div(
+                P(ctx, cls="text-sm font-medium text-base-content/70"),
+                *(
+                    [P(hint, cls="text-xs text-base-content/60 italic mt-1")]
+                    if hint
+                    else []
+                ),
+                cls="border-t border-base-content/10 pt-3 mt-3",
+            )]
+            if ctx
+            else []
+        ),
+        cls="mb-4 p-4 rounded-lg border-2 border-error/40 bg-error/20 text-base-content",
     )
 
 
@@ -596,13 +644,16 @@ def about_page_content() -> Container:
         P("There are two types of exercises:", cls="mt-4"),
         Ul(
             Li(
-                "'Kokia kaina?' (What is the price?) — "
-                "Express the given price in Lithuanian."
+                Strong("Kokia kaina?"),
+                " (What is the price?) — ",
+                "Nominative case (vardininkas). State the price directly.",
             ),
             Li(
-                "'Kiek kainuoja?' (How much does it cost?) — "
-                "Express how much a specific item costs."
+                Strong("Kiek kainuoja?"),
+                " (How much does it cost?) — ",
+                "Accusative case (galininkas). The number changes form.",
             ),
+            cls="list-disc ml-6 mt-2 space-y-2",
         ),
         P(
             "Practice regularly to improve your Lithuanian language skills!",

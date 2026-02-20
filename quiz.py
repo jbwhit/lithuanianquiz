@@ -58,18 +58,18 @@ def highlight_diff(
             out_c.append(seg_c)
         elif tag == "replace":
             out_u.append(
-                f"<span class='text-error font-bold'>{seg_u}</span>"
+                f"<span class='text-error font-bold underline decoration-error/50'>{seg_u}</span>"
             )
             out_c.append(
-                f"<span class='text-success font-bold'>{seg_c}</span>"
+                f"<span class='text-success font-bold underline decoration-success/50'>{seg_c}</span>"
             )
         elif tag == "delete":
             out_u.append(
-                f"<span class='text-error font-bold'>{seg_u}</span>"
+                f"<span class='text-error font-bold underline decoration-error/50'>{seg_u}</span>"
             )
         elif tag == "insert":
             out_c.append(
-                f"<span class='text-success font-bold'>{seg_c}</span>"
+                f"<span class='text-success font-bold underline decoration-success/50'>{seg_c}</span>"
             )
     return "".join(out_u), "".join(out_c)
 

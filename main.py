@@ -140,7 +140,20 @@ def get(session) -> Any:
     )
 
     main_content = Container(
-        H2("Lithuanian Price Practice", cls=(TextT.xl, "mb-6")),
+        H2("Lithuanian Price Practice", cls=(TextT.xl, "mb-2")),
+        P(
+            "Practice expressing prices in Lithuanian. "
+            "Type the full answer including the euro word.",
+            cls="text-base-content/70 text-sm mb-1",
+        ),
+        P(
+            "Two exercise types: ",
+            Strong("Kokia kaina?"),
+            " (nominative) and ",
+            Strong("Kiek kainuoja?"),
+            " (accusative).",
+            cls="text-base-content/60 text-xs mb-6",
+        ),
         quiz_area(session["current_question"]),
         Div(stats_panel(stats, history), cls="mt-6"),
         Button(
@@ -148,6 +161,16 @@ def get(session) -> Any:
             "Reset Progress",
             cls=(ButtonT.destructive, "mt-6"),
             data_uk_toggle="target: #reset-modal",
+        ),
+        Div(
+            P(
+                UkIcon("shield", cls="inline mr-1", height=14, width=14),
+                "Free to use. No tracking beyond your current browser session. ",
+                A("Log in", href="/login", cls="underline"),
+                " only to save progress across visits.",
+                cls="text-base-content/50 text-xs",
+            ),
+            cls="mt-4 text-center",
         ),
         reset_modal,
         cls=(ContainerT.xl, "px-8 py-8"),
@@ -207,13 +230,20 @@ def post(session, user_answer: str = "") -> Any:
 
     # Build feedback
     if is_correct:
-        fb = feedback_correct(user_answer.strip())
+        fb = feedback_correct(
+            user_answer.strip(),
+            exercise_type=exercise_info["exercise_type"],
+            grammatical_case=exercise_info["grammatical_case"],
+        )
     else:
         fb = feedback_incorrect(
             user_answer.strip(),
             correct_answer.strip(),
             diff_u,
             diff_c,
+            exercise_type=exercise_info["exercise_type"],
+            grammatical_case=exercise_info["grammatical_case"],
+            number_pattern=exercise_info["number_pattern"],
         )
 
     # Return quiz area + OOB stats update
