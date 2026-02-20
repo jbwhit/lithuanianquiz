@@ -660,6 +660,17 @@ def about_page_content() -> Container:
             "Practice regularly to improve your Lithuanian language skills!",
             cls="mt-4",
         ),
+        P(
+            "Made by ",
+            A(
+                "Jonathan Whitmore",
+                href="https://jonathanwhitmore.com",
+                cls="underline",
+                target="_blank",
+            ),
+            ".",
+            cls="mt-6 text-base-content/60 text-sm",
+        ),
         A(
             UkIcon("arrow-left", cls="mr-2"),
             "Back to Practice",

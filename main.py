@@ -37,8 +37,13 @@ engine = ExerciseEngine(ALL_ROWS, adaptive)
 # App
 # ------------------------------------------------------------------
 
+_favicon = Link(
+    rel="icon",
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🇱🇹</text></svg>",
+)
+
 app, rt = fast_app(
-    hdrs=Theme.green.headers(daisy=True),
+    hdrs=[*Theme.green.headers(daisy=True), _favicon],
     secret_key="lithuanian-quiz-2025",
     title="Lithuanian Price Quiz",
 )
