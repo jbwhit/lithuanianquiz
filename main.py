@@ -41,9 +41,14 @@ _favicon = Link(
     rel="icon",
     href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🇱🇹</text></svg>",
 )
+_goatcounter = Script(
+    src="//gc.zgo.at/count.js",
+    data_goatcounter="https://jbwhit.goatcounter.com/count",
+    async_=True,
+)
 
 app, rt = fast_app(
-    hdrs=[*Theme.green.headers(daisy=True), _favicon],
+    hdrs=[*Theme.green.headers(daisy=True), _favicon, _goatcounter],
     secret_key="lithuanian-quiz-2025",
     title="Lithuanian Price Quiz",
 )
