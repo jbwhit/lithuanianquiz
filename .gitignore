@@ -1,6 +1,13 @@
 # File system files
 .DS_Store
 
+# Claude Code
+.claude/
+
+# SQLite WAL files
+lithuanian_data.db-shm
+lithuanian_data.db-wal
+
 # Session artifacts (no longer used)
 sessions.db
 sessions.db-shm
