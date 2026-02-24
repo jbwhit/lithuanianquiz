@@ -31,6 +31,10 @@ Adaptive Lithuanian price quiz app built with FastHTML + MonsterUI.
 - **Functions over classes** — UI components are plain functions in `ui.py`
 - **Data loaded once** at startup (`ALL_ROWS` from `lithuanian_data.db`)
 
+### Setup
+
+- `git config core.hooksPath .githooks` — enable pre-commit hook (auto-formats Python with ruff)
+
 ### Commands
 
 - `uv sync --extra dev` — install dependencies including pytest/ruff (`uv sync` alone removes dev tools)
