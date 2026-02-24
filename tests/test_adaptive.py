@@ -41,9 +41,7 @@ class TestSampleWeakest:
             "strong": {"correct": 50, "incorrect": 1},
             "weak": {"correct": 1, "incorrect": 50},
         }
-        counts = Counter(
-            _sample_weakest(arms) for _ in range(500)
-        )
+        counts = Counter(_sample_weakest(arms) for _ in range(500))
         assert counts["weak"] > counts["strong"]
 
 
@@ -70,9 +68,7 @@ class TestAdaptiveLearning:
     def al(self) -> AdaptiveLearning:
         return AdaptiveLearning(exploration_rate=0.2)
 
-    def test_init_tracking_idempotent(
-        self, al: AdaptiveLearning
-    ) -> None:
+    def test_init_tracking_idempotent(self, al: AdaptiveLearning) -> None:
         session: dict = {}
         al.init_tracking(session)
         perf1 = session["performance"]
@@ -91,18 +87,14 @@ class TestAdaptiveLearning:
         et = session["performance"]["exercise_types"]["kokia"]
         assert et["correct"] == 1
 
-    def test_select_exercise_returns_dict(
-        self, al: AdaptiveLearning
-    ) -> None:
+    def test_select_exercise_returns_dict(self, al: AdaptiveLearning) -> None:
         engine = ExerciseEngine(ROWS)
         session: dict = {}
         ex = al.select_exercise(session, engine)
         assert "exercise_type" in ex
         assert "row" in ex
 
-    def test_get_weak_areas_empty_without_perf(
-        self, al: AdaptiveLearning
-    ) -> None:
+    def test_get_weak_areas_empty_without_perf(self, al: AdaptiveLearning) -> None:
         assert al.get_weak_areas({}) == {}
 
     def test_thompson_convergence(self) -> None:
@@ -125,7 +117,6 @@ class TestAdaptiveLearning:
         perf["total_exercises"] = 64
 
         counts = Counter(
-            al.select_exercise(session, engine)["exercise_type"]
-            for _ in range(500)
+            al.select_exercise(session, engine)["exercise_type"] for _ in range(500)
         )
         assert counts["kiek"] > counts["kokia"]

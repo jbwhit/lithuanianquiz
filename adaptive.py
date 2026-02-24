@@ -47,8 +47,7 @@ class AdaptiveLearning:
             return
         session["performance"] = {
             "exercise_types": {
-                t: {"correct": 0, "incorrect": 1}
-                for t in EXERCISE_TYPES
+                t: {"correct": 0, "incorrect": 1} for t in EXERCISE_TYPES
             },
             "number_patterns": {},
             "grammatical_cases": {},
@@ -85,9 +84,7 @@ class AdaptiveLearning:
             _bump(perf["grammatical_cases"], gc, is_correct)
 
         if np_ and gc:
-            combined = (
-                f"{exercise_info['exercise_type']}_{np_}_{gc}"
-            )
+            combined = f"{exercise_info['exercise_type']}_{np_}_{gc}"
             _bump(perf["combined_arms"], combined, is_correct)
 
     # ------------------------------------------------------------------
@@ -113,9 +110,7 @@ class AdaptiveLearning:
     def _random_exercise(self, engine: Any) -> dict[str, Any]:
         row = random.choice(engine.rows)
         ex_type = random.choice(EXERCISE_TYPES)
-        item = (
-            random.choice(ITEMS) if ex_type == "kiek" else None
-        )
+        item = random.choice(ITEMS) if ex_type == "kiek" else None
         gc = "accusative" if ex_type == "kiek" else "nominative"
         return {
             "exercise_type": ex_type,
@@ -140,25 +135,13 @@ class AdaptiveLearning:
         if perf["number_patterns"]:
             np_ = _sample_weakest(perf["number_patterns"])
         else:
-            np_ = number_pattern(
-                random.choice(engine.rows)["number"]
-            )
+            np_ = number_pattern(random.choice(engine.rows)["number"])
 
         # 3. Find a row matching the pattern
-        matching = [
-            r
-            for r in engine.rows
-            if number_pattern(r["number"]) == np_
-        ]
-        row = (
-            random.choice(matching)
-            if matching
-            else random.choice(engine.rows)
-        )
+        matching = [r for r in engine.rows if number_pattern(r["number"]) == np_]
+        row = random.choice(matching) if matching else random.choice(engine.rows)
 
-        item = (
-            random.choice(ITEMS) if ex_type == "kiek" else None
-        )
+        item = random.choice(ITEMS) if ex_type == "kiek" else None
         gc = "accusative" if ex_type == "kiek" else "nominative"
         return {
             "exercise_type": ex_type,
@@ -195,14 +178,11 @@ class AdaptiveLearning:
             for arm, stats in cat.items():
                 total = stats["correct"] + stats["incorrect"]
                 if total > 1:
-                    rates.append(
-                        (arm, stats["correct"] / total)
-                    )
+                    rates.append((arm, stats["correct"] / total))
             if rates:
                 rates.sort(key=lambda x: x[1])
                 weak[label] = [
-                    {"name": arm, "success_rate": rate}
-                    for arm, rate in rates[:3]
+                    {"name": arm, "success_rate": rate} for arm, rate in rates[:3]
                 ]
 
         return weak

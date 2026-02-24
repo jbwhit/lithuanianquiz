@@ -76,12 +76,14 @@ def load_progress(google_id: str, session: dict[str, Any]) -> None:
 
 def save_progress(google_id: str, session: dict[str, Any]) -> None:
     """Write session progress state to the DB."""
-    data = json.dumps({
-        "correct_count": session.get("correct_count", 0),
-        "incorrect_count": session.get("incorrect_count", 0),
-        "history": session.get("history", []),
-        "performance": session.get("performance", {}),
-    })
+    data = json.dumps(
+        {
+            "correct_count": session.get("correct_count", 0),
+            "incorrect_count": session.get("incorrect_count", 0),
+            "history": session.get("history", []),
+            "performance": session.get("performance", {}),
+        }
+    )
     now = _now()
     _db.execute(
         """

@@ -83,9 +83,7 @@ def _new_question(session: dict[str, Any]) -> None:
         number_pattern(ex["row"]["number"]),
     )
     session["grammatical_case"] = (
-        "accusative"
-        if ex["exercise_type"] == "kiek"
-        else "nominative"
+        "accusative" if ex["exercise_type"] == "kiek" else "nominative"
     )
     session["current_question"] = engine.format_question(
         ex["exercise_type"], ex["price"], ex.get("item")
@@ -196,20 +194,14 @@ def post(session, user_answer: str = "") -> Any:
     _ensure_session(session)
 
     row = engine.get_row(session["row_id"])
-    correct_answer = engine.correct_answer(
-        session["exercise_type"], row
-    )
+    correct_answer = engine.correct_answer(session["exercise_type"], row)
     is_correct = engine.check(user_answer, correct_answer)
 
     # Update counters
     if is_correct:
-        session["correct_count"] = (
-            session.get("correct_count", 0) + 1
-        )
+        session["correct_count"] = session.get("correct_count", 0) + 1
     else:
-        session["incorrect_count"] = (
-            session.get("incorrect_count", 0) + 1
-        )
+        session["incorrect_count"] = session.get("incorrect_count", 0) + 1
 
     # Build history entry (minimal — diffs regenerated on display)
     diff_u, diff_c = highlight_diff(

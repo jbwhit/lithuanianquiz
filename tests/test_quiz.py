@@ -110,15 +110,11 @@ class TestExerciseEngine:
         ans = engine.correct_answer("kiek", SAMPLE_ROW)
         assert ans == "vieną eurą."
 
-    def test_correct_answer_compound_kokia(
-        self, engine: ExerciseEngine
-    ) -> None:
+    def test_correct_answer_compound_kokia(self, engine: ExerciseEngine) -> None:
         ans = engine.correct_answer("kokia", SAMPLE_COMPOUND_ROW)
         assert ans == "dvidešimt vienas euras."
 
-    def test_correct_answer_compound_kiek(
-        self, engine: ExerciseEngine
-    ) -> None:
+    def test_correct_answer_compound_kiek(self, engine: ExerciseEngine) -> None:
         ans = engine.correct_answer("kiek", SAMPLE_COMPOUND_ROW)
         assert ans == "dvidešimt vieną eurą."
 

@@ -34,14 +34,11 @@ def number_pattern(n: int) -> str:
     return "compound"
 
 
-def highlight_diff(
-    user: str, correct: str, is_correct: bool
-) -> tuple[str, str]:
+def highlight_diff(user: str, correct: str, is_correct: bool) -> tuple[str, str]:
     """Return (user_html, correct_html) with coloured diff spans."""
     if is_correct:
         return (
-            f"<span class='text-success font-bold'>"
-            f"{html.escape(user)}</span>",
+            f"<span class='text-success font-bold'>{html.escape(user)}</span>",
             html.escape(correct),
         )
 
@@ -83,9 +80,7 @@ class ExerciseEngine:
         adaptive: Any | None = None,
     ) -> None:
         self.rows = rows
-        self.by_number: dict[int, dict[str, Any]] = {
-            r["number"]: r for r in rows
-        }
+        self.by_number: dict[int, dict[str, Any]] = {r["number"]: r for r in rows}
         self.adaptive = adaptive
 
     def get_row(self, number: int) -> dict[str, Any]:
@@ -106,9 +101,7 @@ class ExerciseEngine:
             "number_pattern": number_pattern(row["number"]),
         }
 
-    def correct_answer(
-        self, ex_type: str, row: dict[str, Any]
-    ) -> str:
+    def correct_answer(self, ex_type: str, row: dict[str, Any]) -> str:
         """Build the correct Lithuanian price phrase."""
         if ex_type == "kokia":
             parts = [row["kokia_kaina"]]
@@ -123,9 +116,7 @@ class ExerciseEngine:
         return f"{' '.join(parts)}."
 
     @staticmethod
-    def format_question(
-        ex_type: str, price: str, item: str | None
-    ) -> str:
+    def format_question(ex_type: str, price: str, item: str | None) -> str:
         if ex_type == "kokia":
             return f"Kokia kaina? ({price})"
         return f"Kiek kainuoja {item}? ({price})"

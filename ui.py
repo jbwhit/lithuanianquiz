@@ -31,10 +31,12 @@ def page_shell(*content: Any, user_name: str | None = None) -> Div:
         ),
     ]
     if user_name:
-        nav_items.extend([
-            Span(user_name, cls=(TextT.sm, "px-3 py-2")),
-            A("Logout", href="/logout", cls="uk-btn uk-btn-ghost"),
-        ])
+        nav_items.extend(
+            [
+                Span(user_name, cls=(TextT.sm, "px-3 py-2")),
+                A("Logout", href="/logout", cls="uk-btn uk-btn-ghost"),
+            ]
+        )
     else:
         nav_items.append(A("Login", href="/login", cls="uk-btn uk-btn-ghost"))
     nav = Container(
@@ -97,6 +99,7 @@ def login_page_content(login_url: str) -> Container:
 
 def examples_section() -> Details:
     """Collapsible 'Show an example' section."""
+
     def _example(question: str, answer: str, case: str) -> Div:
         return Div(
             P(question, cls="font-medium text-base-content/80"),
@@ -114,7 +117,7 @@ def examples_section() -> Details:
             UkIcon("help-circle", cls="inline mr-1", height=16, width=16),
             "Show an example",
             cls="cursor-pointer text-sm text-base-content/60 hover:text-base-content "
-                "list-none mb-3 select-none",
+            "list-none mb-3 select-none",
         ),
         Div(
             _example(
@@ -235,11 +238,7 @@ def feedback_correct(
             Div(
                 P("Correct!", cls=(TextT.bold, "text-success")),
                 P(f"Your answer: {user_answer}", cls=TextT.sm),
-                *(
-                    [P(ctx, cls="text-base-content/60 text-xs mt-1")]
-                    if ctx
-                    else []
-                ),
+                *([P(ctx, cls="text-base-content/60 text-xs mt-1")] if ctx else []),
             ),
         ),
         cls="mb-4 p-4 rounded-lg border-2 border-success/40 bg-success/20 text-base-content",
@@ -260,9 +259,7 @@ def feedback_incorrect(
     hint = _GRAMMAR_HINTS.get(grammatical_case or "")
     return Div(
         DivLAligned(
-            UkIcon(
-                "x-circle", cls="text-error mr-2", height=24, width=24
-            ),
+            UkIcon("x-circle", cls="text-error mr-2", height=24, width=24),
             Div(
                 P("Not quite right", cls=(TextT.bold, "text-error")),
             ),
@@ -275,15 +272,17 @@ def feedback_incorrect(
             cls="mt-2",
         ),
         *(
-            [Div(
-                P(ctx, cls="text-sm font-medium text-base-content/70"),
-                *(
-                    [P(hint, cls="text-xs text-base-content/60 italic mt-1")]
-                    if hint
-                    else []
-                ),
-                cls="border-t border-base-content/10 pt-3 mt-3",
-            )]
+            [
+                Div(
+                    P(ctx, cls="text-sm font-medium text-base-content/70"),
+                    *(
+                        [P(hint, cls="text-xs text-base-content/60 italic mt-1")]
+                        if hint
+                        else []
+                    ),
+                    cls="border-t border-base-content/10 pt-3 mt-3",
+                )
+            ]
             if ctx
             else []
         ),
@@ -296,9 +295,7 @@ def feedback_incorrect(
 # ------------------------------------------------------------------
 
 
-def _stat_metric(
-    icon: str, value: str, label: str, color: str = "text-primary"
-) -> Div:
+def _stat_metric(icon: str, value: str, label: str, color: str = "text-primary") -> Div:
     return Div(
         DivCentered(
             UkIcon(icon, cls=f"{color} mb-1", height=24, width=24),
@@ -314,11 +311,7 @@ def _stat_metric(
 
 def _accuracy_bar(accuracy: float) -> Div:
     color = (
-        "bg-error"
-        if accuracy < 60
-        else "bg-warning"
-        if accuracy < 80
-        else "bg-success"
+        "bg-error" if accuracy < 60 else "bg-warning" if accuracy < 80 else "bg-success"
     )
     return Div(
         P(f"Accuracy: {accuracy:.1f}%", cls=(TextT.bold, "mb-1")),
@@ -333,22 +326,14 @@ def _accuracy_bar(accuracy: float) -> Div:
 
 def _weak_area_item(area: dict[str, Any]) -> Li:
     rate = area["success_rate"] * 100
-    color = (
-        "bg-error"
-        if rate < 60
-        else "bg-warning"
-        if rate < 80
-        else "bg-success"
-    )
+    color = "bg-error" if rate < 60 else "bg-warning" if rate < 80 else "bg-success"
     return Li(
         Div(
             P(
                 area["name"].replace("_", " ").title(),
                 cls=TextT.medium,
             ),
-            Progress(
-                value=int(rate), max=100, cls=f"h-2 rounded-full {color}"
-            ),
+            Progress(value=int(rate), max=100, cls=f"h-2 rounded-full {color}"),
             P(f"{rate:.1f}%", cls=TextPresets.muted_sm),
             cls="w-full",
         ),
@@ -361,9 +346,7 @@ def _weak_areas_section(
 ) -> Card:
     if not weak_areas:
         body = DivCentered(
-            UkIcon(
-                "target", height=40, width=40, cls="text-muted mb-2"
-            ),
+            UkIcon("target", height=40, width=40, cls="text-muted mb-2"),
             P("Complete more exercises", cls=TextPresets.muted_sm),
             cls="py-8",
         )
@@ -392,13 +375,9 @@ def _weak_areas_section(
     )
 
 
-def _history_entry(
-    entry: dict[str, Any], idx: int, total: int
-) -> Div:
+def _history_entry(entry: dict[str, Any], idx: int, total: int) -> Div:
     correct = entry["correct"]
-    diff_u, diff_c = highlight_diff(
-        entry["answer"], entry["true_answer"], correct
-    )
+    diff_u, diff_c = highlight_diff(entry["answer"], entry["true_answer"], correct)
     return Div(
         Div(
             UkIcon(
@@ -433,15 +412,12 @@ def _history_card(history: list[dict[str, Any]]) -> Card:
     total = len(history)
     if history:
         items = [
-            _history_entry(e, i, total)
-            for i, e in enumerate(reversed(history[-5:]))
+            _history_entry(e, i, total) for i, e in enumerate(reversed(history[-5:]))
         ]
         body = Div(*items)
     else:
         body = DivCentered(
-            UkIcon(
-                "history", height=40, width=40, cls="text-muted mb-2"
-            ),
+            UkIcon("history", height=40, width=40, cls="text-muted mb-2"),
             P("No history yet", cls=TextPresets.muted_lg),
             P(
                 "Your exercise history will appear here",
@@ -466,18 +442,12 @@ def _history_card(history: list[dict[str, Any]]) -> Card:
     )
 
 
-def stats_panel(
-    stats: dict[str, Any], history: list[dict[str, Any]]
-) -> Div:
+def stats_panel(stats: dict[str, Any], history: list[dict[str, Any]]) -> Div:
     """Full right-side stats panel for OOB swap."""
     metrics = Grid(
         _stat_metric("list", str(stats["total"]), "Total", "text-primary"),
-        _stat_metric(
-            "check", str(stats["correct"]), "Correct", "text-success"
-        ),
-        _stat_metric(
-            "x", str(stats["incorrect"]), "Incorrect", "text-error"
-        ),
+        _stat_metric("check", str(stats["correct"]), "Correct", "text-success"),
+        _stat_metric("x", str(stats["incorrect"]), "Incorrect", "text-error"),
         _stat_metric(
             "flame",
             str(stats["current_streak"]),
@@ -512,20 +482,12 @@ def stats_panel(
 # ------------------------------------------------------------------
 
 
-def _perf_by_category(
-    category_data: dict[str, dict[str, int]], title: str
-) -> Card:
+def _perf_by_category(category_data: dict[str, dict[str, int]], title: str) -> Card:
     items = []
     for key, s in category_data.items():
         total = s["correct"] + s["incorrect"]
         rate = (s["correct"] / total * 100) if total else 0
-        color = (
-            "bg-error"
-            if rate < 60
-            else "bg-warning"
-            if rate < 80
-            else "bg-success"
-        )
+        color = "bg-error" if rate < 60 else "bg-warning" if rate < 80 else "bg-success"
         items.append(
             Div(
                 P(key.replace("_", " ").title(), cls=TextT.medium),
@@ -556,9 +518,7 @@ def _perf_by_category(
 # ------------------------------------------------------------------
 
 
-def stats_page_content(
-    stats: dict[str, Any], session: dict[str, Any]
-) -> Container:
+def stats_page_content(stats: dict[str, Any], session: dict[str, Any]) -> Container:
     """Full stats page body."""
     stats_card = Card(
         CardHeader(
@@ -567,9 +527,7 @@ def stats_page_content(
         ),
         CardBody(
             Grid(
-                _stat_metric(
-                    "list", str(stats["total"]), "Total", "text-primary"
-                ),
+                _stat_metric("list", str(stats["total"]), "Total", "text-primary"),
                 _stat_metric(
                     "check",
                     str(stats["correct"]),
@@ -614,9 +572,7 @@ def stats_page_content(
         Grid(*perf_cards, cols_md=1, cols_lg=2, cols_xl=3, gap=6)
         if perf_cards
         else DivCentered(
-            UkIcon(
-                "info", height=40, width=40, cls="text-muted mb-2"
-            ),
+            UkIcon("info", height=40, width=40, cls="text-muted mb-2"),
             P(
                 "Complete more exercises to see detailed performance",
                 cls=TextPresets.muted_lg,
@@ -630,8 +586,7 @@ def stats_page_content(
     total = len(history)
     if history:
         hist_items = [
-            _history_entry(e, i, total)
-            for i, e in enumerate(reversed(history))
+            _history_entry(e, i, total) for i, e in enumerate(reversed(history))
         ]
         hist_body = Div(*hist_items)
     else:
