@@ -29,7 +29,8 @@ Adaptive Lithuanian practice app built with FastHTML + MonsterUI. Two modules: *
 
 ### Architecture
 
-- **Two modules**: Prices (DB-driven, `/`) and Time (algorithmic, `/time`) — each with own engine, adaptive tracking, and session state
+- **Landing page** at `/` with module cards; Prices at `/prices`, Time at `/time`
+- **Two modules**: Prices (DB-driven, `/prices`) and Time (algorithmic, `/time`) — each with own engine, adaptive tracking, and session state
 - **Google OAuth** via `fasthtml.oauth.GoogleAppClient` + `QuizOAuth(OAuth)` — optional login for cross-session persistence
 - **User progress persisted** to `user_progress` table in SQLite (both price and time data, loaded on login, saved on answer/reset)
 - **Cookie sessions** via FastHTML's built-in `SessionMiddleware` (no custom session DB)

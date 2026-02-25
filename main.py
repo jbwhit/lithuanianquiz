@@ -15,6 +15,7 @@ from ui import (
     examples_section,
     feedback_correct,
     feedback_incorrect,
+    landing_page_content,
     login_page_content,
     page_shell,
     quiz_area,
@@ -176,7 +177,16 @@ def get_login(req, session) -> Any:
 
 
 @rt("/")
-def get(session) -> Any:
+def get_home(session) -> Any:
+    return page_shell(
+        landing_page_content(),
+        user_name=session.get("user_name"),
+        active_module="home",
+    )
+
+
+@rt("/prices")
+def get_prices(session) -> Any:
     _ensure_session(session)
     stats = _compute_stats(session)
     history = session.get("history", [])
@@ -223,16 +233,6 @@ def get(session) -> Any:
             "Reset Progress",
             cls=(ButtonT.destructive, "mt-6"),
             data_uk_toggle="target: #reset-modal",
-        ),
-        Div(
-            P(
-                UkIcon("shield", cls="inline mr-1", height=14, width=14),
-                "Free to use. No tracking beyond your current browser session. ",
-                A("Log in", href="/login", cls="underline"),
-                " only to save progress across visits.",
-                cls="text-base-content/50 text-xs",
-            ),
-            cls="mt-4 text-center",
         ),
         reset_modal,
         cls=(ContainerT.xl, "px-8 py-8"),

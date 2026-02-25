@@ -15,7 +15,7 @@ from time_engine import ORDINALS_GEN, ORDINALS_NOM, _next_hour
 def page_shell(
     *content: Any,
     user_name: str | None = None,
-    active_module: str = "prices",
+    active_module: str | None = None,
 ) -> Div:
     """Full page wrapper with navbar."""
     brand = DivLAligned(
@@ -26,8 +26,14 @@ def page_shell(
     )
     nav_items: list[Any] = [
         A(
-            "Prices",
+            "Home",
             href="/",
+            cls="uk-btn uk-btn-ghost"
+            + (" uk-active font-bold" if active_module == "home" else ""),
+        ),
+        A(
+            "Prices",
+            href="/prices",
             cls="uk-btn uk-btn-ghost"
             + (" uk-active font-bold" if active_module == "prices" else ""),
         ),
@@ -103,6 +109,83 @@ def login_page_content(login_url: str) -> Container:
                 cls="shadow-xl border-t-4 border-t-primary w-full max-w-md",
             ),
             cls="min-h-[60vh]",
+        ),
+        cls=(ContainerT.xl, "px-8 py-16"),
+    )
+
+
+def landing_page_content() -> Container:
+    """Landing page with module cards."""
+
+    def _module_card(
+        emoji: str,
+        title: str,
+        description: str,
+        href: str,
+        border_color: str,
+    ) -> Card:
+        return Card(
+            CardHeader(
+                DivCentered(
+                    Span(emoji, cls="text-4xl mb-2"),
+                    H3(title, cls=(TextT.lg, TextT.bold)),
+                )
+            ),
+            CardBody(
+                P(description, cls="text-center text-base-content/70"),
+            ),
+            CardFooter(
+                DivCentered(
+                    A(
+                        "Start Practicing",
+                        href=href,
+                        cls=(ButtonT.primary, "px-6 py-2"),
+                    ),
+                ),
+            ),
+            cls=f"shadow-lg border-t-4 {border_color} h-full",
+        )
+
+    return Container(
+        DivCentered(
+            Span("🇱🇹", cls="text-6xl mb-4"),
+            H1("Lithuanian Practice", cls=(TextT.xl, TextT.bold)),
+            P(
+                "Adaptive exercises to build your Lithuanian skills",
+                cls=TextPresets.muted_lg,
+            ),
+            cls="mb-10",
+        ),
+        Grid(
+            _module_card(
+                "💶",
+                "Prices",
+                "Practice expressing prices with Kokia kaina? (nominative) "
+                "and Kiek kainuoja? (accusative).",
+                "/prices",
+                "border-t-primary",
+            ),
+            _module_card(
+                "🕐",
+                "Time",
+                "Practice telling time — whole hours, half past, "
+                "quarter past, and quarter to.",
+                "/time",
+                "border-t-secondary",
+            ),
+            cols_md=2,
+            cols_sm=1,
+            gap=6,
+        ),
+        Div(
+            P(
+                UkIcon("shield", cls="inline mr-1", height=14, width=14),
+                "Free to use. No tracking beyond your current browser session. ",
+                A("Log in", href="/login", cls="underline"),
+                " only to save progress across visits.",
+                cls="text-base-content/50 text-xs",
+            ),
+            cls="mt-10 text-center",
         ),
         cls=(ContainerT.xl, "px-8 py-16"),
     )
