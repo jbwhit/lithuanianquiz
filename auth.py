@@ -88,6 +88,11 @@ def load_progress(google_id: str, session: dict[str, Any]) -> None:
         session["n99_incorrect_count"] = data.get("n99_incorrect_count", 0)
         session["n99_history"] = data.get("n99_history", [])
         session["n99_performance"] = data.get("n99_performance", {})
+        # Age progress
+        session["age_correct_count"] = data.get("age_correct_count", 0)
+        session["age_incorrect_count"] = data.get("age_incorrect_count", 0)
+        session["age_history"] = data.get("age_history", [])
+        session["age_performance"] = data.get("age_performance", {})
 
 
 def save_progress(google_id: str, session: dict[str, Any]) -> None:
@@ -114,6 +119,11 @@ def save_progress(google_id: str, session: dict[str, Any]) -> None:
             "n99_incorrect_count": session.get("n99_incorrect_count", 0),
             "n99_history": session.get("n99_history", []),
             "n99_performance": session.get("n99_performance", {}),
+            # Age progress
+            "age_correct_count": session.get("age_correct_count", 0),
+            "age_incorrect_count": session.get("age_incorrect_count", 0),
+            "age_history": session.get("age_history", []),
+            "age_performance": session.get("age_performance", {}),
         }
     )
     now = _now()

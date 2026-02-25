@@ -44,6 +44,12 @@ def page_shell(
             + (" uk-active font-bold" if active_module == "numbers-99" else ""),
         ),
         A(
+            "Age",
+            href="/age",
+            cls="uk-btn uk-btn-ghost"
+            + (" uk-active font-bold" if active_module == "age" else ""),
+        ),
+        A(
             "Prices",
             href="/prices",
             cls="uk-btn uk-btn-ghost"
@@ -190,6 +196,13 @@ def landing_page_content() -> Container:
                 "All numbers including decades and compounds.",
                 "/numbers-99",
                 "border-t-info",
+            ),
+            _module_card(
+                "🎂",
+                "Age",
+                "Practice expressing ages with dative pronouns (Man, Tau, Jam, Jai).",
+                "/age",
+                "border-t-warning",
             ),
             _module_card(
                 "💶",
@@ -368,6 +381,44 @@ def number_examples_section(max_number: int) -> Details:
             "list-none mb-3 select-none",
         ),
         examples,
+    )
+
+
+def age_examples_section() -> Details:
+    """Collapsible examples for age exercises."""
+
+    def _example(question: str, answer: str, note: str) -> Div:
+        return Div(
+            P(question, cls="font-medium text-base-content/80"),
+            P(
+                "→ ",
+                Span(answer, cls="font-bold text-primary"),
+                cls="mt-1",
+            ),
+            P(note, cls="text-xs text-base-content/50 mt-1 italic"),
+            cls="p-3 bg-base-200 rounded-lg",
+        )
+
+    return Details(
+        Summary(
+            UkIcon("help-circle", cls="inline mr-1", height=16, width=16),
+            "Show an example",
+            cls="cursor-pointer text-sm text-base-content/60 hover:text-base-content "
+            "list-none mb-3 select-none",
+        ),
+        Div(
+            _example(
+                "He is 25 years old.",
+                "Jam dvidešimt penki metai.",
+                "Produce — dative pronoun + number word + metai/metų",
+            ),
+            _example(
+                "Jai penkiolika metų.",
+                "15",
+                "Recognize — identify the age from Lithuanian",
+            ),
+            cls="grid grid-cols-1 gap-3 sm:grid-cols-2 mb-4",
+        ),
     )
 
 
@@ -975,6 +1026,12 @@ def _module_stats_section(
     ]
     if perf_key == "time_performance":
         perf_categories[1] = ("hour_patterns", "Hour Patterns")
+    if perf_key == "age_performance":
+        perf_categories = [
+            ("exercise_types", "Exercise Types"),
+            ("number_patterns", "Number Patterns"),
+            ("pronouns", "Pronouns"),
+        ]
     for key, cat_title in perf_categories:
         if perf.get(key):
             perf_cards.append(_perf_by_category(perf[key], cat_title))
@@ -1028,6 +1085,7 @@ def stats_page_content(
     time_stats: dict[str, Any] | None = None,
     n20_stats: dict[str, Any] | None = None,
     n99_stats: dict[str, Any] | None = None,
+    age_stats: dict[str, Any] | None = None,
 ) -> Container:
     """Full stats page body with all module sections."""
     sections: list[Any] = [
@@ -1060,6 +1118,20 @@ def stats_page_content(
                 perf_key="n99_performance",
                 history_key="n99_history",
                 border_color="border-t-info",
+            )
+        )
+
+    # Age stats
+    if age_stats is not None:
+        sections.append(H3("Age Exercises", cls=(TextT.lg, "mt-10 mb-0")))
+        sections.extend(
+            _module_stats_section(
+                "Age Progress",
+                age_stats,
+                session,
+                perf_key="age_performance",
+                history_key="age_history",
+                border_color="border-t-warning",
             )
         )
 
@@ -1135,6 +1207,25 @@ def about_page_content() -> Container:
             Strong("recognize"),
             " (identify the number from Lithuanian).",
             cls="mt-2",
+        ),
+        H3("Age Exercises", cls=(TextT.lg, "mt-6")),
+        P(
+            "Practice expressing ages using dative pronouns "
+            "(Man, Tau, Jam, Jai) with the correct year word "
+            "(metai/metų).",
+            cls="mt-2",
+        ),
+        Ul(
+            Li(
+                Strong("Produce"),
+                ' — given an English prompt like "He is 25 years old.", '
+                "type the Lithuanian phrase.",
+            ),
+            Li(
+                Strong("Recognize"),
+                " — given a Lithuanian age phrase, identify the age as a number.",
+            ),
+            cls="list-disc ml-6 mt-2 space-y-2",
         ),
         H3("Price Exercises", cls=(TextT.lg, "mt-6")),
         P("Two exercise types:", cls="mt-2"),

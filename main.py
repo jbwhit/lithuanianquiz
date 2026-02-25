@@ -4,6 +4,7 @@ import logging
 from typing import Any
 
 from adaptive import AdaptiveLearning
+from age_engine import AgeEngine
 from auth import QuizOAuth, auth_client, init_db_tables, save_progress
 from fasthtml.common import *
 from fastlite import database
@@ -13,6 +14,7 @@ from quiz import ExerciseEngine, highlight_diff, number_pattern
 from time_engine import TimeEngine
 from ui import (
     about_page_content,
+    age_examples_section,
     examples_section,
     feedback_correct,
     feedback_incorrect,
@@ -43,6 +45,9 @@ time_engine = TimeEngine()
 rows_20 = [r for r in ALL_ROWS if r["number"] <= 20]
 number_engine_20 = NumberEngine(rows_20, max_number=20)
 number_engine_99 = NumberEngine(ALL_ROWS, max_number=99)
+
+age_rows = [r for r in ALL_ROWS if r["number"] >= 2]
+age_engine = AgeEngine(age_rows)
 
 # ------------------------------------------------------------------
 # App
@@ -413,10 +418,12 @@ def get_stats(session) -> Any:
     _ensure_time_session(session)
     _ensure_number_session(session, number_engine_20, "n20")
     _ensure_number_session(session, number_engine_99, "n99", seed_prefix="n20")
+    _ensure_age_session(session)
     stats = _compute_stats(session)
     time_stats = _compute_time_stats(session)
     n20_stats = _compute_number_stats(session, "n20", number_engine_20)
     n99_stats = _compute_number_stats(session, "n99", number_engine_99)
+    age_stats = _compute_age_stats(session)
     return page_shell(
         stats_page_content(
             stats,
@@ -424,6 +431,7 @@ def get_stats(session) -> Any:
             time_stats=time_stats,
             n20_stats=n20_stats,
             n99_stats=n99_stats,
+            age_stats=age_stats,
         ),
         user_name=session.get("user_name"),
     )
@@ -603,6 +611,213 @@ def post_time_reset(session) -> Any:
     return (
         quiz_area(
             session["time_current_question"], post_url="/time/answer", label="Time"
+        ),
+        oob_stats,
+    )
+
+
+# ------------------------------------------------------------------
+# Age session helpers
+# ------------------------------------------------------------------
+
+
+def _ensure_age_session(session: dict[str, Any]) -> None:
+    """Initialise age module defaults and generate first question if needed."""
+    session.setdefault("age_history", [])
+    session.setdefault("age_correct_count", 0)
+    session.setdefault("age_incorrect_count", 0)
+    age_engine.init_tracking(session, "age", seed_prefix="n99")
+    if "age_current_question" not in session:
+        _new_age_question(session)
+
+
+def _new_age_question(session: dict[str, Any]) -> None:
+    """Pick a new age exercise and store it in the session."""
+    ex = age_engine.generate(session, "age")
+    session["age_exercise_type"] = ex["exercise_type"]
+    session["age_row_id"] = ex["row"]["number"]
+    session["age_number_pattern"] = ex["number_pattern"]
+    session["age_pronoun"] = ex["pronoun"]["dative"]
+    session["age_current_question"] = age_engine.format_question(
+        ex["exercise_type"], ex["row"], ex["pronoun"]
+    )
+
+
+def _compute_age_stats(session: dict[str, Any]) -> dict[str, Any]:
+    return _compute_module_stats(
+        session,
+        "age_correct_count",
+        "age_incorrect_count",
+        "age_history",
+        lambda s: age_engine.get_weak_areas(s, "age"),
+    )
+
+
+# ------------------------------------------------------------------
+# Age routes
+# ------------------------------------------------------------------
+
+
+@rt("/age")
+def get_age(session) -> Any:
+    _ensure_age_session(session)
+    stats = _compute_age_stats(session)
+    history = session.get("age_history", [])
+
+    reset_modal = Modal(
+        ModalHeader(H3("Reset Progress?")),
+        ModalBody(P("This will clear all your age practice history. Are you sure?")),
+        ModalFooter(
+            Button(
+                "Cancel",
+                cls=ButtonT.ghost,
+                data_uk_toggle="target: #reset-modal",
+            ),
+            Button(
+                "Reset",
+                cls=ButtonT.destructive,
+                hx_post="/age/reset",
+                hx_target="#quiz-area",
+            ),
+        ),
+        id="reset-modal",
+    )
+
+    main_content = Container(
+        H2("Lithuanian Age Practice", cls=(TextT.xl, "mb-2")),
+        P(
+            "Practice expressing ages in Lithuanian with dative pronouns.",
+            cls="text-base-content/70 text-sm mb-1",
+        ),
+        P(
+            "Two exercise types: ",
+            Strong("produce"),
+            " (say the age in Lithuanian) and ",
+            Strong("recognize"),
+            " (identify the age from Lithuanian).",
+            cls="text-base-content/60 text-xs mb-6",
+        ),
+        age_examples_section(),
+        quiz_area(
+            session["age_current_question"],
+            post_url="/age/answer",
+            label="Age",
+        ),
+        Div(stats_panel(stats, history), cls="mt-6"),
+        Button(
+            UkIcon("refresh-ccw", cls="mr-2"),
+            "Reset Progress",
+            cls=(ButtonT.destructive, "mt-6"),
+            data_uk_toggle="target: #reset-modal",
+        ),
+        reset_modal,
+        cls=(ContainerT.xl, "px-8 py-8"),
+    )
+
+    return page_shell(
+        main_content, user_name=session.get("user_name"), active_module="age"
+    )
+
+
+@rt("/age/answer")
+def post_age_answer(session, user_answer: str = "") -> Any:
+    _ensure_age_session(session)
+
+    row_id = session["age_row_id"]
+    ex_type = session["age_exercise_type"]
+    pronoun_dative = session["age_pronoun"]
+
+    row = age_rows[0]  # fallback
+    for r in age_rows:
+        if r["number"] == row_id:
+            row = r
+            break
+
+    from age_engine import _pronoun_by_dative
+
+    pronoun = _pronoun_by_dative(pronoun_dative)
+    correct = age_engine.correct_answer(ex_type, row, pronoun)
+    is_correct = age_engine.check(user_answer, correct, ex_type)
+
+    if is_correct:
+        session["age_correct_count"] = session.get("age_correct_count", 0) + 1
+    else:
+        session["age_incorrect_count"] = session.get("age_incorrect_count", 0) + 1
+
+    diff_u, diff_c = highlight_diff(user_answer.strip(), correct.strip(), is_correct)
+    entry = {
+        "question": session["age_current_question"],
+        "answer": user_answer.strip(),
+        "correct": is_correct,
+        "true_answer": correct.strip(),
+    }
+    history = session.get("age_history", [])
+    history.append(entry)
+    session["age_history"] = history[-50:]
+
+    exercise_info = {
+        "exercise_type": ex_type,
+        "number_pattern": session.get("age_number_pattern"),
+        "pronoun": pronoun_dative,
+    }
+    age_engine.update(session, "age", exercise_info, is_correct)
+
+    _new_age_question(session)
+
+    if session.get("auth"):
+        save_progress(session["auth"], session)
+
+    if is_correct:
+        fb = feedback_correct(user_answer.strip(), exercise_type=ex_type)
+    else:
+        fb = feedback_incorrect(
+            user_answer.strip(),
+            correct.strip(),
+            diff_u,
+            diff_c,
+            exercise_type=ex_type,
+            number_pattern=exercise_info["number_pattern"],
+        )
+
+    stats = _compute_age_stats(session)
+    oob_stats = Div(
+        stats_panel(stats, session.get("age_history", [])),
+        hx_swap_oob="true",
+        id="stats-panel",
+    )
+
+    return (
+        quiz_area(
+            session["age_current_question"],
+            feedback=fb,
+            post_url="/age/answer",
+            label="Age",
+        ),
+        oob_stats,
+    )
+
+
+@rt("/age/reset")
+def post_age_reset(session) -> Any:
+    for key in [k for k in list(session.keys()) if k.startswith("age_")]:
+        del session[key]
+
+    _ensure_age_session(session)
+
+    if session.get("auth"):
+        save_progress(session["auth"], session)
+
+    stats = _compute_age_stats(session)
+    oob_stats = Div(
+        stats_panel(stats, []),
+        hx_swap_oob="true",
+        id="stats-panel",
+    )
+    return (
+        quiz_area(
+            session["age_current_question"],
+            post_url="/age/answer",
+            label="Age",
         ),
         oob_stats,
     )
