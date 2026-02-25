@@ -21,7 +21,6 @@ from ui import (
     stats_page_content,
     stats_panel,
     time_examples_section,
-    time_quiz_area,
 )
 
 log = logging.getLogger(__name__)
@@ -94,25 +93,47 @@ def _new_question(session: dict[str, Any]) -> None:
     )
 
 
-def _compute_stats(session: dict[str, Any]) -> dict[str, Any]:
-    corr = session.get("correct_count", 0)
-    inc = session.get("incorrect_count", 0)
+def _compute_module_stats(
+    session: dict[str, Any],
+    correct_key: str,
+    incorrect_key: str,
+    history_key: str,
+    weak_areas_fn: Any,
+) -> dict[str, Any]:
+    """Compute stats for any module given its session key names."""
+    corr = session.get(correct_key, 0)
+    inc = session.get(incorrect_key, 0)
     tot = corr + inc
     streak = 0
-    for entry in reversed(session.get("history", [])):
+    for entry in reversed(session.get(history_key, [])):
         if entry["correct"]:
             streak += 1
         else:
             break
-    stats: dict[str, Any] = {
+    return {
         "total": tot,
         "correct": corr,
         "incorrect": inc,
         "accuracy": (corr / tot * 100) if tot else 0,
         "current_streak": streak,
+        "weak_areas": weak_areas_fn(session),
     }
-    stats["weak_areas"] = adaptive.get_weak_areas(session)
-    return stats
+
+
+def _compute_stats(session: dict[str, Any]) -> dict[str, Any]:
+    return _compute_module_stats(
+        session, "correct_count", "incorrect_count", "history", adaptive.get_weak_areas
+    )
+
+
+def _compute_time_stats(session: dict[str, Any]) -> dict[str, Any]:
+    return _compute_module_stats(
+        session,
+        "time_correct_count",
+        "time_incorrect_count",
+        "time_history",
+        time_engine.get_weak_areas,
+    )
 
 
 # ------------------------------------------------------------------
@@ -140,26 +161,6 @@ def _new_time_question(session: dict[str, Any]) -> None:
     session["time_number_pattern"] = ex["number_pattern"]
     session["time_grammatical_case"] = ex["grammatical_case"]
     session["time_current_question"] = time_engine.format_question(ex["display_time"])
-
-
-def _compute_time_stats(session: dict[str, Any]) -> dict[str, Any]:
-    corr = session.get("time_correct_count", 0)
-    inc = session.get("time_incorrect_count", 0)
-    tot = corr + inc
-    streak = 0
-    for entry in reversed(session.get("time_history", [])):
-        if entry["correct"]:
-            streak += 1
-        else:
-            break
-    return {
-        "total": tot,
-        "correct": corr,
-        "incorrect": inc,
-        "accuracy": (corr / tot * 100) if tot else 0,
-        "current_streak": streak,
-        "weak_areas": time_engine.get_weak_areas(session),
-    }
 
 
 # ------------------------------------------------------------------
@@ -317,27 +318,30 @@ def post(session, user_answer: str = "") -> Any:
     )
 
 
+_PRICE_SESSION_KEYS = {
+    "history",
+    "correct_count",
+    "incorrect_count",
+    "performance",
+    "current_question",
+    "exercise_type",
+    "price",
+    "item",
+    "row_id",
+    "number_pattern",
+    "grammatical_case",
+}
+
+
 @rt("/reset")
 def post_reset(session) -> Any:
-    # Preserve auth-related keys across reset
-    auth = session.get("auth")
-    user_name = session.get("user_name")
-    user_email = session.get("user_email")
-
-    for key in list(session.keys()):
+    for key in _PRICE_SESSION_KEYS & set(session.keys()):
         del session[key]
-
-    if auth:
-        session["auth"] = auth
-    if user_name:
-        session["user_name"] = user_name
-    if user_email:
-        session["user_email"] = user_email
 
     _ensure_session(session)
 
-    if auth:
-        save_progress(auth, session)  # Save cleared state to DB
+    if session.get("auth"):
+        save_progress(session["auth"], session)
 
     stats = _compute_stats(session)
     oob_stats = Div(
@@ -420,7 +424,9 @@ def get_time(session) -> Any:
             cls="text-base-content/60 text-xs mb-6",
         ),
         time_examples_section(),
-        time_quiz_area(session["time_current_question"]),
+        quiz_area(
+            session["time_current_question"], post_url="/time/answer", label="Time"
+        ),
         Div(stats_panel(stats, history), cls="mt-6"),
         Button(
             UkIcon("refresh-ccw", cls="mr-2"),
@@ -504,7 +510,12 @@ def post_time_answer(session, user_answer: str = "") -> Any:
     )
 
     return (
-        time_quiz_area(session["time_current_question"], feedback=fb),
+        quiz_area(
+            session["time_current_question"],
+            feedback=fb,
+            post_url="/time/answer",
+            label="Time",
+        ),
         oob_stats,
     )
 
@@ -526,7 +537,9 @@ def post_time_reset(session) -> Any:
         id="stats-panel",
     )
     return (
-        time_quiz_area(session["time_current_question"]),
+        quiz_area(
+            session["time_current_question"], post_url="/time/answer", label="Time"
+        ),
         oob_stats,
     )
 

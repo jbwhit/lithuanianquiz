@@ -3,9 +3,9 @@
 import random
 from typing import Any
 
-import numpy as np
-
 from quiz import normalize
+from thompson import bump as _bump
+from thompson import sample_weakest as _sample_weakest
 
 TIME_TYPES: list[str] = ["whole_hour", "half_past", "quarter_past", "quarter_to"]
 
@@ -57,28 +57,6 @@ def _next_hour(h: int) -> int:
 def time_pattern(hour: int) -> str:
     """Categorize an hour for adaptive tracking."""
     return f"hour_{hour}"
-
-
-def _sample_weakest(arms: dict[str, dict[str, int]]) -> str:
-    """Thompson-sample and return the arm with the *lowest* draw."""
-    samples = {}
-    for arm, stats in arms.items():
-        alpha = stats["correct"] + 1
-        beta_val = stats["incorrect"] + 1
-        samples[arm] = np.random.beta(alpha, beta_val)
-    return min(samples, key=samples.get)
-
-
-def _bump(
-    category: dict[str, dict[str, int]],
-    key: str,
-    is_correct: bool,
-) -> None:
-    """Create arm if missing, then increment correct/incorrect."""
-    if key not in category:
-        category[key] = {"correct": 0, "incorrect": 1}
-    side = "correct" if is_correct else "incorrect"
-    category[key][side] += 1
 
 
 class TimeEngine:

@@ -206,6 +206,8 @@ def time_examples_section() -> Details:
 def quiz_area(
     question: str,
     feedback: Any | None = None,
+    post_url: str = "/answer",
+    label: str = "Practice",
 ) -> Div:
     """Card with question + answer form, optional feedback alert above."""
     form = Form(
@@ -225,7 +227,7 @@ def quiz_area(
                 cls=(ButtonT.primary, "px-6 mt-4"),
             )
         ),
-        hx_post="/answer",
+        hx_post=post_url,
         hx_target="#quiz-area",
     )
 
@@ -233,61 +235,7 @@ def quiz_area(
         CardHeader(
             DivFullySpaced(
                 H3("Current Exercise", cls=TextT.lg),
-                Label("Practice", cls=LabelT.primary),
-            )
-        ),
-        CardBody(
-            Div(
-                P(
-                    question,
-                    cls="text-center text-xl font-medium p-4 rounded-lg mb-6",
-                ),
-                form,
-                cls="space-y-4",
-            )
-        ),
-        cls="shadow-lg border-t-4 border-t-primary",
-    )
-
-    parts: list[Any] = []
-    if feedback:
-        parts.append(feedback)
-    parts.append(card)
-
-    return Div(*parts, id="quiz-area")
-
-
-def time_quiz_area(
-    question: str,
-    feedback: Any | None = None,
-) -> Div:
-    """Card with time question + answer form, optional feedback alert above."""
-    form = Form(
-        Input(
-            id="user_answer",
-            name="user_answer",
-            placeholder="Type your answer in Lithuanian...",
-            autofocus=True,
-            autocomplete="off",
-            cls="uk-input uk-form-large w-full",
-        ),
-        DivRAligned(
-            Button(
-                UkIcon("send", cls="mr-2"),
-                "Submit",
-                type="submit",
-                cls=(ButtonT.primary, "px-6 mt-4"),
-            )
-        ),
-        hx_post="/time/answer",
-        hx_target="#quiz-area",
-    )
-
-    card = Card(
-        CardHeader(
-            DivFullySpaced(
-                H3("Current Exercise", cls=TextT.lg),
-                Label("Time", cls=LabelT.primary),
+                Label(label, cls=LabelT.primary),
             )
         ),
         CardBody(

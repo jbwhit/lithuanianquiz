@@ -3,41 +3,7 @@
 Usage: uv run python time_reference.py
 """
 
-# Feminine ordinal forms for hours 1-12
-ORDINALS_NOM: dict[int, str] = {
-    1: "pirma",
-    2: "antra",
-    3: "trečia",
-    4: "ketvirta",
-    5: "penkta",
-    6: "šešta",
-    7: "septinta",
-    8: "aštunta",
-    9: "devinta",
-    10: "dešimta",
-    11: "vienuolikta",
-    12: "dvylikta",
-}
-
-ORDINALS_GEN: dict[int, str] = {
-    1: "pirmos",
-    2: "antros",
-    3: "trečios",
-    4: "ketvirtos",
-    5: "penktos",
-    6: "šeštos",
-    7: "septintos",
-    8: "aštuntos",
-    9: "devintos",
-    10: "dešimtos",
-    11: "vienuoliktos",
-    12: "dvyliktos",
-}
-
-
-def next_hour(h: int) -> int:
-    """Wrap 12 → 1."""
-    return h % 12 + 1
+from time_engine import ORDINALS_GEN, ORDINALS_NOM, _next_hour
 
 
 def whole_hour(h: int) -> str:
@@ -47,17 +13,17 @@ def whole_hour(h: int) -> str:
 
 def half_past(h: int) -> str:
     """e.g., 2:30 → 'Pusė trečios' (half of the next hour)"""
-    return f"Pusė {ORDINALS_GEN[next_hour(h)]}"
+    return f"Pusė {ORDINALS_GEN[_next_hour(h)]}"
 
 
 def quarter_past(h: int) -> str:
     """e.g., 1:15 → 'Ketvirtis antros' (quarter of the next hour)"""
-    return f"Ketvirtis {ORDINALS_GEN[next_hour(h)]}"
+    return f"Ketvirtis {ORDINALS_GEN[_next_hour(h)]}"
 
 
 def quarter_to(h: int) -> str:
     """e.g., 2:45 → 'Be ketvirčio trečia' (without a quarter, next hour)"""
-    return f"Be ketvirčio {ORDINALS_NOM[next_hour(h)]}"
+    return f"Be ketvirčio {ORDINALS_NOM[_next_hour(h)]}"
 
 
 def main() -> None:
