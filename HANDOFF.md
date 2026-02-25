@@ -154,7 +154,28 @@ bypass the `before` hook. Don't put routes that need auth in this list.
 
 ---
 
-## 5. Open Questions / Loose Ends
+## 5. Product Vision
+
+**Lithuanian Practice is a small, grammar-aware practice tool for number-centered Lithuanian expression.** It prioritizes correctness, clarity, and repeatable daily use over breadth, gamification, or multimedia features.
+
+### Guiding constraints
+- Single-purpose per module, minimal UI, high-quality linguistic feedback
+- Every new feature must pass: *"Does this make the app better at focused Lithuanian practice, without making it feel like a bloated language platform?"*
+- Prefer a few excellent exercise modes over feature sprawl
+
+### Roadmap (incremental, stay micro)
+1. **Time** — clock expressions (whole hours, half hours, quarters, formal vs conversational)
+2. **Dates** — day + month expressions, written/spoken variants
+3. **Quantified nouns** — "5 books", "2 cups" — only if it stays minimal
+
+### Architecture note
+Each module gets its **own engine class** (not a refactor of `ExerciseEngine`). The price engine is DB-driven; time will be algorithmic. Shared layers: routing, session management, adaptive learning, UI patterns.
+
+See `TIME_MODULE_SPEC.md` for the detailed implementation spec for the time module.
+
+---
+
+## 6. Open Questions / Loose Ends
 
 - **`/error` route is unhandled** — if OAuth fails (e.g. user denies consent),
   they land on `/error` which returns a 404. A simple friendly page with a
