@@ -641,11 +641,18 @@ def _perf_by_category(category_data: dict[str, dict[str, int]], title: str) -> C
 # ------------------------------------------------------------------
 
 
-def stats_page_content(stats: dict[str, Any], session: dict[str, Any]) -> Container:
-    """Full stats page body."""
+def _module_stats_section(
+    title: str,
+    stats: dict[str, Any],
+    session: dict[str, Any],
+    perf_key: str,
+    history_key: str,
+    border_color: str = "border-t-secondary",
+) -> list[Any]:
+    """Build stats cards for a single module (prices or time)."""
     stats_card = Card(
         CardHeader(
-            H3("Your Progress", cls=TextT.lg),
+            H3(title, cls=TextT.lg),
             Subtitle("Track your learning journey"),
         ),
         CardBody(
@@ -676,20 +683,23 @@ def stats_page_content(stats: dict[str, Any], session: dict[str, Any]) -> Contai
             ),
             _accuracy_bar(stats["accuracy"]),
         ),
-        cls="shadow-lg border-t-4 border-t-secondary h-full",
+        cls=f"shadow-lg border-t-4 {border_color} h-full",
     )
 
     weak_card = _weak_areas_section(stats.get("weak_areas", {}))
 
     perf_cards: list[Any] = []
-    perf = session.get("performance", {})
-    for key, title in [
+    perf = session.get(perf_key, {})
+    perf_categories = [
         ("exercise_types", "Exercise Types"),
         ("number_patterns", "Number Patterns"),
         ("grammatical_cases", "Grammatical Cases"),
-    ]:
+    ]
+    if perf_key == "time_performance":
+        perf_categories[1] = ("hour_patterns", "Hour Patterns")
+    for key, cat_title in perf_categories:
         if perf.get(key):
-            perf_cards.append(_perf_by_category(perf[key], title))
+            perf_cards.append(_perf_by_category(perf[key], cat_title))
 
     detail_section = (
         Grid(*perf_cards, cols_md=1, cols_lg=2, cols_xl=3, gap=6)
@@ -704,8 +714,7 @@ def stats_page_content(stats: dict[str, Any], session: dict[str, Any]) -> Contai
         )
     )
 
-    # Full history
-    history = session.get("history", [])
+    history = session.get(history_key, [])
     total = len(history)
     if history:
         hist_items = [
@@ -720,55 +729,86 @@ def stats_page_content(stats: dict[str, Any], session: dict[str, Any]) -> Contai
 
     hist_card = Card(
         CardHeader(
-            H3("Full History", cls=TextT.lg),
-            Subtitle("All your exercises"),
+            H3("History", cls=TextT.lg),
+            Subtitle("Your exercises"),
         ),
-        CardBody(hist_body, cls="max-h-[600px] overflow-y-auto pr-2"),
+        CardBody(hist_body, cls="max-h-[400px] overflow-y-auto pr-2"),
         cls="shadow-lg border-t-4 border-t-accent h-full",
     )
 
-    return Container(
-        H2("Your Statistics", cls=TextT.xl),
-        P("Track your learning progress", cls=TextPresets.muted_lg),
+    return [
         Div(stats_card, cls="mt-6"),
         Div(weak_card, cls="mt-6"),
-        Div(
-            H3(
-                "Detailed Performance",
-                cls=(TextT.lg, "mt-8 mb-4"),
-            ),
-            detail_section,
-            cls="mt-6",
-        ),
+        Div(detail_section, cls="mt-4"),
         Div(hist_card, cls="mt-6"),
+    ]
+
+
+def stats_page_content(
+    stats: dict[str, Any],
+    session: dict[str, Any],
+    time_stats: dict[str, Any] | None = None,
+) -> Container:
+    """Full stats page body with price and time sections."""
+    sections: list[Any] = [
+        H2("Your Statistics", cls=TextT.xl),
+        P("Track your learning progress", cls=TextPresets.muted_lg),
+    ]
+
+    # Price stats
+    sections.append(H3("Price Exercises", cls=(TextT.lg, "mt-8 mb-0")))
+    sections.extend(
+        _module_stats_section(
+            "Price Progress",
+            stats,
+            session,
+            perf_key="performance",
+            history_key="history",
+            border_color="border-t-secondary",
+        )
+    )
+
+    # Time stats
+    if time_stats is not None:
+        sections.append(H3("Time Exercises", cls=(TextT.lg, "mt-10 mb-0")))
+        sections.extend(
+            _module_stats_section(
+                "Time Progress",
+                time_stats,
+                session,
+                perf_key="time_performance",
+                history_key="time_history",
+                border_color="border-t-info",
+            )
+        )
+
+    sections.append(
         A(
             UkIcon("arrow-left", cls="mr-2"),
             "Back to Practice",
             href="/",
             cls="uk-btn uk-btn-primary mt-8",
-        ),
-        cls=(ContainerT.xl, "px-8 py-8"),
+        )
     )
+
+    return Container(*sections, cls=(ContainerT.xl, "px-8 py-8"))
 
 
 def about_page_content() -> Container:
     return Container(
         H2("About This App", cls=TextT.xl),
         P(
-            "Learn Lithuanian price expressions with this interactive tool!",
+            "Practice Lithuanian number expressions with adaptive exercises!",
             cls=TextPresets.muted_lg,
         ),
         P(
-            "This application helps you practice how to express prices "
-            "in Lithuanian through interactive exercises.",
+            "This app helps you practice expressing prices and times "
+            "in Lithuanian through interactive exercises. An adaptive learning "
+            "system uses Thompson sampling to target your weak areas.",
             cls="mt-4",
         ),
-        P(
-            "The app features an adaptive learning system that uses "
-            "Thompson sampling to target exercises to your weak areas.",
-            cls="mt-4",
-        ),
-        P("There are two types of exercises:", cls="mt-4"),
+        H3("Price Exercises", cls=(TextT.lg, "mt-6")),
+        P("Two exercise types:", cls="mt-2"),
         Ul(
             Li(
                 Strong("Kokia kaina?"),
@@ -782,9 +822,38 @@ def about_page_content() -> Container:
             ),
             cls="list-disc ml-6 mt-2 space-y-2",
         ),
+        H3("Time Exercises", cls=(TextT.lg, "mt-6")),
+        P("Four exercise types:", cls="mt-2"),
+        Ul(
+            Li(
+                Strong("Whole hours"),
+                " — Feminine ordinal + valanda (e.g., ",
+                Em("Trečia valanda"),
+                ").",
+            ),
+            Li(
+                Strong("Half past"),
+                " — Pusė + genitive of next hour (e.g., ",
+                Em("Pusė ketvirtos"),
+                ").",
+            ),
+            Li(
+                Strong("Quarter past"),
+                " — Ketvirtis + genitive of next hour (e.g., ",
+                Em("Ketvirtis antros"),
+                ").",
+            ),
+            Li(
+                Strong("Quarter to"),
+                " — Be ketvirčio + nominative of next hour (e.g., ",
+                Em("Be ketvirčio trečia"),
+                ").",
+            ),
+            cls="list-disc ml-6 mt-2 space-y-2",
+        ),
         P(
             "Practice regularly to improve your Lithuanian language skills!",
-            cls="mt-4",
+            cls="mt-6",
         ),
         P(
             "Made by ",

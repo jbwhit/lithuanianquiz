@@ -125,6 +125,7 @@ def _ensure_time_session(session: dict[str, Any]) -> None:
     session.setdefault("time_history", [])
     session.setdefault("time_correct_count", 0)
     session.setdefault("time_incorrect_count", 0)
+    time_engine.init_tracking(session)
     if "time_current_question" not in session:
         _new_time_question(session)
 
@@ -157,7 +158,7 @@ def _compute_time_stats(session: dict[str, Any]) -> dict[str, Any]:
         "incorrect": inc,
         "accuracy": (corr / tot * 100) if tot else 0,
         "current_streak": streak,
-        "weak_areas": {},
+        "weak_areas": time_engine.get_weak_areas(session),
     }
 
 
@@ -353,9 +354,11 @@ def post_reset(session) -> Any:
 @rt("/stats")
 def get_stats(session) -> Any:
     _ensure_session(session)
+    _ensure_time_session(session)
     stats = _compute_stats(session)
+    time_stats = _compute_time_stats(session)
     return page_shell(
-        stats_page_content(stats, session),
+        stats_page_content(stats, session, time_stats=time_stats),
         user_name=session.get("user_name"),
     )
 
@@ -468,6 +471,7 @@ def post_time_answer(session, user_answer: str = "") -> Any:
         "number_pattern": session.get("time_number_pattern"),
         "grammatical_case": session.get("time_grammatical_case"),
     }
+    time_engine.update(session, exercise_info, is_correct)
 
     _new_time_question(session)
 

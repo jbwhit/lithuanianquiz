@@ -129,6 +129,53 @@ class TestQuarterTo:
 # ------------------------------------------------------------------
 
 
+class TestTimeAdaptive:
+    @pytest.fixture()
+    def engine(self) -> TimeEngine:
+        return TimeEngine()
+
+    def test_init_tracking_idempotent(self, engine: TimeEngine) -> None:
+        session: dict = {}
+        engine.init_tracking(session)
+        engine.init_tracking(session)
+        assert "time_performance" in session
+        assert len(session["time_performance"]["exercise_types"]) == 4
+
+    def test_update_increments(self, engine: TimeEngine) -> None:
+        session: dict = {}
+        engine.init_tracking(session)
+        info = {
+            "exercise_type": "whole_hour",
+            "number_pattern": "hour_3",
+            "grammatical_case": "nominative",
+        }
+        engine.update(session, info, True)
+        perf = session["time_performance"]
+        assert perf["exercise_types"]["whole_hour"]["correct"] == 1
+        assert perf["hour_patterns"]["hour_3"]["correct"] == 1
+        assert perf["total_exercises"] == 1
+
+    def test_get_weak_areas_empty_without_perf(self, engine: TimeEngine) -> None:
+        assert engine.get_weak_areas({}) == {}
+
+    def test_get_weak_areas_returns_categories(self, engine: TimeEngine) -> None:
+        session: dict = {}
+        engine.init_tracking(session)
+        info = {
+            "exercise_type": "whole_hour",
+            "number_pattern": "hour_1",
+            "grammatical_case": "nominative",
+        }
+        # Add enough data for weak areas to show
+        for _ in range(5):
+            engine.update(session, info, True)
+        info2 = {**info, "exercise_type": "half_past", "grammatical_case": "genitive"}
+        for _ in range(5):
+            engine.update(session, info2, False)
+        weak = engine.get_weak_areas(session)
+        assert "Exercise Types" in weak
+
+
 class TestTimeEngineBasics:
     @pytest.fixture()
     def engine(self) -> TimeEngine:

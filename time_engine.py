@@ -3,6 +3,8 @@
 import random
 from typing import Any
 
+import numpy as np
+
 from quiz import normalize
 
 TIME_TYPES: list[str] = ["whole_hour", "half_past", "quarter_past", "quarter_to"]
@@ -57,16 +59,122 @@ def time_pattern(hour: int) -> str:
     return f"hour_{hour}"
 
 
-class TimeEngine:
-    """Generates time exercises and checks answers."""
+def _sample_weakest(arms: dict[str, dict[str, int]]) -> str:
+    """Thompson-sample and return the arm with the *lowest* draw."""
+    samples = {}
+    for arm, stats in arms.items():
+        alpha = stats["correct"] + 1
+        beta_val = stats["incorrect"] + 1
+        samples[arm] = np.random.beta(alpha, beta_val)
+    return min(samples, key=samples.get)
 
-    def __init__(self, adaptive: Any | None = None) -> None:
-        self.adaptive = adaptive
+
+def _bump(
+    category: dict[str, dict[str, int]],
+    key: str,
+    is_correct: bool,
+) -> None:
+    """Create arm if missing, then increment correct/incorrect."""
+    if key not in category:
+        category[key] = {"correct": 0, "incorrect": 1}
+    side = "correct" if is_correct else "incorrect"
+    category[key][side] += 1
+
+
+class TimeEngine:
+    """Generates time exercises and checks answers with adaptive selection."""
+
+    def __init__(
+        self, exploration_rate: float = 0.2, adaptation_threshold: int = 10
+    ) -> None:
+        self.exploration_rate = exploration_rate
+        self.adaptation_threshold = adaptation_threshold
+
+    def init_tracking(self, session: dict[str, Any]) -> None:
+        """Idempotently set up time performance tracking in session."""
+        if "time_performance" in session:
+            return
+        session["time_performance"] = {
+            "exercise_types": {t: {"correct": 0, "incorrect": 1} for t in TIME_TYPES},
+            "hour_patterns": {},
+            "grammatical_cases": {},
+            "total_exercises": 0,
+        }
+
+    def update(
+        self,
+        session: dict[str, Any],
+        exercise_info: dict[str, Any],
+        is_correct: bool,
+    ) -> None:
+        """Update time performance tracking after an answer."""
+        self.init_tracking(session)
+        perf = session["time_performance"]
+        perf["total_exercises"] += 1
+
+        _bump(perf["exercise_types"], exercise_info["exercise_type"], is_correct)
+
+        hp = exercise_info.get("number_pattern")
+        if hp:
+            _bump(perf["hour_patterns"], hp, is_correct)
+
+        gc = exercise_info.get("grammatical_case")
+        if gc:
+            _bump(perf["grammatical_cases"], gc, is_correct)
+
+    def get_weak_areas(
+        self, session: dict[str, Any]
+    ) -> dict[str, list[dict[str, Any]]]:
+        """Return weak areas for display in stats panel."""
+        if "time_performance" not in session:
+            return {}
+
+        perf = session["time_performance"]
+        categories = {
+            "Exercise Types": "exercise_types",
+            "Hour Patterns": "hour_patterns",
+            "Grammatical Cases": "grammatical_cases",
+        }
+        weak: dict[str, list[dict[str, Any]]] = {}
+
+        for label, key in categories.items():
+            cat = perf.get(key, {})
+            if not cat:
+                continue
+            rates: list[tuple[str, float]] = []
+            for arm, stats in cat.items():
+                total = stats["correct"] + stats["incorrect"]
+                if total > 1:
+                    rates.append((arm, stats["correct"] / total))
+            if rates:
+                rates.sort(key=lambda x: x[1])
+                weak[label] = [
+                    {"name": arm, "success_rate": rate} for arm, rate in rates[:3]
+                ]
+
+        return weak
 
     def generate(self, session: dict[str, Any]) -> dict[str, Any]:
-        """Return an exercise dict with time_type, hour, minute, display_time."""
-        time_type = random.choice(TIME_TYPES)
-        hour = random.randint(1, 12)
+        """Return an exercise dict using adaptive selection."""
+        self.init_tracking(session)
+        perf = session["time_performance"]
+
+        if (
+            random.random() < self.exploration_rate
+            or perf["total_exercises"] < self.adaptation_threshold
+        ):
+            time_type = random.choice(TIME_TYPES)
+        else:
+            time_type = _sample_weakest(perf["exercise_types"])
+
+        # Adaptively pick hour if we have data
+        if perf["hour_patterns"] and random.random() > self.exploration_rate:
+            weak_hour_key = _sample_weakest(perf["hour_patterns"])
+            # Extract hour number from "hour_N"
+            hour = int(weak_hour_key.split("_")[1])
+        else:
+            hour = random.randint(1, 12)
+
         minute = _TIME_TYPE_MINUTES[time_type]
         return {
             "exercise_type": time_type,
