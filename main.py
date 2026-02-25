@@ -176,13 +176,16 @@ def _new_time_question(session: dict[str, Any]) -> None:
 
 
 def _ensure_number_session(
-    session: dict[str, Any], engine_inst: NumberEngine, prefix: str
+    session: dict[str, Any],
+    engine_inst: NumberEngine,
+    prefix: str,
+    seed_prefix: str | None = None,
 ) -> None:
     """Initialise number module defaults and generate first question if needed."""
     session.setdefault(f"{prefix}_history", [])
     session.setdefault(f"{prefix}_correct_count", 0)
     session.setdefault(f"{prefix}_incorrect_count", 0)
-    engine_inst.init_tracking(session, prefix)
+    engine_inst.init_tracking(session, prefix, seed_prefix=seed_prefix)
     if f"{prefix}_current_question" not in session:
         _new_number_question(session, engine_inst, prefix)
 
@@ -409,7 +412,7 @@ def get_stats(session) -> Any:
     _ensure_session(session)
     _ensure_time_session(session)
     _ensure_number_session(session, number_engine_20, "n20")
-    _ensure_number_session(session, number_engine_99, "n99")
+    _ensure_number_session(session, number_engine_99, "n99", seed_prefix="n20")
     stats = _compute_stats(session)
     time_stats = _compute_time_stats(session)
     n20_stats = _compute_number_stats(session, "n20", number_engine_20)
@@ -617,12 +620,13 @@ def _make_number_routes(
     title: str,
     subtitle: str,
     module_name: str,
+    seed_prefix: str | None = None,
 ) -> None:
     """Register GET/POST routes for a number module."""
 
     @rt(route_base)
     def get_numbers(session) -> Any:
-        _ensure_number_session(session, engine_inst, prefix)
+        _ensure_number_session(session, engine_inst, prefix, seed_prefix=seed_prefix)
         stats = _compute_number_stats(session, prefix, engine_inst)
         history = session.get(f"{prefix}_history", [])
 
@@ -684,7 +688,7 @@ def _make_number_routes(
 
     @rt(f"{route_base}/answer")
     def post_number_answer(session, user_answer: str = "") -> Any:
-        _ensure_number_session(session, engine_inst, prefix)
+        _ensure_number_session(session, engine_inst, prefix, seed_prefix=seed_prefix)
 
         row_id = session[f"{prefix}_row_id"]
         ex_type = session[f"{prefix}_exercise_type"]
@@ -764,7 +768,7 @@ def _make_number_routes(
         for key in [k for k in list(session.keys()) if k.startswith(f"{prefix}_")]:
             del session[key]
 
-        _ensure_number_session(session, engine_inst, prefix)
+        _ensure_number_session(session, engine_inst, prefix, seed_prefix=seed_prefix)
 
         if session.get("auth"):
             save_progress(session["auth"], session)
@@ -800,6 +804,7 @@ _make_number_routes(
     "Lithuanian Numbers 1-99",
     "All numbers including decades and compounds.",
     "numbers-99",
+    seed_prefix="n20",
 )
 
 

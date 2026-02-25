@@ -100,6 +100,44 @@ class TestAdaptive:
         assert perf["number_patterns"]["single_digit"]["correct"] == 1
         assert perf["total_exercises"] == 1
 
+    def test_seed_from_prefix_copies_priors(self, engine: NumberEngine) -> None:
+        session: dict = {}
+        engine.init_tracking(session, "n20")
+        info = {"exercise_type": "produce", "number_pattern": "teens"}
+        for _ in range(5):
+            engine.update(session, "n20", info, False)
+        # Now init n99 seeded from n20
+        engine.init_tracking(session, "n99", seed_prefix="n20")
+        n99_perf = session["n99_performance"]
+        assert n99_perf["number_patterns"]["teens"]["incorrect"] > 1
+        assert n99_perf["total_exercises"] == 5
+
+    def test_seed_is_deep_copy(self, engine: NumberEngine) -> None:
+        session: dict = {}
+        engine.init_tracking(session, "n20")
+        engine.update(
+            session,
+            "n20",
+            {"exercise_type": "produce", "number_pattern": "teens"},
+            True,
+        )
+        engine.init_tracking(session, "n99", seed_prefix="n20")
+        # Mutating n99 shouldn't affect n20
+        engine.update(
+            session,
+            "n99",
+            {"exercise_type": "produce", "number_pattern": "teens"},
+            True,
+        )
+        assert session["n20_performance"]["total_exercises"] == 1
+        assert session["n99_performance"]["total_exercises"] == 2
+
+    def test_seed_ignored_when_no_source(self, engine: NumberEngine) -> None:
+        session: dict = {}
+        engine.init_tracking(session, "n99", seed_prefix="n20")
+        # Falls back to default priors
+        assert session["n99_performance"]["total_exercises"] == 0
+
     def test_get_weak_areas_empty(self, engine: NumberEngine) -> None:
         assert engine.get_weak_areas({}, "n99") == {}
 

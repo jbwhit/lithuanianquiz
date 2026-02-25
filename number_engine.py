@@ -1,5 +1,6 @@
 """Exercise engine for Lithuanian number words — no FastHTML dependency."""
 
+import copy
 import random
 from typing import Any
 
@@ -25,18 +26,31 @@ class NumberEngine:
         self.exploration_rate = exploration_rate
         self.adaptation_threshold = adaptation_threshold
 
-    def init_tracking(self, session: dict[str, Any], prefix: str) -> None:
-        """Idempotently set up number performance tracking in session."""
+    def init_tracking(
+        self,
+        session: dict[str, Any],
+        prefix: str,
+        seed_prefix: str | None = None,
+    ) -> None:
+        """Idempotently set up number performance tracking in session.
+
+        If seed_prefix is given and that module has existing performance data,
+        copy its Thompson Sampling priors so the adaptive model starts informed.
+        """
         perf_key = f"{prefix}_performance"
         if perf_key in session:
             return
-        session[perf_key] = {
-            "exercise_types": {
-                t: {"correct": 0, "incorrect": 1} for t in EXERCISE_TYPES
-            },
-            "number_patterns": {},
-            "total_exercises": 0,
-        }
+        seed_key = f"{seed_prefix}_performance" if seed_prefix else None
+        if seed_key and seed_key in session:
+            session[perf_key] = copy.deepcopy(session[seed_key])
+        else:
+            session[perf_key] = {
+                "exercise_types": {
+                    t: {"correct": 0, "incorrect": 1} for t in EXERCISE_TYPES
+                },
+                "number_patterns": {},
+                "total_exercises": 0,
+            }
 
     def generate(self, session: dict[str, Any], prefix: str) -> dict[str, Any]:
         """Return an exercise dict using adaptive selection."""
