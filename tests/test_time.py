@@ -1,0 +1,174 @@
+"""Tests for time_engine.py — Lithuanian time expressions."""
+
+import pytest
+
+from time_engine import TimeEngine, _next_hour, time_pattern
+
+# ------------------------------------------------------------------
+# _next_hour
+# ------------------------------------------------------------------
+
+
+class TestNextHour:
+    def test_normal(self) -> None:
+        assert _next_hour(1) == 2
+        assert _next_hour(5) == 6
+        assert _next_hour(11) == 12
+
+    def test_wrap(self) -> None:
+        assert _next_hour(12) == 1
+
+
+# ------------------------------------------------------------------
+# time_pattern
+# ------------------------------------------------------------------
+
+
+class TestTimePattern:
+    def test_returns_hour_prefix(self) -> None:
+        for h in range(1, 13):
+            assert time_pattern(h) == f"hour_{h}"
+
+
+# ------------------------------------------------------------------
+# TimeEngine — correct_answer
+# ------------------------------------------------------------------
+
+
+class TestWholeHour:
+    @pytest.fixture()
+    def engine(self) -> TimeEngine:
+        return TimeEngine()
+
+    @pytest.mark.parametrize(
+        ("hour", "expected"),
+        [
+            (1, "Pirma valanda."),
+            (2, "Antra valanda."),
+            (3, "Trečia valanda."),
+            (4, "Ketvirta valanda."),
+            (5, "Penkta valanda."),
+            (6, "Šešta valanda."),
+            (7, "Septinta valanda."),
+            (8, "Aštunta valanda."),
+            (9, "Devinta valanda."),
+            (10, "Dešimta valanda."),
+            (11, "Vienuolikta valanda."),
+            (12, "Dvylikta valanda."),
+        ],
+    )
+    def test_all_hours(self, engine: TimeEngine, hour: int, expected: str) -> None:
+        assert engine.correct_answer("whole_hour", hour, 0) == expected
+
+
+class TestHalfPast:
+    @pytest.fixture()
+    def engine(self) -> TimeEngine:
+        return TimeEngine()
+
+    @pytest.mark.parametrize(
+        ("hour", "expected"),
+        [
+            (1, "Pusė antros."),
+            (2, "Pusė trečios."),
+            (3, "Pusė ketvirtos."),
+            (4, "Pusė penktos."),
+            (5, "Pusė šeštos."),
+            (6, "Pusė septintos."),
+            (7, "Pusė aštuntos."),
+            (8, "Pusė devintos."),
+            (9, "Pusė dešimtos."),
+            (10, "Pusė vienuoliktos."),
+            (11, "Pusė dvyliktos."),
+            (12, "Pusė pirmos."),
+        ],
+    )
+    def test_all_hours(self, engine: TimeEngine, hour: int, expected: str) -> None:
+        assert engine.correct_answer("half_past", hour, 30) == expected
+
+
+class TestQuarterPast:
+    @pytest.fixture()
+    def engine(self) -> TimeEngine:
+        return TimeEngine()
+
+    @pytest.mark.parametrize(
+        ("hour", "expected"),
+        [
+            (1, "Ketvirtis antros."),
+            (2, "Ketvirtis trečios."),
+            (6, "Ketvirtis septintos."),
+            (12, "Ketvirtis pirmos."),
+        ],
+    )
+    def test_selected_hours(self, engine: TimeEngine, hour: int, expected: str) -> None:
+        assert engine.correct_answer("quarter_past", hour, 15) == expected
+
+
+class TestQuarterTo:
+    @pytest.fixture()
+    def engine(self) -> TimeEngine:
+        return TimeEngine()
+
+    @pytest.mark.parametrize(
+        ("hour", "expected"),
+        [
+            (1, "Be ketvirčio antra."),
+            (2, "Be ketvirčio trečia."),
+            (5, "Be ketvirčio šešta."),
+            (11, "Be ketvirčio dvylikta."),
+            (12, "Be ketvirčio pirma."),
+        ],
+    )
+    def test_selected_hours(self, engine: TimeEngine, hour: int, expected: str) -> None:
+        assert engine.correct_answer("quarter_to", hour, 45) == expected
+
+
+# ------------------------------------------------------------------
+# TimeEngine — format_question, check, generate
+# ------------------------------------------------------------------
+
+
+class TestTimeEngineBasics:
+    @pytest.fixture()
+    def engine(self) -> TimeEngine:
+        return TimeEngine()
+
+    def test_format_question(self, engine: TimeEngine) -> None:
+        assert engine.format_question("3:00") == "Kiek valandų? (3:00)"
+
+    def test_check_correct(self, engine: TimeEngine) -> None:
+        assert engine.check("Pirma valanda.", "Pirma valanda.") is True
+
+    def test_check_case_insensitive(self, engine: TimeEngine) -> None:
+        assert engine.check("pirma valanda", "Pirma valanda.") is True
+
+    def test_check_incorrect(self, engine: TimeEngine) -> None:
+        assert engine.check("Antra valanda.", "Pirma valanda.") is False
+
+    def test_generate_returns_dict(self, engine: TimeEngine) -> None:
+        ex = engine.generate({})
+        assert "exercise_type" in ex
+        assert "hour" in ex
+        assert "minute" in ex
+        assert "display_time" in ex
+        assert "number_pattern" in ex
+        assert "grammatical_case" in ex
+        assert ex["exercise_type"] in [
+            "whole_hour",
+            "half_past",
+            "quarter_past",
+            "quarter_to",
+        ]
+
+    def test_generate_minute_matches_type(self, engine: TimeEngine) -> None:
+        for _ in range(50):
+            ex = engine.generate({})
+            if ex["exercise_type"] == "whole_hour":
+                assert ex["minute"] == 0
+            elif ex["exercise_type"] == "half_past":
+                assert ex["minute"] == 30
+            elif ex["exercise_type"] == "quarter_past":
+                assert ex["minute"] == 15
+            elif ex["exercise_type"] == "quarter_to":
+                assert ex["minute"] == 45

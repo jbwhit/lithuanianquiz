@@ -9,6 +9,7 @@ from fasthtml.common import *
 from fastlite import database
 from monsterui.all import *
 from quiz import ExerciseEngine, highlight_diff, number_pattern
+from time_engine import TimeEngine
 from ui import (
     about_page_content,
     examples_section,
@@ -19,6 +20,8 @@ from ui import (
     quiz_area,
     stats_page_content,
     stats_panel,
+    time_examples_section,
+    time_quiz_area,
 )
 
 log = logging.getLogger(__name__)
@@ -33,6 +36,7 @@ ALL_ROWS: list[dict[str, Any]] = list(_db.t["numbers"].rows)
 
 adaptive = AdaptiveLearning(exploration_rate=0.2)
 engine = ExerciseEngine(ALL_ROWS, adaptive)
+time_engine = TimeEngine()
 
 # ------------------------------------------------------------------
 # App
@@ -112,6 +116,52 @@ def _compute_stats(session: dict[str, Any]) -> dict[str, Any]:
 
 
 # ------------------------------------------------------------------
+# Time session helpers
+# ------------------------------------------------------------------
+
+
+def _ensure_time_session(session: dict[str, Any]) -> None:
+    """Initialise time module defaults and generate first question if needed."""
+    session.setdefault("time_history", [])
+    session.setdefault("time_correct_count", 0)
+    session.setdefault("time_incorrect_count", 0)
+    if "time_current_question" not in session:
+        _new_time_question(session)
+
+
+def _new_time_question(session: dict[str, Any]) -> None:
+    """Pick a new time exercise and store it in the session."""
+    ex = time_engine.generate(session)
+    session["time_exercise_type"] = ex["exercise_type"]
+    session["time_hour"] = ex["hour"]
+    session["time_minute"] = ex["minute"]
+    session["time_display"] = ex["display_time"]
+    session["time_number_pattern"] = ex["number_pattern"]
+    session["time_grammatical_case"] = ex["grammatical_case"]
+    session["time_current_question"] = time_engine.format_question(ex["display_time"])
+
+
+def _compute_time_stats(session: dict[str, Any]) -> dict[str, Any]:
+    corr = session.get("time_correct_count", 0)
+    inc = session.get("time_incorrect_count", 0)
+    tot = corr + inc
+    streak = 0
+    for entry in reversed(session.get("time_history", [])):
+        if entry["correct"]:
+            streak += 1
+        else:
+            break
+    return {
+        "total": tot,
+        "correct": corr,
+        "incorrect": inc,
+        "accuracy": (corr / tot * 100) if tot else 0,
+        "current_streak": streak,
+        "weak_areas": {},
+    }
+
+
+# ------------------------------------------------------------------
 # Routes
 # ------------------------------------------------------------------
 
@@ -186,7 +236,9 @@ def get(session) -> Any:
         cls=(ContainerT.xl, "px-8 py-8"),
     )
 
-    return page_shell(main_content, user_name=session.get("user_name"))
+    return page_shell(
+        main_content, user_name=session.get("user_name"), active_module="prices"
+    )
 
 
 @rt("/answer")
@@ -313,6 +365,158 @@ def get_about(session) -> Any:
     return page_shell(
         about_page_content(),
         user_name=session.get("user_name"),
+    )
+
+
+# ------------------------------------------------------------------
+# Time routes
+# ------------------------------------------------------------------
+
+
+@rt("/time")
+def get_time(session) -> Any:
+    _ensure_time_session(session)
+    stats = _compute_time_stats(session)
+    history = session.get("time_history", [])
+
+    reset_modal = Modal(
+        ModalHeader(H3("Reset Progress?")),
+        ModalBody(P("This will clear all your time practice history. Are you sure?")),
+        ModalFooter(
+            Button(
+                "Cancel",
+                cls=ButtonT.ghost,
+                data_uk_toggle="target: #reset-modal",
+            ),
+            Button(
+                "Reset",
+                cls=ButtonT.destructive,
+                hx_post="/time/reset",
+                hx_target="#quiz-area",
+            ),
+        ),
+        id="reset-modal",
+    )
+
+    main_content = Container(
+        H2("Lithuanian Time Practice", cls=(TextT.xl, "mb-2")),
+        P(
+            "Practice expressing time in Lithuanian. Type the full answer.",
+            cls="text-base-content/70 text-sm mb-1",
+        ),
+        P(
+            "Four exercise types: ",
+            Strong("whole hours"),
+            ", ",
+            Strong("half past"),
+            ", ",
+            Strong("quarter past"),
+            ", and ",
+            Strong("quarter to"),
+            ".",
+            cls="text-base-content/60 text-xs mb-6",
+        ),
+        time_examples_section(),
+        time_quiz_area(session["time_current_question"]),
+        Div(stats_panel(stats, history), cls="mt-6"),
+        Button(
+            UkIcon("refresh-ccw", cls="mr-2"),
+            "Reset Progress",
+            cls=(ButtonT.destructive, "mt-6"),
+            data_uk_toggle="target: #reset-modal",
+        ),
+        reset_modal,
+        cls=(ContainerT.xl, "px-8 py-8"),
+    )
+
+    return page_shell(
+        main_content, user_name=session.get("user_name"), active_module="time"
+    )
+
+
+@rt("/time/answer")
+def post_time_answer(session, user_answer: str = "") -> Any:
+    _ensure_time_session(session)
+
+    correct_answer = time_engine.correct_answer(
+        session["time_exercise_type"],
+        session["time_hour"],
+        session["time_minute"],
+    )
+    is_correct = time_engine.check(user_answer, correct_answer)
+
+    if is_correct:
+        session["time_correct_count"] = session.get("time_correct_count", 0) + 1
+    else:
+        session["time_incorrect_count"] = session.get("time_incorrect_count", 0) + 1
+
+    diff_u, diff_c = highlight_diff(
+        user_answer.strip(), correct_answer.strip(), is_correct
+    )
+    entry = {
+        "question": session["time_current_question"],
+        "answer": user_answer.strip(),
+        "correct": is_correct,
+        "true_answer": correct_answer.strip(),
+    }
+    history = session.get("time_history", [])
+    history.append(entry)
+    session["time_history"] = history[-50:]
+
+    exercise_info = {
+        "exercise_type": session["time_exercise_type"],
+        "number_pattern": session.get("time_number_pattern"),
+        "grammatical_case": session.get("time_grammatical_case"),
+    }
+
+    _new_time_question(session)
+
+    if is_correct:
+        fb = feedback_correct(
+            user_answer.strip(),
+            exercise_type=exercise_info["exercise_type"],
+            grammatical_case=exercise_info["grammatical_case"],
+        )
+    else:
+        fb = feedback_incorrect(
+            user_answer.strip(),
+            correct_answer.strip(),
+            diff_u,
+            diff_c,
+            exercise_type=exercise_info["exercise_type"],
+            grammatical_case=exercise_info["grammatical_case"],
+            number_pattern=exercise_info["number_pattern"],
+        )
+
+    stats = _compute_time_stats(session)
+    oob_stats = Div(
+        stats_panel(stats, session.get("time_history", [])),
+        hx_swap_oob="true",
+        id="stats-panel",
+    )
+
+    return (
+        time_quiz_area(session["time_current_question"], feedback=fb),
+        oob_stats,
+    )
+
+
+@rt("/time/reset")
+def post_time_reset(session) -> Any:
+    for key in [k for k in list(session.keys()) if k.startswith("time_")]:
+        del session[key]
+
+    _ensure_time_session(session)
+
+    stats = _compute_time_stats(session)
+    oob_stats = Div(
+        stats_panel(stats, []),
+        hx_swap_oob="true",
+        id="stats-panel",
+    )
+    return (
+        time_quiz_area(session["time_current_question"]),
+        oob_stats,
     )
 
 

@@ -11,16 +11,31 @@ from quiz import highlight_diff
 # ------------------------------------------------------------------
 
 
-def page_shell(*content: Any, user_name: str | None = None) -> Div:
+def page_shell(
+    *content: Any,
+    user_name: str | None = None,
+    active_module: str = "prices",
+) -> Div:
     """Full page wrapper with navbar."""
     brand = DivLAligned(
         Span("🇱🇹", cls="text-2xl mr-2"),
         H3("Lithuanian", cls=(TextT.xl, TextT.bold, "text-primary")),
-        P("Price Exercises", cls=TextT.muted),
+        P("Practice", cls=TextT.muted),
         cls="items-center",
     )
     nav_items: list[Any] = [
-        A("Home", href="/", cls="uk-btn uk-btn-ghost"),
+        A(
+            "Prices",
+            href="/",
+            cls="uk-btn uk-btn-ghost"
+            + (" uk-active font-bold" if active_module == "prices" else ""),
+        ),
+        A(
+            "Time",
+            href="/time",
+            cls="uk-btn uk-btn-ghost"
+            + (" uk-active font-bold" if active_module == "time" else ""),
+        ),
         A("About", href="/about", cls="uk-btn uk-btn-ghost"),
         A("Stats", href="/stats", cls="uk-btn uk-btn-ghost"),
         A(
@@ -135,6 +150,54 @@ def examples_section() -> Details:
     )
 
 
+def time_examples_section() -> Details:
+    """Collapsible examples for time exercises."""
+
+    def _example(question: str, answer: str, note: str) -> Div:
+        return Div(
+            P(question, cls="font-medium text-base-content/80"),
+            P(
+                "→ ",
+                Span(answer, cls="font-bold text-primary"),
+                cls="mt-1",
+            ),
+            P(note, cls="text-xs text-base-content/50 mt-1 italic"),
+            cls="p-3 bg-base-200 rounded-lg",
+        )
+
+    return Details(
+        Summary(
+            UkIcon("help-circle", cls="inline mr-1", height=16, width=16),
+            "Show an example",
+            cls="cursor-pointer text-sm text-base-content/60 hover:text-base-content "
+            "list-none mb-3 select-none",
+        ),
+        Div(
+            _example(
+                "Kiek valandų? (3:00)",
+                "Trečia valanda.",
+                "Whole hour — feminine ordinal + valanda",
+            ),
+            _example(
+                "Kiek valandų? (2:30)",
+                "Pusė trečios.",
+                "Half past — pusė + genitive of next hour",
+            ),
+            _example(
+                "Kiek valandų? (1:15)",
+                "Ketvirtis antros.",
+                "Quarter past — ketvirtis + genitive of next hour",
+            ),
+            _example(
+                "Kiek valandų? (2:45)",
+                "Be ketvirčio trečia.",
+                "Quarter to — be ketvirčio + nominative of next hour",
+            ),
+            cls="grid grid-cols-1 gap-3 sm:grid-cols-2 mb-4",
+        ),
+    )
+
+
 # ------------------------------------------------------------------
 # Quiz area (HTMX target)
 # ------------------------------------------------------------------
@@ -194,6 +257,60 @@ def quiz_area(
     return Div(*parts, id="quiz-area")
 
 
+def time_quiz_area(
+    question: str,
+    feedback: Any | None = None,
+) -> Div:
+    """Card with time question + answer form, optional feedback alert above."""
+    form = Form(
+        Input(
+            id="user_answer",
+            name="user_answer",
+            placeholder="Type your answer in Lithuanian...",
+            autofocus=True,
+            autocomplete="off",
+            cls="uk-input uk-form-large w-full",
+        ),
+        DivRAligned(
+            Button(
+                UkIcon("send", cls="mr-2"),
+                "Submit",
+                type="submit",
+                cls=(ButtonT.primary, "px-6 mt-4"),
+            )
+        ),
+        hx_post="/time/answer",
+        hx_target="#quiz-area",
+    )
+
+    card = Card(
+        CardHeader(
+            DivFullySpaced(
+                H3("Current Exercise", cls=TextT.lg),
+                Label("Time", cls=LabelT.primary),
+            )
+        ),
+        CardBody(
+            Div(
+                P(
+                    question,
+                    cls="text-center text-xl font-medium p-4 rounded-lg mb-6",
+                ),
+                form,
+                cls="space-y-4",
+            )
+        ),
+        cls="shadow-lg border-t-4 border-t-primary",
+    )
+
+    parts: list[Any] = []
+    if feedback:
+        parts.append(feedback)
+    parts.append(card)
+
+    return Div(*parts, id="quiz-area")
+
+
 # ------------------------------------------------------------------
 # Feedback alerts (inline, not modals)
 # ------------------------------------------------------------------
@@ -201,14 +318,20 @@ def quiz_area(
 _CASE_LABELS: dict[str, str] = {
     "nominative": "nominative case (vardininkas)",
     "accusative": "accusative case (galininkas)",
+    "genitive": "genitive case (kilmininkas)",
 }
 _TYPE_LABELS: dict[str, str] = {
     "kokia": "Kokia kaina?",
     "kiek": "Kiek kainuoja?",
+    "whole_hour": "Whole hour",
+    "half_past": "Half past",
+    "quarter_past": "Quarter past",
+    "quarter_to": "Quarter to",
 }
 _GRAMMAR_HINTS: dict[str, str] = {
     "nominative": "Nominative: used when stating a price (Kokia kaina?).",
     "accusative": "Accusative: used when saying what something costs (Kiek kainuoja?).",
+    "genitive": "Genitive: used with pusė/ketvirtis (half past/quarter past).",
 }
 
 
