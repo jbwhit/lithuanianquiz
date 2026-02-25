@@ -49,15 +49,18 @@ web app.
 
 ### Project structure
 ```
-main.py          — App init, routes, session helpers
-auth.py          — Google OAuth, QuizOAuth, DB helpers (users/user_progress)
-quiz.py          — Exercise engine (no FastHTML dependency)
-adaptive.py      — Thompson Sampling adaptive selector
-ui.py            — All UI as plain functions (no classes)
-tests/           — pytest suite (31 tests)
+main.py            — App init, routes, session helpers (prices + time)
+auth.py            — Google OAuth, QuizOAuth, DB helpers (users/user_progress)
+quiz.py            — Price exercise engine (no FastHTML dependency)
+time_engine.py     — Time exercise engine + adaptive (no FastHTML dependency)
+adaptive.py        — Thompson Sampling adaptive selector (prices)
+ui.py              — All UI as plain functions (no classes)
+time_reference.py  — Generates all time expressions for native speaker review
+tests/             — pytest suite (77 tests: 31 price, 46 time)
+.githooks/         — Pre-commit hook (auto ruff format)
 lithuanian_data.db — SQLite: numbers table + users + user_progress
-.env             — GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET (gitignored)
-.env.example     — committed empty template
+.env               — GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET (gitignored)
+.env.example       — committed empty template
 ```
 
 ### Railway setup
@@ -92,6 +95,16 @@ lithuanian_data.db — SQLite: numbers table + users + user_progress
   `True` (which would produce a blank 200 response).
 - Auth keys (`auth`, `user_name`, `user_email`) are preserved across reset by
   saving them before clearing the session and restoring after.
+
+### Multi-module pattern
+- Each module (prices, time) gets its **own engine class** — prices are DB-driven,
+  time is algorithmic. No shared base class needed.
+- Session keys are namespaced with `time_` prefix for time module — keeps stats
+  independent.
+- Time has its own Thompson Sampling in `time_engine.py` (not shared with
+  `adaptive.py`) since the exercise space is different.
+- `save_progress`/`load_progress` in `auth.py` persist both modules to the same
+  `user_progress` row as a single JSON blob.
 
 ### UX
 - Emoji favicon (`🇱🇹`) via inline SVG data URI — no image file needed.
@@ -164,19 +177,20 @@ bypass the `before` hook. Don't put routes that need auth in this list.
 - Prefer a few excellent exercise modes over feature sprawl
 
 ### Roadmap (incremental, stay micro)
-1. **Time** — clock expressions (whole hours, half hours, quarters, formal vs conversational)
+1. ~~**Time**~~ — **Done.** Whole hours, half past, quarter past, quarter to. See `TIME_MODULE_SPEC.md`.
 2. **Dates** — day + month expressions, written/spoken variants
 3. **Quantified nouns** — "5 books", "2 cups" — only if it stays minimal
 
 ### Architecture note
-Each module gets its **own engine class** (not a refactor of `ExerciseEngine`). The price engine is DB-driven; time will be algorithmic. Shared layers: routing, session management, adaptive learning, UI patterns.
-
-See `TIME_MODULE_SPEC.md` for the detailed implementation spec for the time module.
+Each module gets its **own engine class** (not a refactor of `ExerciseEngine`). The price engine is DB-driven; time is algorithmic. Shared layers: routing, session management, UI patterns. Each module has its own adaptive tracking.
 
 ---
 
 ## 6. Open Questions / Loose Ends
 
+- **Native speaker review of time expressions** — Run `uv run python time_reference.py`
+  to generate all 48 time expressions. Key question: is "Pusė trečios" (ordinal
+  genitive) or "Pusė trijų" (cardinal genitive) the standard form for half past?
 - **`/error` route is unhandled** — if OAuth fails (e.g. user denies consent),
   they land on `/error` which returns a 404. A simple friendly page with a
   "Try again" link would polish this.
@@ -187,10 +201,6 @@ See `TIME_MODULE_SPEC.md` for the detailed implementation spec for the time modu
   autocorrect mangling Lithuanian words on mobile.
 - **More vocabulary** — currently 99 number rows and 5 items (knyga, puodelis,
   marškinėliai, žurnalas, kepurė). Could expand price ranges or add cent values.
-- **`/about` page has a "Back to Practice" button but no link from the home page
-  to About** beyond the navbar — fine as-is but worth noting.
-- **GoatCounter** just added — no baseline data yet. Check https://jbwhit.goatcounter.com
-  after a week to see if traffic is real.
 
 ---
 

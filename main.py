@@ -475,6 +475,10 @@ def post_time_answer(session, user_answer: str = "") -> Any:
 
     _new_time_question(session)
 
+    # Persist progress (only when logged in)
+    if session.get("auth"):
+        save_progress(session["auth"], session)
+
     if is_correct:
         fb = feedback_correct(
             user_answer.strip(),
@@ -511,6 +515,9 @@ def post_time_reset(session) -> Any:
         del session[key]
 
     _ensure_time_session(session)
+
+    if session.get("auth"):
+        save_progress(session["auth"], session)
 
     stats = _compute_time_stats(session)
     oob_stats = Div(

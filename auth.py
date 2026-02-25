@@ -68,20 +68,32 @@ def load_progress(google_id: str, session: dict[str, Any]) -> None:
     ).fetchone()
     if row:
         data = json.loads(row[0])
+        # Price progress
         session["correct_count"] = data.get("correct_count", 0)
         session["incorrect_count"] = data.get("incorrect_count", 0)
         session["history"] = data.get("history", [])
         session["performance"] = data.get("performance", {})
+        # Time progress
+        session["time_correct_count"] = data.get("time_correct_count", 0)
+        session["time_incorrect_count"] = data.get("time_incorrect_count", 0)
+        session["time_history"] = data.get("time_history", [])
+        session["time_performance"] = data.get("time_performance", {})
 
 
 def save_progress(google_id: str, session: dict[str, Any]) -> None:
     """Write session progress state to the DB."""
     data = json.dumps(
         {
+            # Price progress
             "correct_count": session.get("correct_count", 0),
             "incorrect_count": session.get("incorrect_count", 0),
             "history": session.get("history", []),
             "performance": session.get("performance", {}),
+            # Time progress
+            "time_correct_count": session.get("time_correct_count", 0),
+            "time_incorrect_count": session.get("time_incorrect_count", 0),
+            "time_history": session.get("time_history", []),
+            "time_performance": session.get("time_performance", {}),
         }
     )
     now = _now()
