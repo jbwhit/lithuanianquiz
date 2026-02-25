@@ -302,6 +302,7 @@ def post(session, user_answer: str = "") -> Any:
             exercise_type=exercise_info["exercise_type"],
             grammatical_case=exercise_info["grammatical_case"],
             number_pattern=exercise_info["number_pattern"],
+            row=row,
         )
 
     # Return quiz area + OOB stats update
@@ -479,6 +480,7 @@ def post_time_answer(session, user_answer: str = "") -> Any:
     }
     time_engine.update(session, exercise_info, is_correct)
 
+    answered_hour = session["time_hour"]
     _new_time_question(session)
 
     # Persist progress (only when logged in)
@@ -500,6 +502,7 @@ def post_time_answer(session, user_answer: str = "") -> Any:
             exercise_type=exercise_info["exercise_type"],
             grammatical_case=exercise_info["grammatical_case"],
             number_pattern=exercise_info["number_pattern"],
+            hour=answered_hour,
         )
 
     stats = _compute_time_stats(session)

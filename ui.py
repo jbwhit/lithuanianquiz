@@ -5,6 +5,7 @@ from typing import Any
 from fasthtml.common import *
 from monsterui.all import *
 from quiz import highlight_diff
+from time_engine import ORDINALS_GEN, ORDINALS_NOM, _next_hour
 
 # ------------------------------------------------------------------
 # Page shell
@@ -283,6 +284,146 @@ _GRAMMAR_HINTS: dict[str, str] = {
 }
 
 
+def _grammar_hint_collapsible(hint_content: list[Any]) -> Details:
+    """Wrap grammar hint content in a collapsible Details/Summary."""
+    return Details(
+        Summary(
+            UkIcon("book-open", cls="inline mr-1", height=16, width=16),
+            "Grammar breakdown",
+            cls="cursor-pointer text-sm text-base-content/60 hover:text-base-content "
+            "list-none select-none",
+        ),
+        Div(*hint_content, cls="mt-2 space-y-1"),
+        cls="mt-3",
+    )
+
+
+def _word_line(word: str, explanation: str) -> P:
+    """Single word + explanation line for grammar breakdowns."""
+    return P(
+        Strong(word),
+        Span(f" — {explanation}", cls="text-base-content/70"),
+        cls="text-sm ml-2",
+    )
+
+
+def _price_grammar_hint(
+    row: dict[str, Any],
+    exercise_type: str | None,
+    number_pattern: str | None,
+) -> list[Any] | None:
+    """Build word-by-word grammar breakdown for a price answer."""
+    if not exercise_type or not row:
+        return None
+
+    lines: list[Any] = []
+    n = row["number"]
+
+    if exercise_type == "kokia":
+        case_name = "nominative"
+        num_word = row["kokia_kaina"]
+        compound = row.get("kokia_kaina_compound")
+        euro = row["euro_nom"]
+    else:
+        case_name = "accusative"
+        num_word = row["kiek_kainuoja"]
+        compound = row.get("kiek_kainuoja_compound")
+        euro = row["euro_acc"]
+
+    # Number word(s)
+    if number_pattern == "compound" and compound:
+        lines.append(
+            _word_line(
+                num_word,
+                f"tens part ({n // 10 * 10}) — same in both cases",
+            )
+        )
+        nom_ones = row.get("kokia_kaina_compound", compound)
+        if exercise_type == "kiek":
+            lines.append(
+                _word_line(
+                    compound,
+                    f"ones digit ({n % 10}), {case_name} (nom: {nom_ones})",
+                )
+            )
+        else:
+            lines.append(_word_line(compound, f"ones digit ({n % 10}), {case_name}"))
+    else:
+        if exercise_type == "kiek":
+            nom_form = row["kokia_kaina"]
+            if nom_form != num_word:
+                lines.append(
+                    _word_line(
+                        num_word,
+                        f"{case_name} of {n} (nom: {nom_form})",
+                    )
+                )
+            else:
+                lines.append(_word_line(num_word, f"{n} — same in both cases"))
+        else:
+            lines.append(_word_line(num_word, f"{n}, {case_name}"))
+
+    # Euro word
+    if exercise_type == "kiek":
+        nom_euro = row["euro_nom"]
+        if nom_euro != euro:
+            lines.append(_word_line(euro, f"euro, {case_name} (nom: {nom_euro})"))
+        else:
+            lines.append(_word_line(euro, "euro — same in both cases"))
+    else:
+        lines.append(_word_line(euro, f"euro, {case_name}"))
+
+    return lines
+
+
+def _time_grammar_hint(
+    exercise_type: str | None,
+    hour: int | None,
+) -> list[Any] | None:
+    """Build word-by-word grammar breakdown for a time answer."""
+    if not exercise_type or hour is None:
+        return None
+
+    lines: list[Any] = []
+    nh = _next_hour(hour)
+
+    if exercise_type == "whole_hour":
+        nom = ORDINALS_NOM[hour]
+        lines.append(
+            _word_line(
+                nom.capitalize(),
+                f"ordinal for {hour}, nominative feminine",
+            )
+        )
+        lines.append(_word_line("valanda", "hour (always nominative)"))
+
+    elif exercise_type == "half_past":
+        gen = ORDINALS_GEN[nh]
+        nom = ORDINALS_NOM[nh]
+        lines.append(_word_line("Pusė", f"half — next hour is {nh} ({hour}→{nh})"))
+        lines.append(_word_line(gen, f"genitive of {nh} (nom: {nom})"))
+
+    elif exercise_type == "quarter_past":
+        gen = ORDINALS_GEN[nh]
+        nom = ORDINALS_NOM[nh]
+        lines.append(
+            _word_line("Ketvirtis", f"quarter past — next hour is {nh} ({hour}→{nh})")
+        )
+        lines.append(_word_line(gen, f"genitive of {nh} (nom: {nom})"))
+
+    elif exercise_type == "quarter_to":
+        nom = ORDINALS_NOM[nh]
+        lines.append(
+            _word_line(
+                "Be ketvirčio",
+                f"quarter to — next hour is {nh} ({hour}→{nh})",
+            )
+        )
+        lines.append(_word_line(nom, f"nominative of {nh}"))
+
+    return lines
+
+
 def _exercise_context_text(
     exercise_type: str | None,
     grammatical_case: str | None,
@@ -324,10 +465,20 @@ def feedback_incorrect(
     exercise_type: str | None = None,
     grammatical_case: str | None = None,
     number_pattern: str | None = None,
+    row: dict[str, Any] | None = None,
+    hour: int | None = None,
 ) -> Div:
     """Red inline alert with diff highlighting and grammar context."""
     ctx = _exercise_context_text(exercise_type, grammatical_case)
     hint = _GRAMMAR_HINTS.get(grammatical_case or "")
+
+    # Build grammar breakdown (price or time)
+    grammar_lines = None
+    if row is not None:
+        grammar_lines = _price_grammar_hint(row, exercise_type, number_pattern)
+    elif hour is not None:
+        grammar_lines = _time_grammar_hint(exercise_type, hour)
+
     return Div(
         DivLAligned(
             UkIcon("x-circle", cls="text-error mr-2", height=24, width=24),
@@ -349,6 +500,11 @@ def feedback_incorrect(
                     *(
                         [P(hint, cls="text-xs text-base-content/60 italic mt-1")]
                         if hint
+                        else []
+                    ),
+                    *(
+                        [_grammar_hint_collapsible(grammar_lines)]
+                        if grammar_lines
                         else []
                     ),
                     cls="border-t border-base-content/10 pt-3 mt-3",
