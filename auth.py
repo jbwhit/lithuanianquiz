@@ -78,6 +78,16 @@ def load_progress(google_id: str, session: dict[str, Any]) -> None:
         session["time_incorrect_count"] = data.get("time_incorrect_count", 0)
         session["time_history"] = data.get("time_history", [])
         session["time_performance"] = data.get("time_performance", {})
+        # Numbers 1-20 progress
+        session["n20_correct_count"] = data.get("n20_correct_count", 0)
+        session["n20_incorrect_count"] = data.get("n20_incorrect_count", 0)
+        session["n20_history"] = data.get("n20_history", [])
+        session["n20_performance"] = data.get("n20_performance", {})
+        # Numbers 1-99 progress
+        session["n99_correct_count"] = data.get("n99_correct_count", 0)
+        session["n99_incorrect_count"] = data.get("n99_incorrect_count", 0)
+        session["n99_history"] = data.get("n99_history", [])
+        session["n99_performance"] = data.get("n99_performance", {})
 
 
 def save_progress(google_id: str, session: dict[str, Any]) -> None:
@@ -94,6 +104,16 @@ def save_progress(google_id: str, session: dict[str, Any]) -> None:
             "time_incorrect_count": session.get("time_incorrect_count", 0),
             "time_history": session.get("time_history", []),
             "time_performance": session.get("time_performance", {}),
+            # Numbers 1-20 progress
+            "n20_correct_count": session.get("n20_correct_count", 0),
+            "n20_incorrect_count": session.get("n20_incorrect_count", 0),
+            "n20_history": session.get("n20_history", []),
+            "n20_performance": session.get("n20_performance", {}),
+            # Numbers 1-99 progress
+            "n99_correct_count": session.get("n99_correct_count", 0),
+            "n99_incorrect_count": session.get("n99_incorrect_count", 0),
+            "n99_history": session.get("n99_history", []),
+            "n99_performance": session.get("n99_performance", {}),
         }
     )
     now = _now()

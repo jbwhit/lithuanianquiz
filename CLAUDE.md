@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Adaptive Lithuanian practice app built with FastHTML + MonsterUI. Two modules: **prices** and **time**.
+Adaptive Lithuanian practice app built with FastHTML + MonsterUI. Four modules: **Numbers 1-20**, **Numbers 1-99**, **Prices**, and **Time**.
 
 ### File structure
 
@@ -12,12 +12,14 @@ Adaptive Lithuanian practice app built with FastHTML + MonsterUI. Two modules: *
 - `auth.py` — Google OAuth client, `QuizOAuth`, DB helpers for user/progress persistence
 - `quiz.py` — Price exercise engine: generation, answer checking, diffs (no FastHTML dependency)
 - `time_engine.py` — Time exercise engine: algorithmic generation, Thompson Sampling (no FastHTML dependency)
+- `number_engine.py` — Number word exercise engine: produce/recognize, Thompson Sampling (no FastHTML dependency)
 - `adaptive.py` — Thompson Sampling adaptive learning engine (prices)
 - `ui.py` — UI component functions (plain functions, not classes)
 - `time_reference.py` — Standalone script to generate all time expressions for native speaker review
 - `tests/test_quiz.py` — Tests for price quiz engine
 - `tests/test_time.py` — Tests for time engine + adaptive
 - `tests/test_adaptive.py` — Tests for price adaptive learning
+- `tests/test_numbers.py` — Tests for number engine
 - `db_manager.py` — Offline tooling for DB updates (kept as-is)
 - `get_csvs.py` — Offline tooling for CSV export (kept as-is)
 - `lithuanian_data.db` — 99 rows of Lithuanian number forms + `users` + `user_progress` tables
@@ -29,8 +31,8 @@ Adaptive Lithuanian practice app built with FastHTML + MonsterUI. Two modules: *
 
 ### Architecture
 
-- **Landing page** at `/` with module cards; Prices at `/prices`, Time at `/time`
-- **Two modules**: Prices (DB-driven, `/prices`) and Time (algorithmic, `/time`) — each with own engine, adaptive tracking, and session state
+- **Landing page** at `/` with module cards; Numbers at `/numbers-20` & `/numbers-99`, Prices at `/prices`, Time at `/time`
+- **Four modules**: Numbers 1-20 (`/numbers-20`), Numbers 1-99 (`/numbers-99`), Prices (`/prices`), Time (`/time`) — each with own engine, adaptive tracking, and session state
 - **Google OAuth** via `fasthtml.oauth.GoogleAppClient` + `QuizOAuth(OAuth)` — optional login for cross-session persistence
 - **User progress persisted** to `user_progress` table in SQLite (both price and time data, loaded on login, saved on answer/reset)
 - **Cookie sessions** via FastHTML's built-in `SessionMiddleware` (no custom session DB)

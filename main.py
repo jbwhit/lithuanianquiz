@@ -8,6 +8,7 @@ from auth import QuizOAuth, auth_client, init_db_tables, save_progress
 from fasthtml.common import *
 from fastlite import database
 from monsterui.all import *
+from number_engine import NumberEngine
 from quiz import ExerciseEngine, highlight_diff, number_pattern
 from time_engine import TimeEngine
 from ui import (
@@ -17,6 +18,7 @@ from ui import (
     feedback_incorrect,
     landing_page_content,
     login_page_content,
+    number_examples_section,
     page_shell,
     quiz_area,
     stats_page_content,
@@ -37,6 +39,10 @@ ALL_ROWS: list[dict[str, Any]] = list(_db.t["numbers"].rows)
 adaptive = AdaptiveLearning(exploration_rate=0.2)
 engine = ExerciseEngine(ALL_ROWS, adaptive)
 time_engine = TimeEngine()
+
+rows_20 = [r for r in ALL_ROWS if r["number"] <= 20]
+number_engine_20 = NumberEngine(rows_20, max_number=20)
+number_engine_99 = NumberEngine(ALL_ROWS, max_number=99)
 
 # ------------------------------------------------------------------
 # App
@@ -162,6 +168,48 @@ def _new_time_question(session: dict[str, Any]) -> None:
     session["time_number_pattern"] = ex["number_pattern"]
     session["time_grammatical_case"] = ex["grammatical_case"]
     session["time_current_question"] = time_engine.format_question(ex["display_time"])
+
+
+# ------------------------------------------------------------------
+# Number session helpers
+# ------------------------------------------------------------------
+
+
+def _ensure_number_session(
+    session: dict[str, Any], engine_inst: NumberEngine, prefix: str
+) -> None:
+    """Initialise number module defaults and generate first question if needed."""
+    session.setdefault(f"{prefix}_history", [])
+    session.setdefault(f"{prefix}_correct_count", 0)
+    session.setdefault(f"{prefix}_incorrect_count", 0)
+    engine_inst.init_tracking(session, prefix)
+    if f"{prefix}_current_question" not in session:
+        _new_number_question(session, engine_inst, prefix)
+
+
+def _new_number_question(
+    session: dict[str, Any], engine_inst: NumberEngine, prefix: str
+) -> None:
+    """Pick a new number exercise and store it in the session."""
+    ex = engine_inst.generate(session, prefix)
+    session[f"{prefix}_exercise_type"] = ex["exercise_type"]
+    session[f"{prefix}_row_id"] = ex["row"]["number"]
+    session[f"{prefix}_number_pattern"] = ex["number_pattern"]
+    session[f"{prefix}_current_question"] = engine_inst.format_question(
+        ex["exercise_type"], ex["row"]
+    )
+
+
+def _compute_number_stats(
+    session: dict[str, Any], prefix: str, engine_inst: NumberEngine
+) -> dict[str, Any]:
+    return _compute_module_stats(
+        session,
+        f"{prefix}_correct_count",
+        f"{prefix}_incorrect_count",
+        f"{prefix}_history",
+        lambda s: engine_inst.get_weak_areas(s, prefix),
+    )
 
 
 # ------------------------------------------------------------------
@@ -360,10 +408,20 @@ def post_reset(session) -> Any:
 def get_stats(session) -> Any:
     _ensure_session(session)
     _ensure_time_session(session)
+    _ensure_number_session(session, number_engine_20, "n20")
+    _ensure_number_session(session, number_engine_99, "n99")
     stats = _compute_stats(session)
     time_stats = _compute_time_stats(session)
+    n20_stats = _compute_number_stats(session, "n20", number_engine_20)
+    n99_stats = _compute_number_stats(session, "n99", number_engine_99)
     return page_shell(
-        stats_page_content(stats, session, time_stats=time_stats),
+        stats_page_content(
+            stats,
+            session,
+            time_stats=time_stats,
+            n20_stats=n20_stats,
+            n99_stats=n99_stats,
+        ),
         user_name=session.get("user_name"),
     )
 
@@ -545,6 +603,204 @@ def post_time_reset(session) -> Any:
         ),
         oob_stats,
     )
+
+
+# ------------------------------------------------------------------
+# Number routes (shared logic, parameterized by engine + prefix)
+# ------------------------------------------------------------------
+
+
+def _make_number_routes(
+    engine_inst: NumberEngine,
+    prefix: str,
+    route_base: str,
+    title: str,
+    subtitle: str,
+    module_name: str,
+) -> None:
+    """Register GET/POST routes for a number module."""
+
+    @rt(route_base)
+    def get_numbers(session) -> Any:
+        _ensure_number_session(session, engine_inst, prefix)
+        stats = _compute_number_stats(session, prefix, engine_inst)
+        history = session.get(f"{prefix}_history", [])
+
+        reset_modal = Modal(
+            ModalHeader(H3("Reset Progress?")),
+            ModalBody(
+                P("This will clear all your number practice history. Are you sure?")
+            ),
+            ModalFooter(
+                Button(
+                    "Cancel",
+                    cls=ButtonT.ghost,
+                    data_uk_toggle="target: #reset-modal",
+                ),
+                Button(
+                    "Reset",
+                    cls=ButtonT.destructive,
+                    hx_post=f"{route_base}/reset",
+                    hx_target="#quiz-area",
+                ),
+            ),
+            id="reset-modal",
+        )
+
+        main_content = Container(
+            H2(title, cls=(TextT.xl, "mb-2")),
+            P(
+                subtitle,
+                cls="text-base-content/70 text-sm mb-1",
+            ),
+            P(
+                "Two exercise types: ",
+                Strong("produce"),
+                " (say the number in Lithuanian) and ",
+                Strong("recognize"),
+                " (identify the number from Lithuanian).",
+                cls="text-base-content/60 text-xs mb-6",
+            ),
+            number_examples_section(engine_inst.max_number),
+            quiz_area(
+                session[f"{prefix}_current_question"],
+                post_url=f"{route_base}/answer",
+                label="Numbers",
+            ),
+            Div(stats_panel(stats, history), cls="mt-6"),
+            Button(
+                UkIcon("refresh-ccw", cls="mr-2"),
+                "Reset Progress",
+                cls=(ButtonT.destructive, "mt-6"),
+                data_uk_toggle="target: #reset-modal",
+            ),
+            reset_modal,
+            cls=(ContainerT.xl, "px-8 py-8"),
+        )
+
+        return page_shell(
+            main_content, user_name=session.get("user_name"), active_module=module_name
+        )
+
+    @rt(f"{route_base}/answer")
+    def post_number_answer(session, user_answer: str = "") -> Any:
+        _ensure_number_session(session, engine_inst, prefix)
+
+        row_id = session[f"{prefix}_row_id"]
+        ex_type = session[f"{prefix}_exercise_type"]
+        row = engine_inst.rows[0]  # fallback
+        for r in engine_inst.rows:
+            if r["number"] == row_id:
+                row = r
+                break
+
+        correct = engine_inst.correct_answer(ex_type, row)
+        is_correct = engine_inst.check(user_answer, correct, ex_type)
+
+        if is_correct:
+            session[f"{prefix}_correct_count"] = (
+                session.get(f"{prefix}_correct_count", 0) + 1
+            )
+        else:
+            session[f"{prefix}_incorrect_count"] = (
+                session.get(f"{prefix}_incorrect_count", 0) + 1
+            )
+
+        diff_u, diff_c = highlight_diff(
+            user_answer.strip(), correct.strip(), is_correct
+        )
+        entry = {
+            "question": session[f"{prefix}_current_question"],
+            "answer": user_answer.strip(),
+            "correct": is_correct,
+            "true_answer": correct.strip(),
+        }
+        history = session.get(f"{prefix}_history", [])
+        history.append(entry)
+        session[f"{prefix}_history"] = history[-50:]
+
+        exercise_info = {
+            "exercise_type": ex_type,
+            "number_pattern": session.get(f"{prefix}_number_pattern"),
+        }
+        engine_inst.update(session, prefix, exercise_info, is_correct)
+
+        _new_number_question(session, engine_inst, prefix)
+
+        if session.get("auth"):
+            save_progress(session["auth"], session)
+
+        if is_correct:
+            fb = feedback_correct(user_answer.strip(), exercise_type=ex_type)
+        else:
+            fb = feedback_incorrect(
+                user_answer.strip(),
+                correct.strip(),
+                diff_u,
+                diff_c,
+                exercise_type=ex_type,
+                number_pattern=exercise_info["number_pattern"],
+            )
+
+        stats = _compute_number_stats(session, prefix, engine_inst)
+        oob_stats = Div(
+            stats_panel(stats, session.get(f"{prefix}_history", [])),
+            hx_swap_oob="true",
+            id="stats-panel",
+        )
+
+        return (
+            quiz_area(
+                session[f"{prefix}_current_question"],
+                feedback=fb,
+                post_url=f"{route_base}/answer",
+                label="Numbers",
+            ),
+            oob_stats,
+        )
+
+    @rt(f"{route_base}/reset")
+    def post_number_reset(session) -> Any:
+        for key in [k for k in list(session.keys()) if k.startswith(f"{prefix}_")]:
+            del session[key]
+
+        _ensure_number_session(session, engine_inst, prefix)
+
+        if session.get("auth"):
+            save_progress(session["auth"], session)
+
+        stats = _compute_number_stats(session, prefix, engine_inst)
+        oob_stats = Div(
+            stats_panel(stats, []),
+            hx_swap_oob="true",
+            id="stats-panel",
+        )
+        return (
+            quiz_area(
+                session[f"{prefix}_current_question"],
+                post_url=f"{route_base}/answer",
+                label="Numbers",
+            ),
+            oob_stats,
+        )
+
+
+_make_number_routes(
+    number_engine_20,
+    "n20",
+    "/numbers-20",
+    "Lithuanian Numbers 1-20",
+    "Learn the basic Lithuanian number words.",
+    "numbers-20",
+)
+_make_number_routes(
+    number_engine_99,
+    "n99",
+    "/numbers-99",
+    "Lithuanian Numbers 1-99",
+    "All numbers including decades and compounds.",
+    "numbers-99",
+)
 
 
 # ------------------------------------------------------------------

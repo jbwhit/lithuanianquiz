@@ -32,6 +32,18 @@ def page_shell(
             + (" uk-active font-bold" if active_module == "home" else ""),
         ),
         A(
+            "1-20",
+            href="/numbers-20",
+            cls="uk-btn uk-btn-ghost"
+            + (" uk-active font-bold" if active_module == "numbers-20" else ""),
+        ),
+        A(
+            "1-99",
+            href="/numbers-99",
+            cls="uk-btn uk-btn-ghost"
+            + (" uk-active font-bold" if active_module == "numbers-99" else ""),
+        ),
+        A(
             "Prices",
             href="/prices",
             cls="uk-btn uk-btn-ghost"
@@ -146,6 +158,25 @@ def landing_page_content() -> Container:
             cls=f"shadow-lg border-t-4 {border_color} h-full",
         )
 
+    numbers_20_card = _module_card(
+        "🔢",
+        "Numbers 1-20",
+        "Learn the basic Lithuanian number words.",
+        "/numbers-20",
+        "border-t-success",
+    )
+    # Add a "Start here" badge to the first card
+    numbers_20_card = Div(
+        Div(
+            Span(
+                "Start here",
+                cls="text-xs font-bold text-success-content bg-success px-2 py-0.5 rounded-full",
+            ),
+            cls="text-center -mb-2 mt-2",
+        ),
+        numbers_20_card,
+    )
+
     return Container(
         DivCentered(
             Span("🇱🇹", cls="text-6xl mb-4"),
@@ -157,6 +188,14 @@ def landing_page_content() -> Container:
             cls="mb-10",
         ),
         Grid(
+            numbers_20_card,
+            _module_card(
+                "🔢",
+                "Numbers 1-99",
+                "All numbers including decades and compounds.",
+                "/numbers-99",
+                "border-t-info",
+            ),
             _module_card(
                 "💶",
                 "Prices",
@@ -282,6 +321,61 @@ def time_examples_section() -> Details:
     )
 
 
+def number_examples_section(max_number: int) -> Details:
+    """Collapsible examples for number exercises."""
+
+    def _example(question: str, answer: str, note: str) -> Div:
+        return Div(
+            P(question, cls="font-medium text-base-content/80"),
+            P(
+                "→ ",
+                Span(answer, cls="font-bold text-primary"),
+                cls="mt-1",
+            ),
+            P(note, cls="text-xs text-base-content/50 mt-1 italic"),
+            cls="p-3 bg-base-200 rounded-lg",
+        )
+
+    if max_number <= 20:
+        examples = Div(
+            _example(
+                "How do you say 5?",
+                "penki",
+                "Produce — type the Lithuanian number word",
+            ),
+            _example(
+                "What number is penkiolika?",
+                "15",
+                "Recognize — identify the number from Lithuanian",
+            ),
+            cls="grid grid-cols-1 gap-3 sm:grid-cols-2 mb-4",
+        )
+    else:
+        examples = Div(
+            _example(
+                "How do you say 45?",
+                "keturiasdešimt penki",
+                "Produce — compounds have two words",
+            ),
+            _example(
+                "What number is trisdešimt?",
+                "30",
+                "Recognize — identify the number from Lithuanian",
+            ),
+            cls="grid grid-cols-1 gap-3 sm:grid-cols-2 mb-4",
+        )
+
+    return Details(
+        Summary(
+            UkIcon("help-circle", cls="inline mr-1", height=16, width=16),
+            "Show an example",
+            cls="cursor-pointer text-sm text-base-content/60 hover:text-base-content "
+            "list-none mb-3 select-none",
+        ),
+        examples,
+    )
+
+
 # ------------------------------------------------------------------
 # Quiz area (HTMX target)
 # ------------------------------------------------------------------
@@ -359,6 +453,8 @@ _TYPE_LABELS: dict[str, str] = {
     "half_past": "Half past",
     "quarter_past": "Quarter past",
     "quarter_to": "Quarter to",
+    "produce": "Produce (say the number)",
+    "recognize": "Recognize (identify the number)",
 }
 _GRAMMAR_HINTS: dict[str, str] = {
     "nominative": "Nominative: used when stating a price (Kokia kaina?).",
@@ -935,15 +1031,45 @@ def stats_page_content(
     stats: dict[str, Any],
     session: dict[str, Any],
     time_stats: dict[str, Any] | None = None,
+    n20_stats: dict[str, Any] | None = None,
+    n99_stats: dict[str, Any] | None = None,
 ) -> Container:
-    """Full stats page body with price and time sections."""
+    """Full stats page body with all module sections."""
     sections: list[Any] = [
         H2("Your Statistics", cls=TextT.xl),
         P("Track your learning progress", cls=TextPresets.muted_lg),
     ]
 
+    # Numbers 1-20 stats
+    if n20_stats is not None:
+        sections.append(H3("Numbers 1-20", cls=(TextT.lg, "mt-8 mb-0")))
+        sections.extend(
+            _module_stats_section(
+                "Numbers 1-20 Progress",
+                n20_stats,
+                session,
+                perf_key="n20_performance",
+                history_key="n20_history",
+                border_color="border-t-success",
+            )
+        )
+
+    # Numbers 1-99 stats
+    if n99_stats is not None:
+        sections.append(H3("Numbers 1-99", cls=(TextT.lg, "mt-10 mb-0")))
+        sections.extend(
+            _module_stats_section(
+                "Numbers 1-99 Progress",
+                n99_stats,
+                session,
+                perf_key="n99_performance",
+                history_key="n99_history",
+                border_color="border-t-info",
+            )
+        )
+
     # Price stats
-    sections.append(H3("Price Exercises", cls=(TextT.lg, "mt-8 mb-0")))
+    sections.append(H3("Price Exercises", cls=(TextT.lg, "mt-10 mb-0")))
     sections.extend(
         _module_stats_section(
             "Price Progress",
@@ -989,10 +1115,31 @@ def about_page_content() -> Container:
             cls=TextPresets.muted_lg,
         ),
         P(
-            "This app helps you practice expressing prices and times "
-            "in Lithuanian through interactive exercises. An adaptive learning "
+            "This app helps you practice Lithuanian numbers, prices, and times "
+            "through interactive exercises. An adaptive learning "
             "system uses Thompson sampling to target your weak areas.",
             cls="mt-4",
+        ),
+        H3("Number Exercises", cls=(TextT.lg, "mt-6")),
+        P("Two modules for building number vocabulary:", cls="mt-2"),
+        Ul(
+            Li(
+                Strong("Numbers 1-20"),
+                " — Learn the basic (often irregular) number words.",
+            ),
+            Li(
+                Strong("Numbers 1-99"),
+                " — All numbers including decades and compounds.",
+            ),
+            cls="list-disc ml-6 mt-2 space-y-2",
+        ),
+        P(
+            "Each module has two exercise types: ",
+            Strong("produce"),
+            " (say the number in Lithuanian) and ",
+            Strong("recognize"),
+            " (identify the number from Lithuanian).",
+            cls="mt-2",
         ),
         H3("Price Exercises", cls=(TextT.lg, "mt-6")),
         P("Two exercise types:", cls="mt-2"),
