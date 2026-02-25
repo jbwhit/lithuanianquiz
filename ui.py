@@ -135,14 +135,21 @@ def landing_page_content() -> Container:
         description: str,
         href: str,
         border_color: str,
+        badge: str | None = None,
     ) -> Card:
+        header_items: list[Any] = [
+            Span(emoji, cls="text-4xl mb-2"),
+            H3(title, cls=(TextT.lg, TextT.bold)),
+        ]
+        if badge:
+            header_items.append(
+                Span(
+                    badge,
+                    cls="text-xs font-bold text-success-content bg-success px-2 py-0.5 rounded-full",
+                ),
+            )
         return Card(
-            CardHeader(
-                DivCentered(
-                    Span(emoji, cls="text-4xl mb-2"),
-                    H3(title, cls=(TextT.lg, TextT.bold)),
-                )
-            ),
+            CardHeader(DivCentered(*header_items)),
             CardBody(
                 P(description, cls="text-center text-base-content/70"),
             ),
@@ -158,25 +165,6 @@ def landing_page_content() -> Container:
             cls=f"shadow-lg border-t-4 {border_color} h-full",
         )
 
-    numbers_20_card = _module_card(
-        "🔢",
-        "Numbers 1-20",
-        "Learn the basic Lithuanian number words.",
-        "/numbers-20",
-        "border-t-success",
-    )
-    # Add a "Start here" badge to the first card
-    numbers_20_card = Div(
-        Div(
-            Span(
-                "Start here",
-                cls="text-xs font-bold text-success-content bg-success px-2 py-0.5 rounded-full",
-            ),
-            cls="text-center -mb-2 mt-2",
-        ),
-        numbers_20_card,
-    )
-
     return Container(
         DivCentered(
             Span("🇱🇹", cls="text-6xl mb-4"),
@@ -188,7 +176,14 @@ def landing_page_content() -> Container:
             cls="mb-10",
         ),
         Grid(
-            numbers_20_card,
+            _module_card(
+                "🔢",
+                "Numbers 1-20",
+                "Learn the basic Lithuanian number words.",
+                "/numbers-20",
+                "border-t-success",
+                badge="Start here",
+            ),
             _module_card(
                 "🔢",
                 "Numbers 1-99",
