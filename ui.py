@@ -50,6 +50,12 @@ def page_shell(
             + (" uk-active font-bold" if active_module == "age" else ""),
         ),
         A(
+            "Weather",
+            href="/weather",
+            cls="uk-btn uk-btn-ghost"
+            + (" uk-active font-bold" if active_module == "weather" else ""),
+        ),
+        A(
             "Prices",
             href="/prices",
             cls="uk-btn uk-btn-ghost"
@@ -205,6 +211,13 @@ def landing_page_content() -> Container:
                 "Practice expressing ages with dative pronouns (Man, Tau, Jam, Jai).",
                 "/age",
                 "border-t-warning",
+            ),
+            _module_card(
+                "🌡️",
+                "Weather",
+                "Practice expressing temperatures with laipsnis/laipsniai/laipsnių.",
+                "/weather",
+                "border-t-error",
             ),
             _module_card(
                 "💶",
@@ -418,6 +431,44 @@ def age_examples_section() -> Details:
                 "Jai penkiolika metų.",
                 "15",
                 "Recognize — identify the age from Lithuanian",
+            ),
+            cls="grid grid-cols-1 gap-3 sm:grid-cols-2 mb-4",
+        ),
+    )
+
+
+def weather_examples_section() -> Details:
+    """Collapsible examples for weather exercises."""
+
+    def _example(question: str, answer: str, note: str) -> Div:
+        return Div(
+            P(question, cls="font-medium text-base-content/80"),
+            P(
+                "→ ",
+                Span(answer, cls="font-bold text-primary"),
+                cls="mt-1",
+            ),
+            P(note, cls="text-xs text-base-content/50 mt-1 italic"),
+            cls="p-3 bg-base-200 rounded-lg",
+        )
+
+    return Details(
+        Summary(
+            UkIcon("help-circle", cls="inline mr-1", height=16, width=16),
+            "Show an example",
+            cls="cursor-pointer text-sm text-base-content/60 hover:text-base-content "
+            "list-none mb-3 select-none",
+        ),
+        Div(
+            _example(
+                "How do you say 25°C?",
+                "dvidešimt penki laipsniai",
+                "Produce — number word + correct degree form",
+            ),
+            _example(
+                "minus penkiolika laipsnių",
+                "-15",
+                "Recognize — identify the temperature from Lithuanian",
             ),
             cls="grid grid-cols-1 gap-3 sm:grid-cols-2 mb-4",
         ),
@@ -1036,6 +1087,12 @@ def _module_stats_section(
             ("number_patterns", "Number Patterns"),
             ("pronouns", "Pronouns"),
         ]
+    if perf_key == "weather_performance":
+        perf_categories = [
+            ("exercise_types", "Exercise Types"),
+            ("number_patterns", "Number Patterns"),
+            ("sign", "Sign (+/-)"),
+        ]
     for key, cat_title in perf_categories:
         if perf.get(key):
             perf_cards.append(_perf_by_category(perf[key], cat_title))
@@ -1090,6 +1147,7 @@ def stats_page_content(
     n20_stats: dict[str, Any] | None = None,
     n99_stats: dict[str, Any] | None = None,
     age_stats: dict[str, Any] | None = None,
+    weather_stats: dict[str, Any] | None = None,
 ) -> Container:
     """Full stats page body with all module sections."""
     sections: list[Any] = [
@@ -1136,6 +1194,20 @@ def stats_page_content(
                 perf_key="age_performance",
                 history_key="age_history",
                 border_color="border-t-warning",
+            )
+        )
+
+    # Weather stats
+    if weather_stats is not None:
+        sections.append(H3("Weather Exercises", cls=(TextT.lg, "mt-10 mb-0")))
+        sections.extend(
+            _module_stats_section(
+                "Weather Progress",
+                weather_stats,
+                session,
+                perf_key="weather_performance",
+                history_key="weather_history",
+                border_color="border-t-error",
             )
         )
 
@@ -1230,6 +1302,29 @@ def about_page_content() -> Container:
                 " — given a Lithuanian age phrase, identify the age as a number.",
             ),
             cls="list-disc ml-6 mt-2 space-y-2",
+        ),
+        H3("Weather Exercises", cls=(TextT.lg, "mt-6")),
+        P(
+            "Practice expressing temperatures with the word "
+            '"laipsnis" (degree), which declines like other Lithuanian nouns:',
+            cls="mt-2",
+        ),
+        Ul(
+            Li(
+                Strong("Produce"),
+                " — given a temperature like 25°C, type the Lithuanian phrase.",
+            ),
+            Li(
+                Strong("Recognize"),
+                " — given a Lithuanian temperature phrase, identify the number.",
+            ),
+            cls="list-disc ml-6 mt-2 space-y-2",
+        ),
+        P(
+            "Negative temperatures (down to -20) add ",
+            Em("minus"),
+            " before the number word.",
+            cls="mt-2",
         ),
         H3("Price Exercises", cls=(TextT.lg, "mt-6")),
         P("Two exercise types:", cls="mt-2"),

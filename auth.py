@@ -93,6 +93,11 @@ def load_progress(google_id: str, session: dict[str, Any]) -> None:
         session["age_incorrect_count"] = data.get("age_incorrect_count", 0)
         session["age_history"] = data.get("age_history", [])
         session["age_performance"] = data.get("age_performance", {})
+        # Weather progress
+        session["weather_correct_count"] = data.get("weather_correct_count", 0)
+        session["weather_incorrect_count"] = data.get("weather_incorrect_count", 0)
+        session["weather_history"] = data.get("weather_history", [])
+        session["weather_performance"] = data.get("weather_performance", {})
 
 
 def save_progress(google_id: str, session: dict[str, Any]) -> None:
@@ -124,6 +129,11 @@ def save_progress(google_id: str, session: dict[str, Any]) -> None:
             "age_incorrect_count": session.get("age_incorrect_count", 0),
             "age_history": session.get("age_history", []),
             "age_performance": session.get("age_performance", {}),
+            # Weather progress
+            "weather_correct_count": session.get("weather_correct_count", 0),
+            "weather_incorrect_count": session.get("weather_incorrect_count", 0),
+            "weather_history": session.get("weather_history", []),
+            "weather_performance": session.get("weather_performance", {}),
         }
     )
     now = _now()

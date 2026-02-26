@@ -26,7 +26,9 @@ from ui import (
     stats_page_content,
     stats_panel,
     time_examples_section,
+    weather_examples_section,
 )
+from weather_engine import WeatherEngine
 
 log = logging.getLogger(__name__)
 
@@ -48,6 +50,9 @@ number_engine_99 = NumberEngine(ALL_ROWS, max_number=99)
 
 age_rows = [r for r in ALL_ROWS if r["number"] >= 2]
 age_engine = AgeEngine(age_rows)
+
+weather_rows = [r for r in ALL_ROWS if r["number"] >= 1]
+weather_engine = WeatherEngine(weather_rows)
 
 # ------------------------------------------------------------------
 # App
@@ -478,11 +483,13 @@ def get_stats(session) -> Any:
     _ensure_number_session(session, number_engine_20, "n20")
     _ensure_number_session(session, number_engine_99, "n99", seed_prefix="n20")
     _ensure_age_session(session)
+    _ensure_weather_session(session)
     stats = _compute_stats(session)
     time_stats = _compute_time_stats(session)
     n20_stats = _compute_number_stats(session, "n20", number_engine_20)
     n99_stats = _compute_number_stats(session, "n99", number_engine_99)
     age_stats = _compute_age_stats(session)
+    weather_stats = _compute_weather_stats(session)
     return page_shell(
         stats_page_content(
             stats,
@@ -491,6 +498,7 @@ def get_stats(session) -> Any:
             n20_stats=n20_stats,
             n99_stats=n99_stats,
             age_stats=age_stats,
+            weather_stats=weather_stats,
         ),
         user_name=session.get("user_name"),
     )
@@ -713,6 +721,43 @@ def _compute_age_stats(session: dict[str, Any]) -> dict[str, Any]:
 
 
 # ------------------------------------------------------------------
+# Weather session helpers
+# ------------------------------------------------------------------
+
+
+def _ensure_weather_session(session: dict[str, Any]) -> None:
+    """Initialise weather module defaults and generate first question if needed."""
+    session.setdefault("weather_history", [])
+    session.setdefault("weather_correct_count", 0)
+    session.setdefault("weather_incorrect_count", 0)
+    weather_engine.init_tracking(session, "weather", seed_prefix="n99")
+    if "weather_current_question" not in session:
+        _new_weather_question(session)
+
+
+def _new_weather_question(session: dict[str, Any]) -> None:
+    """Pick a new weather exercise and store it in the session."""
+    ex = weather_engine.generate(session, "weather")
+    session["weather_exercise_type"] = ex["exercise_type"]
+    session["weather_row_id"] = ex["row"]["number"]
+    session["weather_number_pattern"] = ex["number_pattern"]
+    session["weather_negative"] = ex["negative"]
+    session["weather_current_question"] = weather_engine.format_question(
+        ex["exercise_type"], ex["row"], ex["negative"]
+    )
+
+
+def _compute_weather_stats(session: dict[str, Any]) -> dict[str, Any]:
+    return _compute_module_stats(
+        session,
+        "weather_correct_count",
+        "weather_incorrect_count",
+        "weather_history",
+        lambda s: weather_engine.get_weak_areas(s, "weather"),
+    )
+
+
+# ------------------------------------------------------------------
 # Age routes
 # ------------------------------------------------------------------
 
@@ -877,6 +922,177 @@ def post_age_reset(session) -> Any:
             session["age_current_question"],
             post_url="/age/answer",
             label="Age",
+        ),
+        oob_stats,
+    )
+
+
+# ------------------------------------------------------------------
+# Weather routes
+# ------------------------------------------------------------------
+
+
+@rt("/weather")
+def get_weather(session) -> Any:
+    _ensure_weather_session(session)
+    stats = _compute_weather_stats(session)
+    history = session.get("weather_history", [])
+
+    reset_modal = Modal(
+        ModalHeader(H3("Reset Progress?")),
+        ModalBody(
+            P("This will clear all your weather practice history. Are you sure?")
+        ),
+        ModalFooter(
+            Button(
+                "Cancel",
+                cls=ButtonT.ghost,
+                data_uk_toggle="target: #reset-modal",
+            ),
+            Button(
+                "Reset",
+                cls=ButtonT.destructive,
+                hx_post="/weather/reset",
+                hx_target="#quiz-area",
+            ),
+        ),
+        id="reset-modal",
+    )
+
+    main_content = Container(
+        H2("Lithuanian Weather Practice", cls=(TextT.xl, "mb-2")),
+        P(
+            "Practice expressing temperatures in Lithuanian.",
+            cls="text-base-content/70 text-sm mb-1",
+        ),
+        P(
+            "Two exercise types: ",
+            Strong("produce"),
+            " (say the temperature in Lithuanian) and ",
+            Strong("recognize"),
+            " (identify the temperature from Lithuanian).",
+            cls="text-base-content/60 text-xs mb-6",
+        ),
+        weather_examples_section(),
+        quiz_area(
+            session["weather_current_question"],
+            post_url="/weather/answer",
+            label="Weather",
+        ),
+        Div(stats_panel(stats, history), cls="mt-6"),
+        Button(
+            UkIcon("refresh-ccw", cls="mr-2"),
+            "Reset Progress",
+            cls=(ButtonT.destructive, "mt-6"),
+            data_uk_toggle="target: #reset-modal",
+        ),
+        reset_modal,
+        cls=(ContainerT.xl, "px-8 py-8"),
+    )
+
+    return page_shell(
+        main_content, user_name=session.get("user_name"), active_module="weather"
+    )
+
+
+@rt("/weather/answer")
+def post_weather_answer(session, user_answer: str = "") -> Any:
+    _ensure_weather_session(session)
+
+    row_id = session["weather_row_id"]
+    ex_type = session["weather_exercise_type"]
+    negative = session["weather_negative"]
+
+    row = weather_rows[0]  # fallback
+    for r in weather_rows:
+        if r["number"] == row_id:
+            row = r
+            break
+
+    correct = weather_engine.correct_answer(ex_type, row, negative)
+    is_correct = weather_engine.check(user_answer, correct, ex_type)
+
+    if is_correct:
+        session["weather_correct_count"] = session.get("weather_correct_count", 0) + 1
+    else:
+        session["weather_incorrect_count"] = (
+            session.get("weather_incorrect_count", 0) + 1
+        )
+
+    diff_u, diff_c = highlight_diff(user_answer.strip(), correct.strip(), is_correct)
+    entry = {
+        "question": session["weather_current_question"],
+        "answer": user_answer.strip(),
+        "correct": is_correct,
+        "true_answer": correct.strip(),
+    }
+    history = session.get("weather_history", [])
+    history.append(entry)
+    session["weather_history"] = history[-50:]
+
+    exercise_info = {
+        "exercise_type": ex_type,
+        "number_pattern": session.get("weather_number_pattern"),
+        "sign": "negative" if negative else "positive",
+    }
+    weather_engine.update(session, "weather", exercise_info, is_correct)
+
+    _new_weather_question(session)
+
+    if session.get("auth"):
+        save_progress(session["auth"], session)
+
+    if is_correct:
+        fb = feedback_correct(user_answer.strip(), exercise_type=ex_type)
+    else:
+        fb = feedback_incorrect(
+            user_answer.strip(),
+            correct.strip(),
+            diff_u,
+            diff_c,
+            exercise_type=ex_type,
+            number_pattern=exercise_info["number_pattern"],
+        )
+
+    stats = _compute_weather_stats(session)
+    oob_stats = Div(
+        stats_panel(stats, session.get("weather_history", [])),
+        hx_swap_oob="true",
+        id="stats-panel",
+    )
+
+    return (
+        quiz_area(
+            session["weather_current_question"],
+            feedback=fb,
+            post_url="/weather/answer",
+            label="Weather",
+        ),
+        oob_stats,
+    )
+
+
+@rt("/weather/reset")
+def post_weather_reset(session) -> Any:
+    for key in [k for k in list(session.keys()) if k.startswith("weather_")]:
+        del session[key]
+
+    _ensure_weather_session(session)
+
+    if session.get("auth"):
+        save_progress(session["auth"], session)
+
+    stats = _compute_weather_stats(session)
+    oob_stats = Div(
+        stats_panel(stats, []),
+        hx_swap_oob="true",
+        id="stats-panel",
+    )
+    return (
+        quiz_area(
+            session["weather_current_question"],
+            post_url="/weather/answer",
+            label="Weather",
         ),
         oob_stats,
     )

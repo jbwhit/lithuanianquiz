@@ -55,36 +55,6 @@ Numbers 10+ have no gender distinction (except compound ones digits: 21, 32, etc
 
 ---
 
-### Level 2: Weather Temperature
-
-**Skill:** Express temperature in Lithuanian.
-
-Pattern: "[Number] [laipsnis form]" (degrees Celsius).
-- "Siandien 20 laipsniu." (Today is 20 degrees.)
-- "Minus 5 laipsniai." (Minus 5 degrees.)
-
-The word "laipsnis" (degree) declines similarly to "euras":
-- 1: laipsnis (nom. sg.)
-- 2-9: laipsniai (nom. pl.)
-- 10-19, decades: laipsniu (gen. pl.)
-
-Negative temperatures add "minus" prefix -- number word stays the same.
-
-**Exercise types:**
-- Produce: "How do you say 15 degrees?" -> "penkiolika laipsniu"
-- Produce: "How do you say -3 degrees?" -> "minus trys laipsniai"
-- Recognize: "dvidesimt laipsniu" -> "20 degrees"
-
-**What's needed:**
-- Laipsnis declension forms: laipsnis/laipsniai/laipsniu (3 forms, hardcoded)
-- Rules for which form to use (same pattern as metai/metu/eurai/euru)
-- Temperature range: -20 to +40 (or similar realistic range)
-- Negative numbers reuse existing number words with "minus" prefix
-- Engine similar to age module but with the laipsnis noun
-- Scope: moderate, very similar structure to age module
-
----
-
 ### Level 2.5: Number-Noun Agreement
 
 **Skill:** Use numbers with concrete nouns in the correct gender and case.
@@ -132,6 +102,7 @@ This is the full integration: number + noun + gender agreement + case.
 ## Done
 
 - ~~**Age in Years**~~ — Implemented. Dative pronouns (Man/Tau/Jam/Jai) + number words + metai/metu. Ages 2-99, produce/recognize, Thompson Sampling. Seeds from n99.
+- ~~**Weather Temperature**~~ — Implemented. Number words + laipsnis/laipsniai/laipsnių. Range -20 to +40, produce/recognize, Thompson Sampling. Seeds from n99.
 - ~~**Numbers 1-20**~~ — Implemented.
 - ~~**Numbers 1-99**~~ — Implemented.
 - ~~**Prices**~~ — Implemented.
