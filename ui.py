@@ -148,6 +148,7 @@ def landing_page_content() -> Container:
         href: str,
         border_color: str,
         badge: str | None = None,
+        idx: int = 0,
     ) -> Card:
         header_items: list[Any] = [
             Span(emoji, cls="text-4xl mb-2"),
@@ -157,7 +158,8 @@ def landing_page_content() -> Container:
             header_items.append(
                 Span(
                     badge,
-                    cls="text-xs font-bold text-success-content bg-success px-2 py-0.5 rounded-full",
+                    cls="text-xs font-bold text-success-content bg-success "
+                    "px-2 py-0.5 rounded-full badge-glow",
                 ),
             )
         return CardContainer(
@@ -176,18 +178,23 @@ def landing_page_content() -> Container:
                 ),
                 cls="mt-auto",
             ),
-            cls=f"shadow-lg border-t-4 {border_color} h-full flex flex-col",
+            cls=f"shadow-lg border-t-4 {border_color} h-full flex flex-col "
+            f"module-card animate-in animate-in-{idx + 3}",
         )
 
     return Container(
         DivCentered(
-            Span("🇱🇹", cls="text-6xl mb-4"),
-            H1("Lithuanian Practice", cls=(TextT.xl, TextT.bold)),
-            P(
-                "Adaptive exercises to build your Lithuanian skills",
-                cls=TextPresets.muted_lg,
+            Span("🇱🇹", cls="text-7xl mb-5 animate-in"),
+            H1(
+                "Lithuanian Practice",
+                cls="text-4xl font-bold tracking-tight animate-in animate-in-1",
             ),
-            cls="mb-10",
+            P(
+                "Master Lithuanian through adaptive exercises",
+                cls="text-lg text-base-content/60 max-w-md text-center "
+                "mt-2 animate-in animate-in-2",
+            ),
+            cls="mb-12 hero-glow",
         ),
         Grid(
             _module_card(
@@ -197,6 +204,7 @@ def landing_page_content() -> Container:
                 "/numbers-20",
                 "border-t-success",
                 badge="Start here",
+                idx=0,
             ),
             _module_card(
                 "🔢",
@@ -204,6 +212,7 @@ def landing_page_content() -> Container:
                 "All numbers including decades and compounds.",
                 "/numbers-99",
                 "border-t-info",
+                idx=1,
             ),
             _module_card(
                 "🎂",
@@ -211,6 +220,7 @@ def landing_page_content() -> Container:
                 "Practice expressing ages with dative pronouns (Man, Tau, Jam, Jai).",
                 "/age",
                 "border-t-warning",
+                idx=2,
             ),
             _module_card(
                 "🌡️",
@@ -218,6 +228,7 @@ def landing_page_content() -> Container:
                 "Practice expressing temperatures with laipsnis/laipsniai/laipsnių.",
                 "/weather",
                 "border-t-error",
+                idx=3,
             ),
             _module_card(
                 "💶",
@@ -226,6 +237,7 @@ def landing_page_content() -> Container:
                 "and Kiek kainuoja? (accusative).",
                 "/prices",
                 "border-t-primary",
+                idx=4,
             ),
             _module_card(
                 "🕐",
@@ -234,6 +246,7 @@ def landing_page_content() -> Container:
                 "quarter past, and quarter to.",
                 "/time",
                 "border-t-secondary",
+                idx=5,
             ),
             cols_md=2,
             cols_sm=1,
@@ -245,7 +258,7 @@ def landing_page_content() -> Container:
                 "Free to use. No tracking beyond your current browser session. ",
                 A("Log in", href="/login", cls="underline"),
                 " only to save progress across visits.",
-                cls="text-base-content/50 text-xs",
+                cls="text-base-content/50 text-xs animate-in animate-in-8",
             ),
             cls="mt-10 text-center",
         ),
@@ -496,7 +509,7 @@ def quiz_area(
             autocomplete="off",
             spellcheck="false",
             autocorrect="off",
-            cls="uk-input uk-form-large w-full",
+            cls="uk-input uk-form-large w-full quiz-input",
         ),
         DivRAligned(
             Button(
@@ -733,7 +746,7 @@ def feedback_correct(
                 *([P(ctx, cls="text-base-content/60 text-xs mt-1")] if ctx else []),
             ),
         ),
-        cls="mb-4 p-4 rounded-lg border-2 border-success/40 bg-success/20 text-base-content",
+        cls="mb-4 p-4 rounded-lg border-2 border-success/40 bg-success/20 text-base-content feedback-enter",
     )
 
 
@@ -793,7 +806,7 @@ def feedback_incorrect(
             if ctx
             else []
         ),
-        cls="mb-4 p-4 rounded-lg border-2 border-error/40 bg-error/20 text-base-content",
+        cls="mb-4 p-4 rounded-lg border-2 border-error/40 bg-error/20 text-base-content feedback-enter",
     )
 
 
@@ -812,7 +825,7 @@ def _stat_metric(icon: str, value: str, label: str, color: str = "text-primary")
             ),
             P(label, cls=TextPresets.muted_sm),
         ),
-        cls="p-3 rounded-md",
+        cls="p-3 rounded-md stat-pop",
     )
 
 
