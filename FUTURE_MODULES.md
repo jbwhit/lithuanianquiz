@@ -6,20 +6,8 @@ Everything still to do — UI polish, new modules, and open issues.
 
 ## UI / UX Polish
 
-### Landing page card alignment
-"Start Practicing" buttons should be bottom-aligned across all cards, so cards with shorter descriptions don't have the button floating mid-card. Fix with flexbox (`flex flex-col justify-between h-full` on card body/footer).
-
-### 404 page
-Currently returns a raw 404. Add a friendly page with a "Back to Home" link.
-
-### /error route (OAuth failure)
-If a user denies Google consent, they land on `/error` which 404s. Add a simple "Something went wrong — try again" page.
-
 ### Mobile UX
 Layout hasn't been tested on phones. The 4-column stats grid may be cramped. The navbar with 7+ links likely needs a hamburger menu on small screens.
-
-### Input autocorrect on mobile
-`autocomplete="off"` is set, but `spellcheck="false"` and `autocorrect="off"` (Safari) should also be added to prevent autocorrect mangling Lithuanian words.
 
 ---
 
@@ -148,3 +136,7 @@ This is the full integration: number + noun + gender agreement + case.
 - ~~**Numbers 1-99**~~ — Implemented.
 - ~~**Prices**~~ — Implemented.
 - ~~**Time**~~ — Implemented. Whole hours, half past, quarter past, quarter to.
+- ~~**Landing page card alignment**~~ — Flexbox bottom-aligned buttons.
+- ~~**404 page**~~ — Friendly page with Back to Home link.
+- ~~**/error route**~~ — OAuth failure page with Try Again / Home links.
+- ~~**Input autocorrect**~~ — spellcheck=false + autocorrect=off on answer input.
