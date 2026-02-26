@@ -154,7 +154,7 @@ def landing_page_content() -> Container:
                     cls="text-xs font-bold text-success-content bg-success px-2 py-0.5 rounded-full",
                 ),
             )
-        return Card(
+        return CardContainer(
             CardHeader(DivCentered(*header_items)),
             CardBody(
                 P(description, cls="text-center text-base-content/70"),
