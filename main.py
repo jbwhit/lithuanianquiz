@@ -68,6 +68,18 @@ _goatcounter = Script(
     async_=True,
 )
 
+_custom_css = Style("""\
+.module-card {
+    transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.module-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.12),
+                0 4px 12px rgba(0, 0, 0, 0.05);
+}
+""")
+
 
 def _not_found(req, exc) -> Any:
     return page_shell(
@@ -93,7 +105,7 @@ def _not_found(req, exc) -> Any:
 
 
 app, rt = fast_app(
-    hdrs=[*Theme.green.headers(daisy=True), _favicon, _goatcounter],
+    hdrs=[*Theme.green.headers(daisy=True), _custom_css, _favicon, _goatcounter],
     secret_key="lithuanian-quiz-2025",
     title="Lithuanian Price Quiz",
     exception_handlers={404: _not_found},

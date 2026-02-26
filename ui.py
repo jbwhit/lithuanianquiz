@@ -176,7 +176,7 @@ def landing_page_content() -> Container:
                 ),
                 cls="mt-auto",
             ),
-            cls=f"shadow-lg border-t-4 {border_color} h-full flex flex-col",
+            cls=f"shadow-lg border-t-4 {border_color} h-full flex flex-col module-card",
         )
 
     return Container(
@@ -184,7 +184,7 @@ def landing_page_content() -> Container:
             Span("🇱🇹", cls="text-6xl mb-4"),
             H1("Lithuanian Practice", cls=(TextT.xl, TextT.bold)),
             P(
-                "Adaptive exercises to build your Lithuanian skills",
+                "Master Lithuanian through adaptive exercises",
                 cls=TextPresets.muted_lg,
             ),
             cls="mb-10",
