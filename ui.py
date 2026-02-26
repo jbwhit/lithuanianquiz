@@ -12,62 +12,46 @@ from time_engine import ORDINALS_GEN, ORDINALS_NOM, _next_hour
 # ------------------------------------------------------------------
 
 
+MODULE_NAMES = {"numbers-20", "numbers-99", "age", "weather", "prices", "time"}
+
+
 def page_shell(
     *content: Any,
     user_name: str | None = None,
     active_module: str | None = None,
 ) -> Div:
     """Full page wrapper with navbar."""
-    brand = DivLAligned(
-        Span("🇱🇹", cls="text-2xl mr-2"),
-        H3("Lithuanian", cls=(TextT.xl, TextT.bold, "text-primary")),
-        P("Practice", cls=TextT.muted),
-        cls="items-center",
+    brand = A(
+        DivLAligned(
+            Span("🇱🇹", cls="text-2xl mr-2"),
+            H3("Lithuanian", cls=(TextT.xl, TextT.bold, "text-primary")),
+            P("Practice", cls=TextT.muted),
+            cls="items-center",
+        ),
+        href="/",
+        cls="no-underline",
     )
+    # Modules dropdown
+    is_module_active = active_module in MODULE_NAMES
+    modules_btn = A(
+        "Modules",
+        UkIcon("chevron-down", cls="ml-1", height=14, width=14),
+        cls="uk-btn uk-btn-ghost"
+        + (" uk-active font-bold" if is_module_active else ""),
+    )
+    modules_dropdown = DropDownNavContainer(
+        Li(A("Numbers 1-20", href="/numbers-20")),
+        Li(A("Numbers 1-99", href="/numbers-99")),
+        Li(A("Age", href="/age")),
+        Li(A("Weather", href="/weather")),
+        Li(A("Prices", href="/prices")),
+        Li(A("Time", href="/time")),
+        NavDividerLi(),
+        Li(A("About", href="/about")),
+    )
+    modules_nav = Div(modules_btn, modules_dropdown, cls="inline-block")
     nav_items: list[Any] = [
-        A(
-            "Home",
-            href="/",
-            cls="uk-btn uk-btn-ghost"
-            + (" uk-active font-bold" if active_module == "home" else ""),
-        ),
-        A(
-            "1-20",
-            href="/numbers-20",
-            cls="uk-btn uk-btn-ghost"
-            + (" uk-active font-bold" if active_module == "numbers-20" else ""),
-        ),
-        A(
-            "1-99",
-            href="/numbers-99",
-            cls="uk-btn uk-btn-ghost"
-            + (" uk-active font-bold" if active_module == "numbers-99" else ""),
-        ),
-        A(
-            "Age",
-            href="/age",
-            cls="uk-btn uk-btn-ghost"
-            + (" uk-active font-bold" if active_module == "age" else ""),
-        ),
-        A(
-            "Weather",
-            href="/weather",
-            cls="uk-btn uk-btn-ghost"
-            + (" uk-active font-bold" if active_module == "weather" else ""),
-        ),
-        A(
-            "Prices",
-            href="/prices",
-            cls="uk-btn uk-btn-ghost"
-            + (" uk-active font-bold" if active_module == "prices" else ""),
-        ),
-        A(
-            "Time",
-            href="/time",
-            cls="uk-btn uk-btn-ghost"
-            + (" uk-active font-bold" if active_module == "time" else ""),
-        ),
-        A("About", href="/about", cls="uk-btn uk-btn-ghost"),
+        modules_nav,
         A("Stats", href="/stats", cls="uk-btn uk-btn-ghost"),
         A(
             "Feedback",
