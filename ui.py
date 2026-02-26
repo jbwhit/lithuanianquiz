@@ -158,6 +158,7 @@ def landing_page_content() -> Container:
             CardHeader(DivCentered(*header_items)),
             CardBody(
                 P(description, cls="text-center text-base-content/70"),
+                cls="flex-grow",
             ),
             CardFooter(
                 DivCentered(
@@ -167,8 +168,9 @@ def landing_page_content() -> Container:
                         cls=(ButtonT.primary, "px-6 py-2"),
                     ),
                 ),
+                cls="mt-auto",
             ),
-            cls=f"shadow-lg border-t-4 {border_color} h-full",
+            cls=f"shadow-lg border-t-4 {border_color} h-full flex flex-col",
         )
 
     return Container(
@@ -441,6 +443,8 @@ def quiz_area(
             placeholder="Type your answer in Lithuanian...",
             autofocus=True,
             autocomplete="off",
+            spellcheck="false",
+            autocorrect="off",
             cls="uk-input uk-form-large w-full",
         ),
         DivRAligned(

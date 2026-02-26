@@ -63,10 +63,35 @@ _goatcounter = Script(
     async_=True,
 )
 
+
+def _not_found(req, exc) -> Any:
+    return page_shell(
+        Container(
+            DivCentered(
+                Span("🇱🇹", cls="text-6xl mb-4"),
+                H2("Page Not Found", cls=(TextT.xl, TextT.bold)),
+                P(
+                    "The page you're looking for doesn't exist.",
+                    cls=TextPresets.muted_lg,
+                ),
+                A(
+                    UkIcon("arrow-left", cls="mr-2"),
+                    "Back to Home",
+                    href="/",
+                    cls="uk-btn uk-btn-primary mt-6",
+                ),
+                cls="min-h-[40vh]",
+            ),
+            cls=(ContainerT.xl, "px-8 py-16"),
+        )
+    )
+
+
 app, rt = fast_app(
     hdrs=[*Theme.green.headers(daisy=True), _favicon, _goatcounter],
     secret_key="lithuanian-quiz-2025",
     title="Lithuanian Price Quiz",
+    exception_handlers={404: _not_found},
 )
 
 oauth = QuizOAuth(app, auth_client)
@@ -223,6 +248,40 @@ def _compute_number_stats(
 # ------------------------------------------------------------------
 # Routes
 # ------------------------------------------------------------------
+
+
+@rt("/error")
+def get_error(session) -> Any:
+    return page_shell(
+        Container(
+            DivCentered(
+                Span("🇱🇹", cls="text-6xl mb-4"),
+                H2("Something Went Wrong", cls=(TextT.xl, TextT.bold)),
+                P(
+                    "Login failed. This usually happens if you cancel the Google sign-in.",
+                    cls=TextPresets.muted_lg,
+                ),
+                Div(
+                    A(
+                        UkIcon("rotate-ccw", cls="mr-2"),
+                        "Try Again",
+                        href="/login",
+                        cls="uk-btn uk-btn-primary",
+                    ),
+                    A(
+                        UkIcon("arrow-left", cls="mr-2"),
+                        "Back to Home",
+                        href="/",
+                        cls="uk-btn uk-btn-ghost ml-2",
+                    ),
+                    cls="mt-6 flex gap-2",
+                ),
+                cls="min-h-[40vh]",
+            ),
+            cls=(ContainerT.xl, "px-8 py-16"),
+        ),
+        user_name=session.get("user_name"),
+    )
 
 
 @rt("/login")
