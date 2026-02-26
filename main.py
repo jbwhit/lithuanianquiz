@@ -68,119 +68,6 @@ _goatcounter = Script(
     async_=True,
 )
 
-# ------------------------------------------------------------------
-# Custom design: Baltic Amber theme
-# ------------------------------------------------------------------
-
-_font_preconnect = (
-    Link(rel="preconnect", href="https://fonts.googleapis.com"),
-    Link(rel="preconnect", href="https://fonts.gstatic.com", crossorigin=""),
-    Link(
-        href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600;6..72,700&family=Outfit:wght@300;400;500;600;700&display=swap",
-        rel="stylesheet",
-    ),
-)
-
-_custom_css = Style("""
-/* ========== Baltic Amber Theme ========== */
-
-/* Typography */
-h1, h2, h3, h4, h5, h6 {
-    font-family: 'Newsreader', Georgia, serif !important;
-    letter-spacing: -0.02em;
-}
-body, input, button, select, textarea, p, span, a, li, label, div {
-    font-family: 'Outfit', system-ui, sans-serif !important;
-}
-h1, h2, h3, h4, h5, h6 {
-    font-family: 'Newsreader', Georgia, serif !important;
-}
-
-/* Warm parchment background */
-body {
-    background: linear-gradient(165deg, #faf8f3 0%, #f5f0e7 50%, #f0ebe0 100%) !important;
-    background-attachment: fixed !important;
-}
-
-/* ---- Entrance animations ---- */
-@keyframes fadeInUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-.animate-in { animation: fadeInUp 0.5s ease-out both; }
-.animate-in-1 { animation-delay: 0.06s; }
-.animate-in-2 { animation-delay: 0.12s; }
-.animate-in-3 { animation-delay: 0.18s; }
-.animate-in-4 { animation-delay: 0.24s; }
-.animate-in-5 { animation-delay: 0.30s; }
-.animate-in-6 { animation-delay: 0.36s; }
-.animate-in-7 { animation-delay: 0.42s; }
-.animate-in-8 { animation-delay: 0.48s; }
-
-/* ---- Card hover ---- */
-.module-card {
-    transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
-                box-shadow 0.4s cubic-bezier(0.22, 1, 0.36, 1) !important;
-}
-.module-card:hover {
-    transform: translateY(-6px) !important;
-    box-shadow: 0 20px 50px -12px rgba(74, 55, 40, 0.15),
-                0 4px 12px rgba(74, 55, 40, 0.06) !important;
-}
-
-/* ---- Hero ambient glow ---- */
-.hero-glow { position: relative; }
-.hero-glow::before {
-    content: '';
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    width: 500px; height: 300px;
-    background: radial-gradient(ellipse, rgba(199, 141, 32, 0.08) 0%, transparent 70%);
-    pointer-events: none;
-    z-index: -1;
-}
-
-/* ---- Quiz input focus ---- */
-.quiz-input:focus {
-    box-shadow: 0 0 0 3px rgba(199, 141, 32, 0.15) !important;
-    border-color: #c78d20 !important;
-    outline: none !important;
-}
-
-/* ---- Feedback slide-in ---- */
-@keyframes slideDown {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-.feedback-enter { animation: slideDown 0.3s ease-out; }
-
-/* ---- Badge pulse ---- */
-@keyframes badgePulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.3); }
-    50% { box-shadow: 0 0 12px 2px rgba(34, 197, 94, 0.15); }
-}
-.badge-glow { animation: badgePulse 2.5s ease-in-out infinite; }
-
-/* ---- Warm scrollbar ---- */
-::-webkit-scrollbar { width: 8px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(74, 55, 40, 0.15); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(74, 55, 40, 0.3); }
-
-/* ---- Stat pop-in ---- */
-@keyframes popIn {
-    0% { transform: scale(0.85); opacity: 0; }
-    60% { transform: scale(1.04); }
-    100% { transform: scale(1); opacity: 1; }
-}
-.stat-pop { animation: popIn 0.4s ease-out both; }
-
-/* ---- Subtle top-border thicken on card hover ---- */
-.module-card { border-top-width: 4px; }
-.module-card:hover { border-top-width: 5px; }
-""")
-
 
 def _not_found(req, exc) -> Any:
     return page_shell(
@@ -206,15 +93,9 @@ def _not_found(req, exc) -> Any:
 
 
 app, rt = fast_app(
-    hdrs=[
-        *Theme.green.headers(daisy=True),
-        *_font_preconnect,
-        _custom_css,
-        _favicon,
-        _goatcounter,
-    ],
+    hdrs=[*Theme.green.headers(daisy=True), _favicon, _goatcounter],
     secret_key="lithuanian-quiz-2025",
-    title="Lithuanian Practice",
+    title="Lithuanian Price Quiz",
     exception_handlers={404: _not_found},
 )
 
