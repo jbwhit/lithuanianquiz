@@ -12,7 +12,15 @@ from time_engine import ORDINALS_GEN, ORDINALS_NOM, _next_hour
 # ------------------------------------------------------------------
 
 
-MODULE_NAMES = {"numbers-20", "numbers-99", "age", "weather", "prices", "time"}
+MODULE_NAMES = {
+    "numbers-20",
+    "numbers-99",
+    "age",
+    "weather",
+    "prices",
+    "time",
+    "practice-all",
+}
 
 
 def page_shell(
@@ -47,6 +55,7 @@ def page_shell(
         Li(A("Prices", href="/prices")),
         Li(A("Time", href="/time")),
         NavDividerLi(),
+        Li(A("Practice All", href="/practice-all")),
         Li(A("About", href="/about")),
     )
     modules_nav = Div(modules_btn, modules_dropdown, cls="inline-block")
@@ -222,6 +231,17 @@ def landing_page_content() -> Container:
             cols_md=2,
             cols_sm=1,
             gap=6,
+        ),
+        Div(
+            _module_card(
+                "🎯",
+                "Practice All",
+                "Random exercises from all modules, weighted toward "
+                "your weakest areas.",
+                "/practice-all",
+                "border-t-accent",
+            ),
+            cls="mt-6 max-w-sm mx-auto",
         ),
         Div(
             P(

@@ -11,6 +11,7 @@ from fastlite import database
 from monsterui.all import *
 from number_engine import NumberEngine
 from quiz import ExerciseEngine, highlight_diff, number_pattern
+from thompson import sample_weakest as _sample_weakest
 from time_engine import TimeEngine
 from ui import (
     about_page_content,
@@ -1308,6 +1309,358 @@ _make_number_routes(
     "numbers-99",
     seed_prefix="n20",
 )
+
+
+# ------------------------------------------------------------------
+# Practice All (mix) helpers
+# ------------------------------------------------------------------
+
+_MIX_MODULES = {
+    "n20": {
+        "ensure": lambda s: _ensure_number_session(s, number_engine_20, "n20"),
+        "new_q": lambda s: _new_number_question(s, number_engine_20, "n20"),
+        "label": "1-20",
+    },
+    "n99": {
+        "ensure": lambda s: _ensure_number_session(
+            s, number_engine_99, "n99", seed_prefix="n20"
+        ),
+        "new_q": lambda s: _new_number_question(s, number_engine_99, "n99"),
+        "label": "1-99",
+    },
+    "age": {
+        "ensure": _ensure_age_session,
+        "new_q": _new_age_question,
+        "label": "Age",
+    },
+    "weather": {
+        "ensure": _ensure_weather_session,
+        "new_q": _new_weather_question,
+        "label": "Weather",
+    },
+    "prices": {
+        "ensure": _ensure_session,
+        "new_q": _new_question,
+        "label": "Prices",
+    },
+    "time": {
+        "ensure": _ensure_time_session,
+        "new_q": _new_time_question,
+        "label": "Time",
+    },
+}
+
+
+def _ensure_mix_session(session: dict[str, Any]) -> None:
+    """Initialise practice-all session and all sub-module sessions."""
+    session.setdefault("mix_history", [])
+    session.setdefault("mix_correct_count", 0)
+    session.setdefault("mix_incorrect_count", 0)
+    session.setdefault(
+        "mix_modules",
+        {m: {"correct": 0, "incorrect": 1} for m in _MIX_MODULES},
+    )
+    # Ensure every sub-module is initialised
+    for mod in _MIX_MODULES.values():
+        mod["ensure"](session)
+    if "mix_current_question" not in session:
+        _new_mix_question(session)
+
+
+def _new_mix_question(session: dict[str, Any]) -> None:
+    """Thompson-sample a module, generate a question from it."""
+    import random
+
+    if random.random() < 0.2:
+        mod_name = random.choice(list(_MIX_MODULES))
+    else:
+        mod_name = _sample_weakest(session["mix_modules"])
+
+    _MIX_MODULES[mod_name]["new_q"](session)
+    session["mix_current_module"] = mod_name
+
+    # Copy the question text from the sub-module's session key
+    q_key = {
+        "n20": "n20_current_question",
+        "n99": "n99_current_question",
+        "age": "age_current_question",
+        "weather": "weather_current_question",
+        "prices": "current_question",
+        "time": "time_current_question",
+    }[mod_name]
+    session["mix_current_question"] = session[q_key]
+
+
+def _compute_mix_stats(session: dict[str, Any]) -> dict[str, Any]:
+    return _compute_module_stats(
+        session,
+        "mix_correct_count",
+        "mix_incorrect_count",
+        "mix_history",
+        lambda s: {},  # no weak-area breakdown for mix mode
+    )
+
+
+def _check_mix_answer(
+    session: dict[str, Any], user_answer: str
+) -> tuple[bool, str, dict[str, Any], dict[str, Any] | None]:
+    """Dispatch answer check to the correct module engine.
+
+    Returns (is_correct, correct_answer, exercise_info, row_or_none).
+    """
+    mod = session["mix_current_module"]
+
+    if mod in ("n20", "n99"):
+        prefix = mod
+        eng = number_engine_20 if mod == "n20" else number_engine_99
+        row_id = session[f"{prefix}_row_id"]
+        ex_type = session[f"{prefix}_exercise_type"]
+        row = next((r for r in eng.rows if r["number"] == row_id), eng.rows[0])
+        correct = eng.correct_answer(ex_type, row)
+        is_correct = eng.check(user_answer, correct, ex_type)
+        exercise_info = {
+            "exercise_type": ex_type,
+            "number_pattern": session.get(f"{prefix}_number_pattern"),
+        }
+        eng.update(session, prefix, exercise_info, is_correct)
+        return is_correct, correct, exercise_info, row
+
+    if mod == "age":
+        from age_engine import _pronoun_by_dative
+
+        row_id = session["age_row_id"]
+        ex_type = session["age_exercise_type"]
+        pronoun_dative = session["age_pronoun"]
+        row = next((r for r in age_rows if r["number"] == row_id), age_rows[0])
+        pronoun = _pronoun_by_dative(pronoun_dative)
+        correct = age_engine.correct_answer(ex_type, row, pronoun)
+        is_correct = age_engine.check(user_answer, correct, ex_type)
+        exercise_info = {
+            "exercise_type": ex_type,
+            "number_pattern": session.get("age_number_pattern"),
+            "pronoun": pronoun_dative,
+        }
+        age_engine.update(session, "age", exercise_info, is_correct)
+        return is_correct, correct, exercise_info, row
+
+    if mod == "weather":
+        row_id = session["weather_row_id"]
+        ex_type = session["weather_exercise_type"]
+        negative = session["weather_negative"]
+        row = next((r for r in weather_rows if r["number"] == row_id), weather_rows[0])
+        correct = weather_engine.correct_answer(ex_type, row, negative)
+        is_correct = weather_engine.check(user_answer, correct, ex_type)
+        exercise_info = {
+            "exercise_type": ex_type,
+            "number_pattern": session.get("weather_number_pattern"),
+            "sign": "negative" if negative else "positive",
+        }
+        weather_engine.update(session, "weather", exercise_info, is_correct)
+        return is_correct, correct, exercise_info, row
+
+    if mod == "prices":
+        row = engine.get_row(session["row_id"])
+        correct = engine.correct_answer(session["exercise_type"], row)
+        is_correct = engine.check(user_answer, correct)
+        exercise_info = {
+            "exercise_type": session["exercise_type"],
+            "number_pattern": session.get("number_pattern"),
+            "grammatical_case": session.get("grammatical_case"),
+        }
+        adaptive.update(session, exercise_info, is_correct)
+        return is_correct, correct, exercise_info, row
+
+    # time
+    ex_type = session["time_exercise_type"]
+    correct = time_engine.correct_answer(
+        ex_type, session["time_hour"], session["time_minute"]
+    )
+    is_correct = time_engine.check(user_answer, correct)
+    exercise_info = {
+        "exercise_type": ex_type,
+        "number_pattern": session.get("time_number_pattern"),
+        "grammatical_case": session.get("time_grammatical_case"),
+    }
+    time_engine.update(session, exercise_info, is_correct)
+    return is_correct, correct, exercise_info, None
+
+
+# ------------------------------------------------------------------
+# Practice All routes
+# ------------------------------------------------------------------
+
+
+@rt("/practice-all")
+def get_practice_all(session) -> Any:
+    _ensure_mix_session(session)
+    stats = _compute_mix_stats(session)
+    history = session.get("mix_history", [])
+    mod = session.get("mix_current_module", "n20")
+    label = _MIX_MODULES[mod]["label"]
+
+    reset_modal = Modal(
+        ModalHeader(H3("Reset Progress?")),
+        ModalBody(P("This will clear your Practice All history. Are you sure?")),
+        ModalFooter(
+            Button(
+                "Cancel",
+                cls=ButtonT.ghost,
+                data_uk_toggle="target: #reset-modal",
+            ),
+            Button(
+                "Reset",
+                cls=ButtonT.destructive,
+                hx_post="/practice-all/reset",
+                hx_target="#quiz-area",
+            ),
+        ),
+        id="reset-modal",
+    )
+
+    main_content = Container(
+        H2("Practice All", cls=(TextT.xl, "mb-2")),
+        P(
+            "Random exercises from all modules, weighted toward your weak spots.",
+            cls="text-base-content/70 text-sm mb-6",
+        ),
+        quiz_area(
+            session["mix_current_question"],
+            post_url="/practice-all/answer",
+            label=label,
+        ),
+        Div(stats_panel(stats, history), cls="mt-6"),
+        Button(
+            UkIcon("refresh-ccw", cls="mr-2"),
+            "Reset Progress",
+            cls=(ButtonT.destructive, "mt-6"),
+            data_uk_toggle="target: #reset-modal",
+        ),
+        reset_modal,
+        cls=(ContainerT.xl, "px-8 py-8"),
+    )
+
+    return page_shell(
+        main_content,
+        user_name=session.get("user_name"),
+        active_module="practice-all",
+    )
+
+
+@rt("/practice-all/answer")
+def post_practice_all_answer(session, user_answer: str = "") -> Any:
+    _ensure_mix_session(session)
+
+    is_correct, correct_answer, exercise_info, row = _check_mix_answer(
+        session, user_answer
+    )
+    answered_module = session["mix_current_module"]
+
+    # Update mix-level counters
+    if is_correct:
+        session["mix_correct_count"] = session.get("mix_correct_count", 0) + 1
+    else:
+        session["mix_incorrect_count"] = session.get("mix_incorrect_count", 0) + 1
+
+    # Update mix-level Thompson Sampling
+    from thompson import bump as _bump
+
+    _bump(session["mix_modules"], answered_module, is_correct)
+
+    # History
+    diff_u, diff_c = highlight_diff(
+        user_answer.strip(), correct_answer.strip(), is_correct
+    )
+    entry = {
+        "question": session["mix_current_question"],
+        "answer": user_answer.strip(),
+        "correct": is_correct,
+        "true_answer": correct_answer.strip(),
+    }
+    history = session.get("mix_history", [])
+    history.append(entry)
+    session["mix_history"] = history[-50:]
+
+    # Pick next question
+    _new_mix_question(session)
+
+    if session.get("auth"):
+        save_progress(session["auth"], session)
+
+    # Feedback
+    ex_type = exercise_info.get("exercise_type", "")
+    if is_correct:
+        fb = feedback_correct(
+            user_answer.strip(),
+            exercise_type=ex_type,
+            grammatical_case=exercise_info.get("grammatical_case"),
+        )
+    else:
+        fb_kwargs: dict[str, Any] = {
+            "exercise_type": ex_type,
+            "number_pattern": exercise_info.get("number_pattern"),
+        }
+        if exercise_info.get("grammatical_case"):
+            fb_kwargs["grammatical_case"] = exercise_info["grammatical_case"]
+        if row:
+            fb_kwargs["row"] = row
+        if answered_module == "time":
+            fb_kwargs["hour"] = session.get("time_hour")
+        fb = feedback_incorrect(
+            user_answer.strip(),
+            correct_answer.strip(),
+            diff_u,
+            diff_c,
+            **fb_kwargs,
+        )
+
+    new_mod = session["mix_current_module"]
+    new_label = _MIX_MODULES[new_mod]["label"]
+
+    stats = _compute_mix_stats(session)
+    oob_stats = Div(
+        stats_panel(stats, session.get("mix_history", [])),
+        hx_swap_oob="true",
+        id="stats-panel",
+    )
+
+    return (
+        quiz_area(
+            session["mix_current_question"],
+            feedback=fb,
+            post_url="/practice-all/answer",
+            label=new_label,
+        ),
+        oob_stats,
+    )
+
+
+@rt("/practice-all/reset")
+def post_practice_all_reset(session) -> Any:
+    for key in [k for k in list(session.keys()) if k.startswith("mix_")]:
+        del session[key]
+
+    _ensure_mix_session(session)
+
+    if session.get("auth"):
+        save_progress(session["auth"], session)
+
+    mod = session.get("mix_current_module", "n20")
+    label = _MIX_MODULES[mod]["label"]
+
+    stats = _compute_mix_stats(session)
+    oob_stats = Div(
+        stats_panel(stats, []),
+        hx_swap_oob="true",
+        id="stats-panel",
+    )
+    return (
+        quiz_area(
+            session["mix_current_question"],
+            post_url="/practice-all/answer",
+            label=label,
+        ),
+        oob_stats,
+    )
 
 
 # ------------------------------------------------------------------
