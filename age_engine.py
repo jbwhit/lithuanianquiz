@@ -27,12 +27,43 @@ def _pronoun_by_dative(dative: str) -> dict[str, str]:
     raise ValueError(msg)
 
 
-def _number_word(row: dict[str, Any]) -> str:
-    """Build the full number word from a DB row (nominative/informal form)."""
-    parts = [row["kokia_kaina"]]
-    if row.get("kokia_kaina_compound"):
-        parts.append(row["kokia_kaina_compound"])
-    return " ".join(parts)
+# Collective numerals used with plurale tantum nouns like "metai".
+# Only the ones digit changes; decade prefixes stay cardinal.
+_COLLECTIVE: dict[str, str] = {
+    "vienas": "vieneri",
+    "du": "dveji",
+    "trys": "treji",
+    "keturi": "ketveri",
+    "penki": "penkeri",
+    "šeši": "šešeri",
+    "septyni": "septyneri",
+    "aštuoni": "aštuoneri",
+    "devyni": "devyneri",
+}
+
+
+def _age_number_word(row: dict[str, Any]) -> str:
+    """Build the number word for an age expression.
+
+    Numbers paired with 'metai' (1-9, compounds ending 1-9) require
+    collective numerals (dveji, treji, ketveri …) instead of cardinals.
+    Numbers paired with 'metų' (10-20, decades) use regular cardinals.
+    """
+    if row["years"] == "metų":
+        # Cardinal form — same as prices
+        parts = [row["kokia_kaina"]]
+        if row.get("kokia_kaina_compound"):
+            parts.append(row["kokia_kaina_compound"])
+        return " ".join(parts)
+
+    # metai → need collective numeral for the ones digit
+    compound = row.get("kokia_kaina_compound")
+    if compound:
+        # Compound number (e.g. 22 = "dvidešimt" + "du" → "dvidešimt dveji")
+        ones_collective = _COLLECTIVE.get(compound, compound)
+        return f"{row['kokia_kaina']} {ones_collective}"
+    # Simple number (e.g. 2 = "du" → "dveji")
+    return _COLLECTIVE.get(row["kokia_kaina"], row["kokia_kaina"])
 
 
 class AgeEngine:
@@ -130,7 +161,7 @@ class AgeEngine:
     ) -> str:
         """Build the correct answer for an age exercise."""
         if exercise_type == "produce":
-            return f"{pronoun['dative']} {_number_word(row)} {row['years']}."
+            return f"{pronoun['dative']} {_age_number_word(row)} {row['years']}."
         # recognize
         return str(row["number"])
 
@@ -141,7 +172,7 @@ class AgeEngine:
         if exercise_type == "produce":
             return f"{pronoun['english']} {row['number']} years old."
         # recognize: show the Lithuanian phrase
-        return f"{pronoun['dative']} {_number_word(row)} {row['years']}."
+        return f"{pronoun['dative']} {_age_number_word(row)} {row['years']}."
 
     def check(self, user_answer: str, correct_answer: str, exercise_type: str) -> bool:
         """Check whether the user's answer is correct."""

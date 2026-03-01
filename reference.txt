@@ -1,0 +1,662 @@
+======================================================================
+  LITHUANIAN PRACTICE — COMPLETE REFERENCE SHEET
+  For native speaker verification of all app expressions
+======================================================================
+
+======================================================================
+  MODULE: Numbers 1-20 & 1-99  (Nominative number words)
+======================================================================
+
+  The app asks 'How do you say N?' and expects the nominative form.
+  It also asks 'What number is <word>?' for recognition.
+
+    1  →  vienas
+    2  →  du
+    3  →  trys
+    4  →  keturi
+    5  →  penki
+    6  →  šeši
+    7  →  septyni
+    8  →  aštuoni
+    9  →  devyni
+   10  →  dešimt
+   11  →  vienuolika
+   12  →  dvylika
+   13  →  trylika
+   14  →  keturiolika
+   15  →  penkiolika
+   16  →  šešiolika
+   17  →  septyniolika
+   18  →  aštuoniolika
+   19  →  devyniolika
+   20  →  dvidešimt
+   21  →  dvidešimt vienas
+   22  →  dvidešimt du
+   23  →  dvidešimt trys
+   24  →  dvidešimt keturi
+   25  →  dvidešimt penki
+   26  →  dvidešimt šeši
+   27  →  dvidešimt septyni
+   28  →  dvidešimt aštuoni
+   29  →  dvidešimt devyni
+   30  →  trisdešimt
+   31  →  trisdešimt vienas
+   32  →  trisdešimt du
+   33  →  trisdešimt trys
+   34  →  trisdešimt keturi
+   35  →  trisdešimt penki
+   36  →  trisdešimt šeši
+   37  →  trisdešimt septyni
+   38  →  trisdešimt aštuoni
+   39  →  trisdešimt devyni
+   40  →  keturiasdešimt
+   41  →  keturiasdešimt vienas
+   42  →  keturiasdešimt du
+   43  →  keturiasdešimt trys
+   44  →  keturiasdešimt keturi
+   45  →  keturiasdešimt penki
+   46  →  keturiasdešimt šeši
+   47  →  keturiasdešimt septyni
+   48  →  keturiasdešimt aštuoni
+   49  →  keturiasdešimt devyni
+   50  →  penkiasdešimt
+   51  →  penkiasdešimt vienas
+   52  →  penkiasdešimt du
+   53  →  penkiasdešimt trys
+   54  →  penkiasdešimt keturi
+   55  →  penkiasdešimt penki
+   56  →  penkiasdešimt šeši
+   57  →  penkiasdešimt septyni
+   58  →  penkiasdešimt aštuoni
+   59  →  penkiasdešimt devyni
+   60  →  šešiasdešimt
+   61  →  šešiasdešimt vienas
+   62  →  šešiasdešimt du
+   63  →  šešiasdešimt trys
+   64  →  šešiasdešimt keturi
+   65  →  šešiasdešimt penki
+   66  →  šešiasdešimt šeši
+   67  →  šešiasdešimt septyni
+   68  →  šešiasdešimt aštuoni
+   69  →  šešiasdešimt devyni
+   70  →  septyniasdešimt
+   71  →  septyniasdešimt vienas
+   72  →  septyniasdešimt du
+   73  →  septyniasdešimt trys
+   74  →  septyniasdešimt keturi
+   75  →  septyniasdešimt penki
+   76  →  septyniasdešimt šeši
+   77  →  septyniasdešimt septyni
+   78  →  septyniasdešimt aštuoni
+   79  →  septyniasdešimt devyni
+   80  →  aštuoniasdešimt
+   81  →  aštuoniasdešimt vienas
+   82  →  aštuoniasdešimt du
+   83  →  aštuoniasdešimt trys
+   84  →  aštuoniasdešimt keturi
+   85  →  aštuoniasdešimt penki
+   86  →  aštuoniasdešimt šeši
+   87  →  aštuoniasdešimt septyni
+   88  →  aštuoniasdešimt aštuoni
+   89  →  aštuoniasdešimt devyni
+   90  →  devyniasdešimt
+   91  →  devyniasdešimt vienas
+   92  →  devyniasdešimt du
+   93  →  devyniasdešimt trys
+   94  →  devyniasdešimt keturi
+   95  →  devyniasdešimt penki
+   96  →  devyniasdešimt šeši
+   97  →  devyniasdešimt septyni
+   98  →  devyniasdešimt aštuoni
+   99  →  devyniasdešimt devyni
+
+======================================================================
+  MODULE: Age  (Dative pronoun + number + metai/metų)
+======================================================================
+
+  Pattern: <Pronoun dat.> <collective/cardinal number> <metai|metų>.
+  Numbers with "metai" use COLLECTIVE numerals (dveji, treji, ketveri …),
+  not cardinals. Numbers with "metų" use regular cardinals.
+
+
+--- Pronouns used ---
+
+  I am         → Man
+  You are      → Tau
+  He is        → Jam
+  She is       → Jai
+
+--- Year form (metai vs metų) ---
+
+  metai — numbers 1-9, compounds ending 1-9 (21, 32, …) → collective numerals
+  metų  — numbers 10-20, decades (30, 40, …) → cardinal numerals
+
+--- Collective numerals (used with plurale tantum "metai") ---
+
+  1 → vieneri    2 → dveji      3 → treji      4 → ketveri
+  5 → penkeri    6 → šešeri     7 → septyneri   8 → aštuoneri   9 → devyneri
+
+
+--- Full age expressions (one pronoun per number, rotating) ---
+
+  Pattern: <Dative> <number word> <metai|metų>.
+
+  I am           2  →  Man dveji metai.
+  You are        3  →  Tau treji metai.
+  He is          4  →  Jam ketveri metai.
+  She is         5  →  Jai penkeri metai.
+  I am           6  →  Man šešeri metai.
+  You are        7  →  Tau septyneri metai.
+  He is          8  →  Jam aštuoneri metai.
+  She is         9  →  Jai devyneri metai.
+  You are       10  →  Tau dešimt metų.
+  He is         11  →  Jam vienuolika metų.
+  She is        12  →  Jai dvylika metų.
+  I am          13  →  Man trylika metų.
+  You are       14  →  Tau keturiolika metų.
+  He is         15  →  Jam penkiolika metų.
+  She is        16  →  Jai šešiolika metų.
+  I am          17  →  Man septyniolika metų.
+  You are       18  →  Tau aštuoniolika metų.
+  He is         19  →  Jam devyniolika metų.
+  She is        20  →  Jai dvidešimt metų.
+  She is        21  →  Jai dvidešimt vieneri metai.
+  I am          22  →  Man dvidešimt dveji metai.
+  You are       23  →  Tau dvidešimt treji metai.
+  He is         24  →  Jam dvidešimt ketveri metai.
+  She is        25  →  Jai dvidešimt penkeri metai.
+  I am          26  →  Man dvidešimt šešeri metai.
+  You are       27  →  Tau dvidešimt septyneri metai.
+  He is         28  →  Jam dvidešimt aštuoneri metai.
+  She is        29  →  Jai dvidešimt devyneri metai.
+  I am          30  →  Man trisdešimt metų.
+  You are       31  →  Tau trisdešimt vieneri metai.
+  He is         32  →  Jam trisdešimt dveji metai.
+  She is        33  →  Jai trisdešimt treji metai.
+  I am          34  →  Man trisdešimt ketveri metai.
+  You are       35  →  Tau trisdešimt penkeri metai.
+  He is         36  →  Jam trisdešimt šešeri metai.
+  She is        37  →  Jai trisdešimt septyneri metai.
+  I am          38  →  Man trisdešimt aštuoneri metai.
+  You are       39  →  Tau trisdešimt devyneri metai.
+  He is         40  →  Jam keturiasdešimt metų.
+  She is        41  →  Jai keturiasdešimt vieneri metai.
+  I am          42  →  Man keturiasdešimt dveji metai.
+  You are       43  →  Tau keturiasdešimt treji metai.
+  He is         44  →  Jam keturiasdešimt ketveri metai.
+  She is        45  →  Jai keturiasdešimt penkeri metai.
+  I am          46  →  Man keturiasdešimt šešeri metai.
+  You are       47  →  Tau keturiasdešimt septyneri metai.
+  He is         48  →  Jam keturiasdešimt aštuoneri metai.
+  She is        49  →  Jai keturiasdešimt devyneri metai.
+  I am          50  →  Man penkiasdešimt metų.
+  You are       51  →  Tau penkiasdešimt vieneri metai.
+  He is         52  →  Jam penkiasdešimt dveji metai.
+  She is        53  →  Jai penkiasdešimt treji metai.
+  I am          54  →  Man penkiasdešimt ketveri metai.
+  You are       55  →  Tau penkiasdešimt penkeri metai.
+  He is         56  →  Jam penkiasdešimt šešeri metai.
+  She is        57  →  Jai penkiasdešimt septyneri metai.
+  I am          58  →  Man penkiasdešimt aštuoneri metai.
+  You are       59  →  Tau penkiasdešimt devyneri metai.
+  He is         60  →  Jam šešiasdešimt metų.
+  She is        61  →  Jai šešiasdešimt vieneri metai.
+  I am          62  →  Man šešiasdešimt dveji metai.
+  You are       63  →  Tau šešiasdešimt treji metai.
+  He is         64  →  Jam šešiasdešimt ketveri metai.
+  She is        65  →  Jai šešiasdešimt penkeri metai.
+  I am          66  →  Man šešiasdešimt šešeri metai.
+  You are       67  →  Tau šešiasdešimt septyneri metai.
+  He is         68  →  Jam šešiasdešimt aštuoneri metai.
+  She is        69  →  Jai šešiasdešimt devyneri metai.
+  I am          70  →  Man septyniasdešimt metų.
+  You are       71  →  Tau septyniasdešimt vieneri metai.
+  He is         72  →  Jam septyniasdešimt dveji metai.
+  She is        73  →  Jai septyniasdešimt treji metai.
+  I am          74  →  Man septyniasdešimt ketveri metai.
+  You are       75  →  Tau septyniasdešimt penkeri metai.
+  He is         76  →  Jam septyniasdešimt šešeri metai.
+  She is        77  →  Jai septyniasdešimt septyneri metai.
+  I am          78  →  Man septyniasdešimt aštuoneri metai.
+  You are       79  →  Tau septyniasdešimt devyneri metai.
+  He is         80  →  Jam aštuoniasdešimt metų.
+  She is        81  →  Jai aštuoniasdešimt vieneri metai.
+  I am          82  →  Man aštuoniasdešimt dveji metai.
+  You are       83  →  Tau aštuoniasdešimt treji metai.
+  He is         84  →  Jam aštuoniasdešimt ketveri metai.
+  She is        85  →  Jai aštuoniasdešimt penkeri metai.
+  I am          86  →  Man aštuoniasdešimt šešeri metai.
+  You are       87  →  Tau aštuoniasdešimt septyneri metai.
+  He is         88  →  Jam aštuoniasdešimt aštuoneri metai.
+  She is        89  →  Jai aštuoniasdešimt devyneri metai.
+  I am          90  →  Man devyniasdešimt metų.
+  You are       91  →  Tau devyniasdešimt vieneri metai.
+  He is         92  →  Jam devyniasdešimt dveji metai.
+  She is        93  →  Jai devyniasdešimt treji metai.
+  I am          94  →  Man devyniasdešimt ketveri metai.
+  You are       95  →  Tau devyniasdešimt penkeri metai.
+  He is         96  →  Jam devyniasdešimt šešeri metai.
+  She is        97  →  Jai devyniasdešimt septyneri metai.
+  I am          98  →  Man devyniasdešimt aštuoneri metai.
+  You are       99  →  Tau devyniasdešimt devyneri metai.
+
+======================================================================
+  MODULE: Weather  (number + laipsnis/laipsniai/laipsnių)
+======================================================================
+
+  Positive temperatures: 1-99°C
+  Negative temperatures: -1 to -20°C (prefixed with 'minus')
+
+
+--- Degree form rules ---
+
+  1          → laipsnis   (nom. sg.)
+  2-9, x1-x9 → laipsniai  (nom. pl.)
+  10-20, x0  → laipsnių   (gen. pl.)
+
+
+--- Positive temperatures (1-99°C) ---
+
+    1°C  →  vienas laipsnis
+    2°C  →  du laipsniai
+    3°C  →  trys laipsniai
+    4°C  →  keturi laipsniai
+    5°C  →  penki laipsniai
+    6°C  →  šeši laipsniai
+    7°C  →  septyni laipsniai
+    8°C  →  aštuoni laipsniai
+    9°C  →  devyni laipsniai
+   10°C  →  dešimt laipsnių
+   11°C  →  vienuolika laipsnių
+   12°C  →  dvylika laipsnių
+   13°C  →  trylika laipsnių
+   14°C  →  keturiolika laipsnių
+   15°C  →  penkiolika laipsnių
+   16°C  →  šešiolika laipsnių
+   17°C  →  septyniolika laipsnių
+   18°C  →  aštuoniolika laipsnių
+   19°C  →  devyniolika laipsnių
+   20°C  →  dvidešimt laipsnių
+   21°C  →  dvidešimt vienas laipsniai
+   22°C  →  dvidešimt du laipsniai
+   23°C  →  dvidešimt trys laipsniai
+   24°C  →  dvidešimt keturi laipsniai
+   25°C  →  dvidešimt penki laipsniai
+   26°C  →  dvidešimt šeši laipsniai
+   27°C  →  dvidešimt septyni laipsniai
+   28°C  →  dvidešimt aštuoni laipsniai
+   29°C  →  dvidešimt devyni laipsniai
+   30°C  →  trisdešimt laipsnių
+   31°C  →  trisdešimt vienas laipsniai
+   32°C  →  trisdešimt du laipsniai
+   33°C  →  trisdešimt trys laipsniai
+   34°C  →  trisdešimt keturi laipsniai
+   35°C  →  trisdešimt penki laipsniai
+   36°C  →  trisdešimt šeši laipsniai
+   37°C  →  trisdešimt septyni laipsniai
+   38°C  →  trisdešimt aštuoni laipsniai
+   39°C  →  trisdešimt devyni laipsniai
+   40°C  →  keturiasdešimt laipsnių
+   41°C  →  keturiasdešimt vienas laipsniai
+   42°C  →  keturiasdešimt du laipsniai
+   43°C  →  keturiasdešimt trys laipsniai
+   44°C  →  keturiasdešimt keturi laipsniai
+   45°C  →  keturiasdešimt penki laipsniai
+   46°C  →  keturiasdešimt šeši laipsniai
+   47°C  →  keturiasdešimt septyni laipsniai
+   48°C  →  keturiasdešimt aštuoni laipsniai
+   49°C  →  keturiasdešimt devyni laipsniai
+   50°C  →  penkiasdešimt laipsnių
+   51°C  →  penkiasdešimt vienas laipsniai
+   52°C  →  penkiasdešimt du laipsniai
+   53°C  →  penkiasdešimt trys laipsniai
+   54°C  →  penkiasdešimt keturi laipsniai
+   55°C  →  penkiasdešimt penki laipsniai
+   56°C  →  penkiasdešimt šeši laipsniai
+   57°C  →  penkiasdešimt septyni laipsniai
+   58°C  →  penkiasdešimt aštuoni laipsniai
+   59°C  →  penkiasdešimt devyni laipsniai
+   60°C  →  šešiasdešimt laipsnių
+   61°C  →  šešiasdešimt vienas laipsniai
+   62°C  →  šešiasdešimt du laipsniai
+   63°C  →  šešiasdešimt trys laipsniai
+   64°C  →  šešiasdešimt keturi laipsniai
+   65°C  →  šešiasdešimt penki laipsniai
+   66°C  →  šešiasdešimt šeši laipsniai
+   67°C  →  šešiasdešimt septyni laipsniai
+   68°C  →  šešiasdešimt aštuoni laipsniai
+   69°C  →  šešiasdešimt devyni laipsniai
+   70°C  →  septyniasdešimt laipsnių
+   71°C  →  septyniasdešimt vienas laipsniai
+   72°C  →  septyniasdešimt du laipsniai
+   73°C  →  septyniasdešimt trys laipsniai
+   74°C  →  septyniasdešimt keturi laipsniai
+   75°C  →  septyniasdešimt penki laipsniai
+   76°C  →  septyniasdešimt šeši laipsniai
+   77°C  →  septyniasdešimt septyni laipsniai
+   78°C  →  septyniasdešimt aštuoni laipsniai
+   79°C  →  septyniasdešimt devyni laipsniai
+   80°C  →  aštuoniasdešimt laipsnių
+   81°C  →  aštuoniasdešimt vienas laipsniai
+   82°C  →  aštuoniasdešimt du laipsniai
+   83°C  →  aštuoniasdešimt trys laipsniai
+   84°C  →  aštuoniasdešimt keturi laipsniai
+   85°C  →  aštuoniasdešimt penki laipsniai
+   86°C  →  aštuoniasdešimt šeši laipsniai
+   87°C  →  aštuoniasdešimt septyni laipsniai
+   88°C  →  aštuoniasdešimt aštuoni laipsniai
+   89°C  →  aštuoniasdešimt devyni laipsniai
+   90°C  →  devyniasdešimt laipsnių
+   91°C  →  devyniasdešimt vienas laipsniai
+   92°C  →  devyniasdešimt du laipsniai
+   93°C  →  devyniasdešimt trys laipsniai
+   94°C  →  devyniasdešimt keturi laipsniai
+   95°C  →  devyniasdešimt penki laipsniai
+   96°C  →  devyniasdešimt šeši laipsniai
+   97°C  →  devyniasdešimt septyni laipsniai
+   98°C  →  devyniasdešimt aštuoni laipsniai
+   99°C  →  devyniasdešimt devyni laipsniai
+
+--- Negative temperatures (-1 to -20°C) ---
+
+  - 1°C  →  minus vienas laipsnis
+  - 2°C  →  minus du laipsniai
+  - 3°C  →  minus trys laipsniai
+  - 4°C  →  minus keturi laipsniai
+  - 5°C  →  minus penki laipsniai
+  - 6°C  →  minus šeši laipsniai
+  - 7°C  →  minus septyni laipsniai
+  - 8°C  →  minus aštuoni laipsniai
+  - 9°C  →  minus devyni laipsniai
+  -10°C  →  minus dešimt laipsnių
+  -11°C  →  minus vienuolika laipsnių
+  -12°C  →  minus dvylika laipsnių
+  -13°C  →  minus trylika laipsnių
+  -14°C  →  minus keturiolika laipsnių
+  -15°C  →  minus penkiolika laipsnių
+  -16°C  →  minus šešiolika laipsnių
+  -17°C  →  minus septyniolika laipsnių
+  -18°C  →  minus aštuoniolika laipsnių
+  -19°C  →  minus devyniolika laipsnių
+  -20°C  →  minus dvidešimt laipsnių
+
+======================================================================
+  MODULE: Prices  (two question types)
+======================================================================
+
+  "Kokia kaina?" → nominative: <number nom.> <euro nom.>
+  "Kiek kainuoja?" → accusative: <number acc.> <euro acc.>
+
+
+--- Kokia kaina? (Nominative) ---
+
+  €  1  →  vienas euras.
+  €  2  →  du eurai.
+  €  3  →  trys eurai.
+  €  4  →  keturi eurai.
+  €  5  →  penki eurai.
+  €  6  →  šeši eurai.
+  €  7  →  septyni eurai.
+  €  8  →  aštuoni eurai.
+  €  9  →  devyni eurai.
+  € 10  →  dešimt eurų.
+  € 11  →  vienuolika eurų.
+  € 12  →  dvylika eurų.
+  € 13  →  trylika eurų.
+  € 14  →  keturiolika eurų.
+  € 15  →  penkiolika eurų.
+  € 16  →  šešiolika eurų.
+  € 17  →  septyniolika eurų.
+  € 18  →  aštuoniolika eurų.
+  € 19  →  devyniolika eurų.
+  € 20  →  dvidešimt eurų.
+  € 21  →  dvidešimt vienas euras.
+  € 22  →  dvidešimt du eurai.
+  € 23  →  dvidešimt trys eurai.
+  € 24  →  dvidešimt keturi eurai.
+  € 25  →  dvidešimt penki eurai.
+  € 26  →  dvidešimt šeši eurai.
+  € 27  →  dvidešimt septyni eurai.
+  € 28  →  dvidešimt aštuoni eurai.
+  € 29  →  dvidešimt devyni eurai.
+  € 30  →  trisdešimt eurų.
+  € 31  →  trisdešimt vienas euras.
+  € 32  →  trisdešimt du eurai.
+  € 33  →  trisdešimt trys eurai.
+  € 34  →  trisdešimt keturi eurai.
+  € 35  →  trisdešimt penki eurai.
+  € 36  →  trisdešimt šeši eurai.
+  € 37  →  trisdešimt septyni eurai.
+  € 38  →  trisdešimt aštuoni eurai.
+  € 39  →  trisdešimt devyni eurai.
+  € 40  →  keturiasdešimt eurų.
+  € 41  →  keturiasdešimt vienas euras.
+  € 42  →  keturiasdešimt du eurai.
+  € 43  →  keturiasdešimt trys eurai.
+  € 44  →  keturiasdešimt keturi eurai.
+  € 45  →  keturiasdešimt penki eurai.
+  € 46  →  keturiasdešimt šeši eurai.
+  € 47  →  keturiasdešimt septyni eurai.
+  € 48  →  keturiasdešimt aštuoni eurai.
+  € 49  →  keturiasdešimt devyni eurai.
+  € 50  →  penkiasdešimt eurų.
+  € 51  →  penkiasdešimt vienas euras.
+  € 52  →  penkiasdešimt du eurai.
+  € 53  →  penkiasdešimt trys eurai.
+  € 54  →  penkiasdešimt keturi eurai.
+  € 55  →  penkiasdešimt penki eurai.
+  € 56  →  penkiasdešimt šeši eurai.
+  € 57  →  penkiasdešimt septyni eurai.
+  € 58  →  penkiasdešimt aštuoni eurai.
+  € 59  →  penkiasdešimt devyni eurai.
+  € 60  →  šešiasdešimt eurų.
+  € 61  →  šešiasdešimt vienas euras.
+  € 62  →  šešiasdešimt du eurai.
+  € 63  →  šešiasdešimt trys eurai.
+  € 64  →  šešiasdešimt keturi eurai.
+  € 65  →  šešiasdešimt penki eurai.
+  € 66  →  šešiasdešimt šeši eurai.
+  € 67  →  šešiasdešimt septyni eurai.
+  € 68  →  šešiasdešimt aštuoni eurai.
+  € 69  →  šešiasdešimt devyni eurai.
+  € 70  →  septyniasdešimt eurų.
+  € 71  →  septyniasdešimt vienas euras.
+  € 72  →  septyniasdešimt du eurai.
+  € 73  →  septyniasdešimt trys eurai.
+  € 74  →  septyniasdešimt keturi eurai.
+  € 75  →  septyniasdešimt penki eurai.
+  € 76  →  septyniasdešimt šeši eurai.
+  € 77  →  septyniasdešimt septyni eurai.
+  € 78  →  septyniasdešimt aštuoni eurai.
+  € 79  →  septyniasdešimt devyni eurai.
+  € 80  →  aštuoniasdešimt eurų.
+  € 81  →  aštuoniasdešimt vienas euras.
+  € 82  →  aštuoniasdešimt du eurai.
+  € 83  →  aštuoniasdešimt trys eurai.
+  € 84  →  aštuoniasdešimt keturi eurai.
+  € 85  →  aštuoniasdešimt penki eurai.
+  € 86  →  aštuoniasdešimt šeši eurai.
+  € 87  →  aštuoniasdešimt septyni eurai.
+  € 88  →  aštuoniasdešimt aštuoni eurai.
+  € 89  →  aštuoniasdešimt devyni eurai.
+  € 90  →  devyniasdešimt eurų.
+  € 91  →  devyniasdešimt vienas euras.
+  € 92  →  devyniasdešimt du eurai.
+  € 93  →  devyniasdešimt trys eurai.
+  € 94  →  devyniasdešimt keturi eurai.
+  € 95  →  devyniasdešimt penki eurai.
+  € 96  →  devyniasdešimt šeši eurai.
+  € 97  →  devyniasdešimt septyni eurai.
+  € 98  →  devyniasdešimt aštuoni eurai.
+  € 99  →  devyniasdešimt devyni eurai.
+
+--- Kiek kainuoja? (Accusative) ---
+
+  €  1  →  vieną eurą.
+  €  2  →  du eurus.
+  €  3  →  tris eurus.
+  €  4  →  keturis eurus.
+  €  5  →  penkis eurus.
+  €  6  →  šešis eurus.
+  €  7  →  septynis eurus.
+  €  8  →  aštuonis eurus.
+  €  9  →  devynis eurus.
+  € 10  →  dešimt eurų.
+  € 11  →  vienuoliką eurų.
+  € 12  →  dvyliką eurų.
+  € 13  →  tryliką eurų.
+  € 14  →  keturioliką eurų.
+  € 15  →  penkioliką eurų.
+  € 16  →  šešioliką eurų.
+  € 17  →  septynioliką eurų.
+  € 18  →  aštuonioliką eurų.
+  € 19  →  devynioliką eurų.
+  € 20  →  dvidešimt eurų.
+  € 21  →  dvidešimt vieną eurą.
+  € 22  →  dvidešimt du eurus.
+  € 23  →  dvidešimt tris eurus.
+  € 24  →  dvidešimt keturis eurus.
+  € 25  →  dvidešimt penkis eurus.
+  € 26  →  dvidešimt šešis eurus.
+  € 27  →  dvidešimt septynis eurus.
+  € 28  →  dvidešimt aštuonis eurus.
+  € 29  →  dvidešimt devynis eurus.
+  € 30  →  trisdešimt eurų.
+  € 31  →  trisdešimt vieną eurą.
+  € 32  →  trisdešimt du eurus.
+  € 33  →  trisdešimt tris eurus.
+  € 34  →  trisdešimt keturis eurus.
+  € 35  →  trisdešimt penkis eurus.
+  € 36  →  trisdešimt šešis eurus.
+  € 37  →  trisdešimt septynis eurus.
+  € 38  →  trisdešimt aštuonis eurus.
+  € 39  →  trisdešimt devynis eurus.
+  € 40  →  keturiasdešimt eurų.
+  € 41  →  keturiasdešimt vieną eurą.
+  € 42  →  keturiasdešimt du eurus.
+  € 43  →  keturiasdešimt tris eurus.
+  € 44  →  keturiasdešimt keturis eurus.
+  € 45  →  keturiasdešimt penkis eurus.
+  € 46  →  keturiasdešimt šešis eurus.
+  € 47  →  keturiasdešimt septynis eurus.
+  € 48  →  keturiasdešimt aštuonis eurus.
+  € 49  →  keturiasdešimt devynis eurus.
+  € 50  →  penkiasdešimt eurų.
+  € 51  →  penkiasdešimt vieną eurą.
+  € 52  →  penkiasdešimt du eurus.
+  € 53  →  penkiasdešimt tris eurus.
+  € 54  →  penkiasdešimt keturis eurus.
+  € 55  →  penkiasdešimt penkis eurus.
+  € 56  →  penkiasdešimt šešis eurus.
+  € 57  →  penkiasdešimt septynis eurus.
+  € 58  →  penkiasdešimt aštuonis eurus.
+  € 59  →  penkiasdešimt devynis eurus.
+  € 60  →  šešiasdešimt eurų.
+  € 61  →  šešiasdešimt vieną eurą.
+  € 62  →  šešiasdešimt du eurus.
+  € 63  →  šešiasdešimt tris eurus.
+  € 64  →  šešiasdešimt keturis eurus.
+  € 65  →  šešiasdešimt penkis eurus.
+  € 66  →  šešiasdešimt šešis eurus.
+  € 67  →  šešiasdešimt septynis eurus.
+  € 68  →  šešiasdešimt aštuonis eurus.
+  € 69  →  šešiasdešimt devynis eurus.
+  € 70  →  septyniasdešimt eurų.
+  € 71  →  septyniasdešimt vieną eurą.
+  € 72  →  septyniasdešimt du eurus.
+  € 73  →  septyniasdešimt tris eurus.
+  € 74  →  septyniasdešimt keturis eurus.
+  € 75  →  septyniasdešimt penkis eurus.
+  € 76  →  septyniasdešimt šešis eurus.
+  € 77  →  septyniasdešimt septynis eurus.
+  € 78  →  septyniasdešimt aštuonis eurus.
+  € 79  →  septyniasdešimt devynis eurus.
+  € 80  →  aštuoniasdešimt eurų.
+  € 81  →  aštuoniasdešimt vieną eurą.
+  € 82  →  aštuoniasdešimt du eurus.
+  € 83  →  aštuoniasdešimt tris eurus.
+  € 84  →  aštuoniasdešimt keturis eurus.
+  € 85  →  aštuoniasdešimt penkis eurus.
+  € 86  →  aštuoniasdešimt šešis eurus.
+  € 87  →  aštuoniasdešimt septynis eurus.
+  € 88  →  aštuoniasdešimt aštuonis eurus.
+  € 89  →  aštuoniasdešimt devynis eurus.
+  € 90  →  devyniasdešimt eurų.
+  € 91  →  devyniasdešimt vieną eurą.
+  € 92  →  devyniasdešimt du eurus.
+  € 93  →  devyniasdešimt tris eurus.
+  € 94  →  devyniasdešimt keturis eurus.
+  € 95  →  devyniasdešimt penkis eurus.
+  € 96  →  devyniasdešimt šešis eurus.
+  € 97  →  devyniasdešimt septynis eurus.
+  € 98  →  devyniasdešimt aštuonis eurus.
+  € 99  →  devyniasdešimt devynis eurus.
+
+======================================================================
+  MODULE: Time  (4 time types × 12 hours)
+======================================================================
+
+
+--- Whole hours (Kelinta valanda?) ---
+
+   1:00  →  Pirma valanda
+   2:00  →  Antra valanda
+   3:00  →  Trečia valanda
+   4:00  →  Ketvirta valanda
+   5:00  →  Penkta valanda
+   6:00  →  Šešta valanda
+   7:00  →  Septinta valanda
+   8:00  →  Aštunta valanda
+   9:00  →  Devinta valanda
+  10:00  →  Dešimta valanda
+  11:00  →  Vienuolikta valanda
+  12:00  →  Dvylikta valanda
+
+--- Half past (pusė + genitive of NEXT hour) ---
+
+   1:30  →  Pusė antros
+   2:30  →  Pusė trečios
+   3:30  →  Pusė ketvirtos
+   4:30  →  Pusė penktos
+   5:30  →  Pusė šeštos
+   6:30  →  Pusė septintos
+   7:30  →  Pusė aštuntos
+   8:30  →  Pusė devintos
+   9:30  →  Pusė dešimtos
+  10:30  →  Pusė vienuoliktos
+  11:30  →  Pusė dvyliktos
+  12:30  →  Pusė pirmos
+
+--- Quarter past (ketvirtis + genitive of NEXT hour) ---
+
+   1:15  →  Ketvirtis antros
+   2:15  →  Ketvirtis trečios
+   3:15  →  Ketvirtis ketvirtos
+   4:15  →  Ketvirtis penktos
+   5:15  →  Ketvirtis šeštos
+   6:15  →  Ketvirtis septintos
+   7:15  →  Ketvirtis aštuntos
+   8:15  →  Ketvirtis devintos
+   9:15  →  Ketvirtis dešimtos
+  10:15  →  Ketvirtis vienuoliktos
+  11:15  →  Ketvirtis dvyliktos
+  12:15  →  Ketvirtis pirmos
+
+--- Quarter to (be ketvirčio + nominative of NEXT hour) ---
+
+   1:45  →  Be ketvirčio antra
+   2:45  →  Be ketvirčio trečia
+   3:45  →  Be ketvirčio ketvirta
+   4:45  →  Be ketvirčio penkta
+   5:45  →  Be ketvirčio šešta
+   6:45  →  Be ketvirčio septinta
+   7:45  →  Be ketvirčio aštunta
+   8:45  →  Be ketvirčio devinta
+   9:45  →  Be ketvirčio dešimta
+  10:45  →  Be ketvirčio vienuolikta
+  11:45  →  Be ketvirčio dvylikta
+  12:45  →  Be ketvirčio pirma
+
+======================================================================
+  END OF REFERENCE SHEET
+======================================================================

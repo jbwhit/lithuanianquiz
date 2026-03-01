@@ -48,13 +48,14 @@ MAN = {"dative": "Man", "english": "I am"}
 class TestCorrectAnswer:
     def test_produce_simple(self, engine: AgeEngine, sample_rows: list[dict]) -> None:
         assert (
-            engine.correct_answer("produce", sample_rows[0], JAM) == "Jam penki metai."
+            engine.correct_answer("produce", sample_rows[0], JAM)
+            == "Jam penkeri metai."
         )
 
     def test_produce_compound(self, engine: AgeEngine, sample_rows: list[dict]) -> None:
         assert (
             engine.correct_answer("produce", sample_rows[2], JAI)
-            == "Jai dvidešimt penki metai."
+            == "Jai dvidešimt penkeri metai."
         )
 
     def test_produce_decade(self, engine: AgeEngine, sample_rows: list[dict]) -> None:
@@ -84,19 +85,23 @@ class TestFormatQuestion:
     def test_recognize(self, engine: AgeEngine, sample_rows: list[dict]) -> None:
         assert (
             engine.format_question("recognize", sample_rows[0], JAM)
-            == "Jam penki metai."
+            == "Jam penkeri metai."
         )
 
 
 class TestCheck:
     def test_produce_correct(self, engine: AgeEngine) -> None:
-        assert engine.check("Jam penki metai.", "Jam penki metai.", "produce") is True
+        assert (
+            engine.check("Jam penkeri metai.", "Jam penkeri metai.", "produce") is True
+        )
 
     def test_produce_case_insensitive(self, engine: AgeEngine) -> None:
-        assert engine.check("jam penki metai.", "Jam penki metai.", "produce") is True
+        assert (
+            engine.check("jam penkeri metai.", "Jam penkeri metai.", "produce") is True
+        )
 
     def test_produce_wrong(self, engine: AgeEngine) -> None:
-        assert engine.check("Jam šeši metai.", "Jam penki metai.", "produce") is False
+        assert engine.check("Jam šeši metai.", "Jam penkeri metai.", "produce") is False
 
     def test_recognize_correct(self, engine: AgeEngine) -> None:
         assert engine.check("25", "25", "recognize") is True

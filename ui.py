@@ -428,7 +428,7 @@ def age_examples_section() -> Details:
         Div(
             _example(
                 "He is 25 years old.",
-                "Jam dvidešimt penki metai.",
+                "Jam dvidešimt penkeri metai.",
                 "Produce — dative pronoun + number word + metai/metų",
             ),
             _example(
