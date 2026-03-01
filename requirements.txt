@@ -1,5 +1,6 @@
-python-fasthtml
-numpy
-monsterui
-fastlite
-starlette
+python-fasthtml==0.12.1
+numpy==2.2.3
+monsterui==1.0.7
+fastlite==0.1.1
+starlette==0.45.3
+python-dotenv==1.0.1
