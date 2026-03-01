@@ -502,15 +502,15 @@
   €  8  →  aštuonis eurus.
   €  9  →  devynis eurus.
   € 10  →  dešimt eurų.
-  € 11  →  vienuoliką eurų.
-  € 12  →  dvyliką eurų.
-  € 13  →  tryliką eurų.
-  € 14  →  keturioliką eurų.
-  € 15  →  penkioliką eurų.
-  € 16  →  šešioliką eurų.
-  € 17  →  septynioliką eurų.
-  € 18  →  aštuonioliką eurų.
-  € 19  →  devynioliką eurų.
+  € 11  →  vienuolika eurų.
+  € 12  →  dvylika eurų.
+  € 13  →  trylika eurų.
+  € 14  →  keturiolika eurų.
+  € 15  →  penkiolika eurų.
+  € 16  →  šešiolika eurų.
+  € 17  →  septyniolika eurų.
+  € 18  →  aštuoniolika eurų.
+  € 19  →  devyniolika eurų.
   € 20  →  dvidešimt eurų.
   € 21  →  dvidešimt vieną eurą.
   € 22  →  dvidešimt du eurus.
