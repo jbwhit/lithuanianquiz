@@ -441,11 +441,7 @@ def post(session, user_answer: str = "") -> Any:
 
     # Return quiz area + OOB stats update
     stats = _compute_stats(session)
-    oob_stats = Div(
-        stats_panel(stats, session.get("history", [])),
-        hx_swap_oob="true",
-        id="stats-panel",
-    )
+    oob_stats = stats_panel(stats, session.get("history", []), oob=True)
 
     return (
         quiz_area(session["current_question"], feedback=fb),
@@ -479,11 +475,7 @@ def post_reset(session) -> Any:
         save_progress(session["auth"], session)
 
     stats = _compute_stats(session)
-    oob_stats = Div(
-        stats_panel(stats, []),
-        hx_swap_oob="true",
-        id="stats-panel",
-    )
+    oob_stats = stats_panel(stats, [], oob=True)
     return (
         quiz_area(session["current_question"]),
         oob_stats,
@@ -657,11 +649,7 @@ def post_time_answer(session, user_answer: str = "") -> Any:
         )
 
     stats = _compute_time_stats(session)
-    oob_stats = Div(
-        stats_panel(stats, session.get("time_history", [])),
-        hx_swap_oob="true",
-        id="stats-panel",
-    )
+    oob_stats = stats_panel(stats, session.get("time_history", []), oob=True)
 
     return (
         quiz_area(
@@ -685,11 +673,7 @@ def post_time_reset(session) -> Any:
         save_progress(session["auth"], session)
 
     stats = _compute_time_stats(session)
-    oob_stats = Div(
-        stats_panel(stats, []),
-        hx_swap_oob="true",
-        id="stats-panel",
-    )
+    oob_stats = stats_panel(stats, [], oob=True)
     return (
         quiz_area(
             session["time_current_question"], post_url="/time/answer", label="Time"
@@ -900,11 +884,7 @@ def post_age_answer(session, user_answer: str = "") -> Any:
         )
 
     stats = _compute_age_stats(session)
-    oob_stats = Div(
-        stats_panel(stats, session.get("age_history", [])),
-        hx_swap_oob="true",
-        id="stats-panel",
-    )
+    oob_stats = stats_panel(stats, session.get("age_history", []), oob=True)
 
     return (
         quiz_area(
@@ -928,11 +908,7 @@ def post_age_reset(session) -> Any:
         save_progress(session["auth"], session)
 
     stats = _compute_age_stats(session)
-    oob_stats = Div(
-        stats_panel(stats, []),
-        hx_swap_oob="true",
-        id="stats-panel",
-    )
+    oob_stats = stats_panel(stats, [], oob=True)
     return (
         quiz_area(
             session["age_current_question"],
@@ -1072,11 +1048,7 @@ def post_weather_answer(session, user_answer: str = "") -> Any:
         )
 
     stats = _compute_weather_stats(session)
-    oob_stats = Div(
-        stats_panel(stats, session.get("weather_history", [])),
-        hx_swap_oob="true",
-        id="stats-panel",
-    )
+    oob_stats = stats_panel(stats, session.get("weather_history", []), oob=True)
 
     return (
         quiz_area(
@@ -1100,11 +1072,7 @@ def post_weather_reset(session) -> Any:
         save_progress(session["auth"], session)
 
     stats = _compute_weather_stats(session)
-    oob_stats = Div(
-        stats_panel(stats, []),
-        hx_swap_oob="true",
-        id="stats-panel",
-    )
+    oob_stats = stats_panel(stats, [], oob=True)
     return (
         quiz_area(
             session["weather_current_question"],
@@ -1255,10 +1223,8 @@ def _make_number_routes(
             )
 
         stats = _compute_number_stats(session, prefix, engine_inst)
-        oob_stats = Div(
-            stats_panel(stats, session.get(f"{prefix}_history", [])),
-            hx_swap_oob="true",
-            id="stats-panel",
+        oob_stats = stats_panel(
+            stats, session.get(f"{prefix}_history", []), oob=True
         )
 
         return (
@@ -1282,11 +1248,7 @@ def _make_number_routes(
             save_progress(session["auth"], session)
 
         stats = _compute_number_stats(session, prefix, engine_inst)
-        oob_stats = Div(
-            stats_panel(stats, []),
-            hx_swap_oob="true",
-            id="stats-panel",
-        )
+        oob_stats = stats_panel(stats, [], oob=True)
         return (
             quiz_area(
                 session[f"{prefix}_current_question"],
@@ -1623,11 +1585,7 @@ def post_practice_all_answer(session, user_answer: str = "") -> Any:
     new_label = _MIX_MODULES[new_mod]["label"]
 
     stats = _compute_mix_stats(session)
-    oob_stats = Div(
-        stats_panel(stats, session.get("mix_history", [])),
-        hx_swap_oob="true",
-        id="stats-panel",
-    )
+    oob_stats = stats_panel(stats, session.get("mix_history", []), oob=True)
 
     return (
         quiz_area(
@@ -1654,11 +1612,7 @@ def post_practice_all_reset(session) -> Any:
     label = _MIX_MODULES[mod]["label"]
 
     stats = _compute_mix_stats(session)
-    oob_stats = Div(
-        stats_panel(stats, []),
-        hx_swap_oob="true",
-        id="stats-panel",
-    )
+    oob_stats = stats_panel(stats, [], oob=True)
     return (
         quiz_area(
             session["mix_current_question"],

@@ -954,7 +954,9 @@ def _history_card(history: list[dict[str, Any]]) -> Card:
     )
 
 
-def stats_panel(stats: dict[str, Any], history: list[dict[str, Any]]) -> Div:
+def stats_panel(
+    stats: dict[str, Any], history: list[dict[str, Any]], *, oob: bool = False
+) -> Div:
     """Full right-side stats panel for OOB swap."""
     metrics = Grid(
         _stat_metric("list", str(stats["total"]), "Total", "text-primary"),
@@ -974,6 +976,9 @@ def stats_panel(stats: dict[str, Any], history: list[dict[str, Any]]) -> Div:
     weak = _weak_areas_section(stats.get("weak_areas", {}))
     hist = _history_card(history)
 
+    kwargs: dict[str, Any] = {"id": "stats-panel"}
+    if oob:
+        kwargs["hx_swap_oob"] = "true"
     return Div(
         metrics,
         _accuracy_bar(stats["accuracy"]),
@@ -985,7 +990,7 @@ def stats_panel(stats: dict[str, Any], history: list[dict[str, Any]]) -> Div:
             cols_sm=1,
             gap=6,
         ),
-        id="stats-panel",
+        **kwargs,
     )
 
 

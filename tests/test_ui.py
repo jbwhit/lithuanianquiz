@@ -1,7 +1,7 @@
 """Tests for ui.py — quiz area and HTMX swap behaviour."""
 
 from fasthtml.common import to_xml
-from ui import feedback_incorrect, quiz_area
+from ui import feedback_incorrect, quiz_area, stats_panel
 
 
 def _render(component: object) -> str:
@@ -61,3 +61,33 @@ class TestQuizAreaHtmxSwap:
         html = _render(quiz_area("Q?"))
         assert "Not quite right" not in html
         assert "Correct!" not in html
+
+
+class TestStatsPanelOob:
+    """Ensure OOB stats swap doesn't produce duplicate stats-panel IDs."""
+
+    _STATS = {
+        "total": 5,
+        "correct": 3,
+        "incorrect": 2,
+        "accuracy": 60.0,
+        "current_streak": 1,
+        "weak_areas": {},
+    }
+
+    def test_stats_panel_has_single_id(self) -> None:
+        html = _render(stats_panel(self._STATS, []))
+        assert html.count('id="stats-panel"') == 1
+
+    def test_oob_panel_has_single_id(self) -> None:
+        """OOB mode must not double-wrap with a second stats-panel id."""
+        html = _render(stats_panel(self._STATS, [], oob=True))
+        assert html.count('id="stats-panel"') == 1
+
+    def test_oob_panel_has_swap_attr(self) -> None:
+        html = _render(stats_panel(self._STATS, [], oob=True))
+        assert 'hx-swap-oob="true"' in html
+
+    def test_non_oob_panel_lacks_swap_attr(self) -> None:
+        html = _render(stats_panel(self._STATS, []))
+        assert "hx-swap-oob" not in html
