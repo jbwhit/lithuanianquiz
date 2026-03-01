@@ -512,6 +512,7 @@ def quiz_area(
         ),
         hx_post=post_url,
         hx_target="#quiz-area",
+        hx_swap="outerHTML",
     )
 
     card = Card(
