@@ -20,6 +20,8 @@ auth_client = GoogleAppClient(
     os.environ.get("GOOGLE_CLIENT_SECRET", "test"),
 )
 
+_SESSION_HISTORY_LIMIT = 5
+
 
 def init_db_tables() -> None:
     """Create users and user_progress tables if they don't exist."""
@@ -71,37 +73,39 @@ def load_progress(google_id: str, session: dict[str, Any]) -> None:
         # Price progress
         session["correct_count"] = data.get("correct_count", 0)
         session["incorrect_count"] = data.get("incorrect_count", 0)
-        session["history"] = data.get("history", [])
+        session["history"] = data.get("history", [])[-_SESSION_HISTORY_LIMIT:]
         session["performance"] = data.get("performance", {})
         # Time progress
         session["time_correct_count"] = data.get("time_correct_count", 0)
         session["time_incorrect_count"] = data.get("time_incorrect_count", 0)
-        session["time_history"] = data.get("time_history", [])
+        session["time_history"] = data.get("time_history", [])[-_SESSION_HISTORY_LIMIT:]
         session["time_performance"] = data.get("time_performance", {})
         # Numbers 1-20 progress
         session["n20_correct_count"] = data.get("n20_correct_count", 0)
         session["n20_incorrect_count"] = data.get("n20_incorrect_count", 0)
-        session["n20_history"] = data.get("n20_history", [])
+        session["n20_history"] = data.get("n20_history", [])[-_SESSION_HISTORY_LIMIT:]
         session["n20_performance"] = data.get("n20_performance", {})
         # Numbers 1-99 progress
         session["n99_correct_count"] = data.get("n99_correct_count", 0)
         session["n99_incorrect_count"] = data.get("n99_incorrect_count", 0)
-        session["n99_history"] = data.get("n99_history", [])
+        session["n99_history"] = data.get("n99_history", [])[-_SESSION_HISTORY_LIMIT:]
         session["n99_performance"] = data.get("n99_performance", {})
         # Age progress
         session["age_correct_count"] = data.get("age_correct_count", 0)
         session["age_incorrect_count"] = data.get("age_incorrect_count", 0)
-        session["age_history"] = data.get("age_history", [])
+        session["age_history"] = data.get("age_history", [])[-_SESSION_HISTORY_LIMIT:]
         session["age_performance"] = data.get("age_performance", {})
         # Weather progress
         session["weather_correct_count"] = data.get("weather_correct_count", 0)
         session["weather_incorrect_count"] = data.get("weather_incorrect_count", 0)
-        session["weather_history"] = data.get("weather_history", [])
+        session["weather_history"] = data.get("weather_history", [])[
+            -_SESSION_HISTORY_LIMIT:
+        ]
         session["weather_performance"] = data.get("weather_performance", {})
         # Practice-all progress
         session["mix_correct_count"] = data.get("mix_correct_count", 0)
         session["mix_incorrect_count"] = data.get("mix_incorrect_count", 0)
-        session["mix_history"] = data.get("mix_history", [])
+        session["mix_history"] = data.get("mix_history", [])[-_SESSION_HISTORY_LIMIT:]
         mix_modules = data.get("mix_modules")
         if isinstance(mix_modules, dict) and mix_modules:
             session["mix_modules"] = mix_modules
@@ -114,37 +118,39 @@ def save_progress(google_id: str, session: dict[str, Any]) -> None:
             # Price progress
             "correct_count": session.get("correct_count", 0),
             "incorrect_count": session.get("incorrect_count", 0),
-            "history": session.get("history", []),
+            "history": session.get("history", [])[-_SESSION_HISTORY_LIMIT:],
             "performance": session.get("performance", {}),
             # Time progress
             "time_correct_count": session.get("time_correct_count", 0),
             "time_incorrect_count": session.get("time_incorrect_count", 0),
-            "time_history": session.get("time_history", []),
+            "time_history": session.get("time_history", [])[-_SESSION_HISTORY_LIMIT:],
             "time_performance": session.get("time_performance", {}),
             # Numbers 1-20 progress
             "n20_correct_count": session.get("n20_correct_count", 0),
             "n20_incorrect_count": session.get("n20_incorrect_count", 0),
-            "n20_history": session.get("n20_history", []),
+            "n20_history": session.get("n20_history", [])[-_SESSION_HISTORY_LIMIT:],
             "n20_performance": session.get("n20_performance", {}),
             # Numbers 1-99 progress
             "n99_correct_count": session.get("n99_correct_count", 0),
             "n99_incorrect_count": session.get("n99_incorrect_count", 0),
-            "n99_history": session.get("n99_history", []),
+            "n99_history": session.get("n99_history", [])[-_SESSION_HISTORY_LIMIT:],
             "n99_performance": session.get("n99_performance", {}),
             # Age progress
             "age_correct_count": session.get("age_correct_count", 0),
             "age_incorrect_count": session.get("age_incorrect_count", 0),
-            "age_history": session.get("age_history", []),
+            "age_history": session.get("age_history", [])[-_SESSION_HISTORY_LIMIT:],
             "age_performance": session.get("age_performance", {}),
             # Weather progress
             "weather_correct_count": session.get("weather_correct_count", 0),
             "weather_incorrect_count": session.get("weather_incorrect_count", 0),
-            "weather_history": session.get("weather_history", []),
+            "weather_history": session.get("weather_history", [])[
+                -_SESSION_HISTORY_LIMIT:
+            ],
             "weather_performance": session.get("weather_performance", {}),
             # Practice-all progress
             "mix_correct_count": session.get("mix_correct_count", 0),
             "mix_incorrect_count": session.get("mix_incorrect_count", 0),
-            "mix_history": session.get("mix_history", []),
+            "mix_history": session.get("mix_history", [])[-_SESSION_HISTORY_LIMIT:],
             "mix_modules": session.get("mix_modules"),
         }
     )

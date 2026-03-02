@@ -120,6 +120,17 @@ oauth = QuizOAuth(app, auth_client)
 # Session helpers
 # ------------------------------------------------------------------
 
+_SESSION_HISTORY_LIMIT = 5
+
+
+def _append_history_entry(
+    session: dict[str, Any], history_key: str, entry: dict[str, Any]
+) -> None:
+    """Append one history entry and keep only the most recent N entries."""
+    history = session.get(history_key, [])
+    history.append(entry)
+    session[history_key] = history[-_SESSION_HISTORY_LIMIT:]
+
 
 def _ensure_session(session: dict[str, Any]) -> None:
     """Initialise defaults and generate first question if needed."""
@@ -403,9 +414,7 @@ def post(session, user_answer: str = "") -> Any:
         "correct": is_correct,
         "true_answer": correct_answer.strip(),
     }
-    history = session.get("history", [])
-    history.append(entry)
-    session["history"] = history[-50:]
+    _append_history_entry(session, "history", entry)
 
     # Update adaptive model
     exercise_info = {
@@ -489,12 +498,6 @@ def post_reset(session) -> Any:
 
 @rt("/stats")
 def get_stats(session) -> Any:
-    _ensure_session(session)
-    _ensure_time_session(session)
-    _ensure_number_session(session, number_engine_20, "n20")
-    _ensure_number_session(session, number_engine_99, "n99", seed_prefix="n20")
-    _ensure_age_session(session)
-    _ensure_weather_session(session)
     stats = _compute_stats(session)
     time_stats = _compute_time_stats(session)
     n20_stats = _compute_number_stats(session, "n20", number_engine_20)
@@ -617,9 +620,7 @@ def post_time_answer(session, user_answer: str = "") -> Any:
         "correct": is_correct,
         "true_answer": correct_answer.strip(),
     }
-    history = session.get("time_history", [])
-    history.append(entry)
-    session["time_history"] = history[-50:]
+    _append_history_entry(session, "time_history", entry)
 
     exercise_info = {
         "exercise_type": session["time_exercise_type"],
@@ -863,9 +864,7 @@ def post_age_answer(session, user_answer: str = "") -> Any:
         "correct": is_correct,
         "true_answer": correct.strip(),
     }
-    history = session.get("age_history", [])
-    history.append(entry)
-    session["age_history"] = history[-50:]
+    _append_history_entry(session, "age_history", entry)
 
     exercise_info = {
         "exercise_type": ex_type,
@@ -1031,9 +1030,7 @@ def post_weather_answer(session, user_answer: str = "") -> Any:
         "correct": is_correct,
         "true_answer": correct.strip(),
     }
-    history = session.get("weather_history", [])
-    history.append(entry)
-    session["weather_history"] = history[-50:]
+    _append_history_entry(session, "weather_history", entry)
 
     exercise_info = {
         "exercise_type": ex_type,
@@ -1211,9 +1208,7 @@ def _make_number_routes(
             "correct": is_correct,
             "true_answer": correct.strip(),
         }
-        history = session.get(f"{prefix}_history", [])
-        history.append(entry)
-        session[f"{prefix}_history"] = history[-50:]
+        _append_history_entry(session, f"{prefix}_history", entry)
 
         exercise_info = {
             "exercise_type": ex_type,
@@ -1335,6 +1330,62 @@ _MIX_MODULES = {
     },
 }
 
+_MIX_TRANSIENT_KEYS: dict[str, tuple[str, ...]] = {
+    "n20": (
+        "n20_exercise_type",
+        "n20_row_id",
+        "n20_number_pattern",
+        "n20_current_question",
+    ),
+    "n99": (
+        "n99_exercise_type",
+        "n99_row_id",
+        "n99_number_pattern",
+        "n99_current_question",
+    ),
+    "age": (
+        "age_exercise_type",
+        "age_row_id",
+        "age_number_pattern",
+        "age_pronoun",
+        "age_current_question",
+    ),
+    "weather": (
+        "weather_exercise_type",
+        "weather_row_id",
+        "weather_number_pattern",
+        "weather_negative",
+        "weather_current_question",
+    ),
+    "prices": (
+        "exercise_type",
+        "price",
+        "item",
+        "row_id",
+        "number_pattern",
+        "grammatical_case",
+        "current_question",
+    ),
+    "time": (
+        "time_exercise_type",
+        "time_hour",
+        "time_minute",
+        "time_display",
+        "time_number_pattern",
+        "time_grammatical_case",
+        "time_current_question",
+    ),
+}
+
+
+def _clear_mix_transient_state(session: dict[str, Any], keep_module: str) -> None:
+    """Drop stale per-module question keys not needed for the next mix step."""
+    for mod, keys in _MIX_TRANSIENT_KEYS.items():
+        if mod == keep_module:
+            continue
+        for key in keys:
+            session.pop(key, None)
+
 
 def _ensure_mix_session(session: dict[str, Any]) -> None:
     """Initialise practice-all session and all sub-module sessions."""
@@ -1345,9 +1396,6 @@ def _ensure_mix_session(session: dict[str, Any]) -> None:
         "mix_modules",
         {m: {"correct": 0, "incorrect": 1} for m in _MIX_MODULES},
     )
-    # Ensure every sub-module is initialised
-    for mod in _MIX_MODULES.values():
-        mod["ensure"](session)
     if "mix_current_question" not in session:
         _new_mix_question(session)
 
@@ -1361,10 +1409,6 @@ def _new_mix_question(session: dict[str, Any]) -> None:
     else:
         mod_name = _sample_weakest(session["mix_modules"])
 
-    _MIX_MODULES[mod_name]["new_q"](session)
-    session["mix_current_module"] = mod_name
-
-    # Copy the question text from the sub-module's session key
     q_key = {
         "n20": "n20_current_question",
         "n99": "n99_current_question",
@@ -1373,6 +1417,11 @@ def _new_mix_question(session: dict[str, Any]) -> None:
         "prices": "current_question",
         "time": "time_current_question",
     }[mod_name]
+    _clear_mix_transient_state(session, keep_module=mod_name)
+    _MIX_MODULES[mod_name]["new_q"](session)
+    session["mix_current_module"] = mod_name
+
+    # Copy the question text from the sub-module's session key
     session["mix_current_question"] = session[q_key]
 
 
@@ -1563,9 +1612,7 @@ def post_practice_all_answer(session, user_answer: str = "") -> Any:
         "correct": is_correct,
         "true_answer": correct_answer.strip(),
     }
-    history = session.get("mix_history", [])
-    history.append(entry)
-    session["mix_history"] = history[-50:]
+    _append_history_entry(session, "mix_history", entry)
 
     # Pick next question
     _new_mix_question(session)
