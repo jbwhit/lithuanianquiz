@@ -1,6 +1,8 @@
 """Lithuanian Price Exercise App — adaptive quiz with HTMX partials."""
 
 import logging
+import os
+import secrets
 from typing import Any
 
 from adaptive import AdaptiveLearning
@@ -107,7 +109,7 @@ def _not_found(req, exc) -> Any:
 
 app, rt = fast_app(
     hdrs=[*Theme.green.headers(daisy=True), _custom_css, _favicon, _goatcounter],
-    secret_key="lithuanian-quiz-2025",
+    secret_key=os.environ.get("LQ_SECRET_KEY") or secrets.token_urlsafe(32),
     title="Lithuanian Price Quiz",
     exception_handlers={404: _not_found},
 )
@@ -1538,6 +1540,7 @@ def post_practice_all_answer(session, user_answer: str = "") -> Any:
         session, user_answer
     )
     answered_module = session["mix_current_module"]
+    answered_hour = session.get("time_hour") if answered_module == "time" else None
 
     # Update mix-level counters
     if is_correct:
@@ -1591,7 +1594,7 @@ def post_practice_all_answer(session, user_answer: str = "") -> Any:
         if row:
             fb_kwargs["row"] = row
         if answered_module == "time":
-            fb_kwargs["hour"] = session.get("time_hour")
+            fb_kwargs["hour"] = answered_hour
         fb = feedback_incorrect(
             user_answer.strip(),
             correct_answer.strip(),
