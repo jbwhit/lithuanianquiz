@@ -726,6 +726,7 @@ def feedback_correct(
     user_answer: str,
     exercise_type: str | None = None,
     grammatical_case: str | None = None,
+    question: str | None = None,
 ) -> Div:
     """Green inline alert for correct answer."""
     ctx = _exercise_context_text(exercise_type, grammatical_case)
@@ -734,6 +735,11 @@ def feedback_correct(
             UkIcon("check-circle", cls="text-success mr-2"),
             Div(
                 P("Correct!", cls=(TextT.bold, "text-success")),
+                *(
+                    [P(question, cls="text-base-content/70 text-sm italic")]
+                    if question
+                    else []
+                ),
                 P(f"Your answer: {user_answer}", cls=TextT.sm),
                 *([P(ctx, cls="text-base-content/60 text-xs mt-1")] if ctx else []),
             ),
@@ -752,6 +758,7 @@ def feedback_incorrect(
     number_pattern: str | None = None,
     row: dict[str, Any] | None = None,
     hour: int | None = None,
+    question: str | None = None,
 ) -> Div:
     """Red inline alert with diff highlighting and grammar context."""
     ctx = _exercise_context_text(exercise_type, grammatical_case)
@@ -769,6 +776,11 @@ def feedback_incorrect(
             UkIcon("x-circle", cls="text-error mr-2", height=24, width=24),
             Div(
                 P("Not quite right", cls=(TextT.bold, "text-error")),
+                *(
+                    [P(question, cls="text-base-content/70 text-sm italic")]
+                    if question
+                    else []
+                ),
             ),
         ),
         Div(

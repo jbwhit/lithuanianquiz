@@ -421,11 +421,13 @@ def post(session, user_answer: str = "") -> Any:
         save_progress(session["auth"], session)
 
     # Build feedback
+    asked = entry["question"]
     if is_correct:
         fb = feedback_correct(
             user_answer.strip(),
             exercise_type=exercise_info["exercise_type"],
             grammatical_case=exercise_info["grammatical_case"],
+            question=asked,
         )
     else:
         fb = feedback_incorrect(
@@ -437,6 +439,7 @@ def post(session, user_answer: str = "") -> Any:
             grammatical_case=exercise_info["grammatical_case"],
             number_pattern=exercise_info["number_pattern"],
             row=row,
+            question=asked,
         )
 
     # Return quiz area + OOB stats update
@@ -630,11 +633,13 @@ def post_time_answer(session, user_answer: str = "") -> Any:
     if session.get("auth"):
         save_progress(session["auth"], session)
 
+    asked = entry["question"]
     if is_correct:
         fb = feedback_correct(
             user_answer.strip(),
             exercise_type=exercise_info["exercise_type"],
             grammatical_case=exercise_info["grammatical_case"],
+            question=asked,
         )
     else:
         fb = feedback_incorrect(
@@ -646,6 +651,7 @@ def post_time_answer(session, user_answer: str = "") -> Any:
             grammatical_case=exercise_info["grammatical_case"],
             number_pattern=exercise_info["number_pattern"],
             hour=answered_hour,
+            question=asked,
         )
 
     stats = _compute_time_stats(session)
@@ -871,8 +877,11 @@ def post_age_answer(session, user_answer: str = "") -> Any:
     if session.get("auth"):
         save_progress(session["auth"], session)
 
+    asked = entry["question"]
     if is_correct:
-        fb = feedback_correct(user_answer.strip(), exercise_type=ex_type)
+        fb = feedback_correct(
+            user_answer.strip(), exercise_type=ex_type, question=asked
+        )
     else:
         fb = feedback_incorrect(
             user_answer.strip(),
@@ -881,6 +890,7 @@ def post_age_answer(session, user_answer: str = "") -> Any:
             diff_c,
             exercise_type=ex_type,
             number_pattern=exercise_info["number_pattern"],
+            question=asked,
         )
 
     stats = _compute_age_stats(session)
@@ -1035,8 +1045,11 @@ def post_weather_answer(session, user_answer: str = "") -> Any:
     if session.get("auth"):
         save_progress(session["auth"], session)
 
+    asked = entry["question"]
     if is_correct:
-        fb = feedback_correct(user_answer.strip(), exercise_type=ex_type)
+        fb = feedback_correct(
+            user_answer.strip(), exercise_type=ex_type, question=asked
+        )
     else:
         fb = feedback_incorrect(
             user_answer.strip(),
@@ -1045,6 +1058,7 @@ def post_weather_answer(session, user_answer: str = "") -> Any:
             diff_c,
             exercise_type=ex_type,
             number_pattern=exercise_info["number_pattern"],
+            question=asked,
         )
 
     stats = _compute_weather_stats(session)
@@ -1210,8 +1224,11 @@ def _make_number_routes(
         if session.get("auth"):
             save_progress(session["auth"], session)
 
+        asked = entry["question"]
         if is_correct:
-            fb = feedback_correct(user_answer.strip(), exercise_type=ex_type)
+            fb = feedback_correct(
+                user_answer.strip(), exercise_type=ex_type, question=asked
+            )
         else:
             fb = feedback_incorrect(
                 user_answer.strip(),
@@ -1220,6 +1237,7 @@ def _make_number_routes(
                 diff_c,
                 exercise_type=ex_type,
                 number_pattern=exercise_info["number_pattern"],
+                question=asked,
             )
 
         stats = _compute_number_stats(session, prefix, engine_inst)
@@ -1555,17 +1573,20 @@ def post_practice_all_answer(session, user_answer: str = "") -> Any:
         save_progress(session["auth"], session)
 
     # Feedback
+    asked = entry["question"]
     ex_type = exercise_info.get("exercise_type", "")
     if is_correct:
         fb = feedback_correct(
             user_answer.strip(),
             exercise_type=ex_type,
             grammatical_case=exercise_info.get("grammatical_case"),
+            question=asked,
         )
     else:
         fb_kwargs: dict[str, Any] = {
             "exercise_type": ex_type,
             "number_pattern": exercise_info.get("number_pattern"),
+            "question": asked,
         }
         if exercise_info.get("grammatical_case"):
             fb_kwargs["grammatical_case"] = exercise_info["grammatical_case"]
