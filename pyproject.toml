@@ -18,6 +18,7 @@ data = ["pandas>=2.2.3"]
 
 [tool.ruff]
 line-length = 88
+exclude = ["create-database.ipynb", "database-testing.ipynb", "credentials-checker.py"]
 
 [tool.ruff.lint]
 select = [

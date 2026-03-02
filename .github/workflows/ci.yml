@@ -22,16 +22,13 @@ jobs:
           python-version: "3.13"
 
       - name: Install dependencies
-        run: uv sync
-
-      - name: Install dev tools
-        run: uv pip install ruff pytest
+        run: uv sync --extra dev
 
       - name: Lint
-        run: uv run ruff check main.py quiz.py adaptive.py ui.py tests/
+        run: uv run ruff check .
 
       - name: Format check
-        run: uv run ruff format --check main.py quiz.py adaptive.py ui.py tests/
+        run: uv run ruff format --check .
 
       - name: Test
         run: uv run pytest

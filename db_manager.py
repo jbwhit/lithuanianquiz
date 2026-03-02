@@ -17,12 +17,13 @@ from fastlite import database
 # Set up logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler(sys.stdout)]
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
 )
-logger = logging.getLogger('lithuanian-db')
+logger = logging.getLogger("lithuanian-db")
 
-T = TypeVar('T')
+T = TypeVar("T")
+
 
 # Base dataclass for numbers table - this represents our "expected" schema
 @dataclass
@@ -41,6 +42,7 @@ class Numbers:
     cent_acc: str = ""
     # Default values for all fields to handle missing columns
 
+
 @dataclass
 class Attempt:
     user_id: int
@@ -49,6 +51,7 @@ class Attempt:
     timestamp: str
     grammar_tested: str = ""
     exercise_id: int = 0
+
 
 def read_latest_dated_csv(directory="data", prefix="numbers_"):
     """
@@ -75,7 +78,7 @@ def read_latest_dated_csv(directory="data", prefix="numbers_"):
     # Function to extract date from filename and convert to datetime object
     def extract_date(filename):
         # Extract date using regex - looking for YYYY-MM-DD pattern
-        match = re.search(r'(\d{4}-\d{2}-\d{2})', filename)
+        match = re.search(r"(\d{4}-\d{2}-\d{2})", filename)
         if match:
             date_str = match.group(1)
             return datetime.strptime(date_str, "%Y-%m-%d")
@@ -89,27 +92,32 @@ def read_latest_dated_csv(directory="data", prefix="numbers_"):
     # Read and return the data
     return pd.read_csv(latest_file), latest_file
 
+
 def get_dataclass_field_names(cls: type[T]) -> set[str]:
     """Get the field names of a dataclass."""
     return {f.name for f in fields(cls)}
+
 
 def get_dataclass_field_types(cls: type[T]) -> dict[str, type]:
     """Get the field names and types of a dataclass."""
     return {f.name: f.type for f in fields(cls)}
 
+
 def detect_column_type(series: pd.Series) -> type:
     """Detect the appropriate Python type for a pandas Series."""
-    if series.dtype == 'int64':
+    if series.dtype == "int64":
         return int
-    elif series.dtype == 'float64':
+    elif series.dtype == "float64":
         return float
-    elif series.dtype == 'bool':
+    elif series.dtype == "bool":
         return bool
     else:
         return str
 
-def generate_dynamic_dataclass(df: pd.DataFrame, base_class: type[T] | None = None,
-                               name: str = "DynamicTable") -> type:
+
+def generate_dynamic_dataclass(
+    df: pd.DataFrame, base_class: type[T] | None = None, name: str = "DynamicTable"
+) -> type:
     """
     Generate a dataclass dynamically based on DataFrame columns and an optional base class.
 
@@ -138,6 +146,7 @@ def generate_dynamic_dataclass(df: pd.DataFrame, base_class: type[T] | None = No
     # Create and return the dynamic dataclass
     return make_dataclass(name, fields_list)
 
+
 def backup_database(db_path: str) -> str:
     """Create a backup of the database before making changes."""
     if not os.path.exists(db_path):
@@ -146,11 +155,15 @@ def backup_database(db_path: str) -> str:
 
     backup_path = f"{db_path}.{datetime.now().strftime('%Y%m%d%H%M%S')}.bak"
     import shutil
+
     shutil.copy2(db_path, backup_path)
     logger.info(f"Created database backup at {backup_path}")
     return backup_path
 
-def compare_schemas(existing_fields: set, new_fields: set, dynamic_schema: bool, logger) -> None:
+
+def compare_schemas(
+    existing_fields: set, new_fields: set, dynamic_schema: bool, logger
+) -> None:
     """Log schema differences between existing table and new data."""
     if not existing_fields:
         return
@@ -159,8 +172,12 @@ def compare_schemas(existing_fields: set, new_fields: set, dynamic_schema: bool,
     only_in_new = new_fields - existing_fields
 
     if only_in_existing:
-        logger.warning(f"Fields in existing table but not in new data: {only_in_existing}")
-        logger.warning("These fields will be preserved but may contain NULL values for new records")
+        logger.warning(
+            f"Fields in existing table but not in new data: {only_in_existing}"
+        )
+        logger.warning(
+            "These fields will be preserved but may contain NULL values for new records"
+        )
 
     if only_in_new:
         logger.warning(f"Fields in new data but not in existing table: {only_in_new}")
@@ -169,7 +186,10 @@ def compare_schemas(existing_fields: set, new_fields: set, dynamic_schema: bool,
         else:
             logger.warning("These fields will be ignored (dynamic_schema=False)")
 
-def process_records(table, records: list, pk_field: str, existing_pks: set, backup_path: str, logger) -> None:
+
+def process_records(
+    table, records: list, pk_field: str, existing_pks: set, backup_path: str, logger
+) -> None:
     """Process records, separating into new and updates."""
     # Separate records into new and updates
     new_records = [r for r in records if r[pk_field] not in existing_pks]
@@ -197,9 +217,15 @@ def process_records(table, records: list, pk_field: str, existing_pks: set, back
                 logger.info(f"You can restore from backup: {backup_path}")
             raise
 
-def update_database(db_path: str, df: pd.DataFrame, table_name: str,
-                    base_class: type[T], pk_field: str,
-                    dynamic_schema: bool = True) -> None:
+
+def update_database(
+    db_path: str,
+    df: pd.DataFrame,
+    table_name: str,
+    base_class: type[T],
+    pk_field: str,
+    dynamic_schema: bool = True,
+) -> None:
     """
     Update a database table with data from a DataFrame, handling schema changes.
 
@@ -223,8 +249,12 @@ def update_database(db_path: str, df: pd.DataFrame, table_name: str,
     # Generate dynamic dataclass if needed
     data_class = base_class
     if dynamic_schema:
-        data_class = generate_dynamic_dataclass(df, base_class, name=table_name.capitalize())
-        logger.info(f"Generated dynamic dataclass with fields: {get_dataclass_field_names(data_class)}")
+        data_class = generate_dynamic_dataclass(
+            df, base_class, name=table_name.capitalize()
+        )
+        logger.info(
+            f"Generated dynamic dataclass with fields: {get_dataclass_field_names(data_class)}"
+        )
 
     # Create table if it doesn't exist
     if not table_exists:
@@ -245,7 +275,7 @@ def update_database(db_path: str, df: pd.DataFrame, table_name: str,
         compare_schemas(existing_fields, set(df.columns), dynamic_schema, logger)
 
     # Convert DataFrame to list of dictionaries
-    records = df.to_dict(orient='records')
+    records = df.to_dict(orient="records")
 
     # Process records
     table = db.t[table_name]
@@ -272,9 +302,12 @@ def update_database(db_path: str, df: pd.DataFrame, table_name: str,
     # Log a summary
     try:
         row_count = len(list(table.rows))
-        logger.info(f"Database update complete. Table '{table_name}' now has {row_count} records.")
+        logger.info(
+            f"Database update complete. Table '{table_name}' now has {row_count} records."
+        )
     except Exception as e:
         logger.error(f"Error counting rows: {e}")
+
 
 def create_attempts_table(db_path: str) -> None:
     """Create the attempts table if it doesn't exist."""
@@ -286,6 +319,7 @@ def create_attempts_table(db_path: str) -> None:
         db.create(Attempt, name=table_name)
     else:
         logger.info(f"Table '{table_name}' already exists")
+
 
 def show_database_info(db_path: str) -> None:
     """Display information about the database."""
@@ -312,16 +346,24 @@ def show_database_info(db_path: str) -> None:
     for row in db.query(schema_query):
         logger.info(f"\n{row}")
 
+
 def main():
     """Main function to handle database creation and updates."""
     parser = argparse.ArgumentParser(description="Lithuanian Database Manager")
-    parser.add_argument('--db', default="lithuanian_data.db", help="Database file path")
-    parser.add_argument('--data-dir', default="data", help="Directory containing CSV files")
-    parser.add_argument('--prefix', default="numbers_", help="Prefix for CSV filenames")
-    parser.add_argument('--info', action='store_true', help="Show database information only")
-    parser.add_argument('--static-schema', action='store_true',
-                        help="Use static schema (don't adapt to new columns)")
-    parser.add_argument('--debug', action='store_true', help="Enable debug logging")
+    parser.add_argument("--db", default="lithuanian_data.db", help="Database file path")
+    parser.add_argument(
+        "--data-dir", default="data", help="Directory containing CSV files"
+    )
+    parser.add_argument("--prefix", default="numbers_", help="Prefix for CSV filenames")
+    parser.add_argument(
+        "--info", action="store_true", help="Show database information only"
+    )
+    parser.add_argument(
+        "--static-schema",
+        action="store_true",
+        help="Use static schema (don't adapt to new columns)",
+    )
+    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
 
     args = parser.parse_args()
 
@@ -349,7 +391,7 @@ def main():
             table_name="numbers",
             base_class=Numbers,
             pk_field="number",
-            dynamic_schema=not args.static_schema
+            dynamic_schema=not args.static_schema,
         )
 
         # Ensure the attempts table exists
@@ -363,6 +405,7 @@ def main():
         return 1
 
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())
