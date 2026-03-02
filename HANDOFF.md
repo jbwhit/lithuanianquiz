@@ -131,6 +131,27 @@ if anno is empty:
     if 'session'.startswith(arg.lower()): return req.scope.get('session', {})
 ```
 
+### Session cookie size limits (critical)
+FastHTML uses Starlette `SessionMiddleware`, which stores the **entire session**
+in a signed cookie. Browser cookie limits are roughly ~4KB per cookie. If the
+session grows too large, writes become unreliable and users can see stale state
+(for example: answer feedback appears to use a previous question/answer).
+
+Symptoms seen in production:
+- Happens after enough answers/history accumulate (especially in `practice-all`)
+- Current question and correctness checks feel "out of sync"
+
+Mitigations implemented in PR #2:
+- Cap module histories in session to last **5** entries (`main.py`)
+- Cap loaded/saved persisted histories to last **5** entries (`auth.py`)
+- In `practice-all`, keep only active-module transient question keys; drop stale
+  per-module question keys before generating the next mix question
+- Do **not** eagerly initialize all module sessions inside `/stats`
+
+Debug rule of thumb:
+- If answer checking seems stale, inspect session/cookie payload size first
+  before debugging engine logic.
+
 ### Python 3.12 vs 3.13 — `datetime.UTC`
 Railway runs Python 3.12. After `from datetime import datetime`, `datetime.UTC`
 raises `AttributeError` — it's a module-level attribute, not a class attribute.
