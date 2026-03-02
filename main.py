@@ -1241,9 +1241,7 @@ def _make_number_routes(
             )
 
         stats = _compute_number_stats(session, prefix, engine_inst)
-        oob_stats = stats_panel(
-            stats, session.get(f"{prefix}_history", []), oob=True
-        )
+        oob_stats = stats_panel(stats, session.get(f"{prefix}_history", []), oob=True)
 
         return (
             quiz_area(
