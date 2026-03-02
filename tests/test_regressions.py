@@ -131,3 +131,73 @@ def test_practice_all_time_feedback_uses_answered_hour(monkeypatch) -> None:
     main.post_practice_all_answer(session, user_answer="bad answer")
 
     assert captured["hour"] == 1
+
+
+def test_mix_session_initializes_only_one_module_question() -> None:
+    session: dict = {}
+    main._ensure_mix_session(session)
+
+    module_q_keys = [
+        "current_question",
+        "time_current_question",
+        "n20_current_question",
+        "n99_current_question",
+        "age_current_question",
+        "weather_current_question",
+    ]
+    present = [k for k in module_q_keys if k in session]
+
+    assert len(present) == 1
+    assert "mix_current_question" in session
+
+
+def test_price_history_capped_to_limit() -> None:
+    session: dict = {}
+    main._ensure_session(session)
+    for _ in range(12):
+        main.post(session, user_answer="x")
+    assert len(session["history"]) == 5
+
+
+def test_mix_history_capped_to_limit() -> None:
+    session: dict = {}
+    main._ensure_mix_session(session)
+    for _ in range(12):
+        main.post_practice_all_answer(session, user_answer="x")
+    assert len(session["mix_history"]) == 5
+
+
+def test_load_progress_caps_oversized_histories(monkeypatch) -> None:
+    db = _SQLiteDB()
+    monkeypatch.setattr(auth, "_db", db)
+
+    long = [{"question": f"Q{i}", "correct": bool(i % 2)} for i in range(20)]
+    data = json.dumps(
+        {
+            "history": long,
+            "time_history": long,
+            "n20_history": long,
+            "n99_history": long,
+            "age_history": long,
+            "weather_history": long,
+            "mix_history": long,
+        }
+    )
+    db.execute(
+        """
+        INSERT INTO user_progress (google_id, data, updated_at)
+        VALUES (?, ?, ?)
+        """,
+        ["user-3", data, "2026-03-02T00:00:00+00:00"],
+    )
+
+    loaded_session: dict = {}
+    auth.load_progress("user-3", loaded_session)
+
+    assert len(loaded_session["history"]) == 5
+    assert len(loaded_session["time_history"]) == 5
+    assert len(loaded_session["n20_history"]) == 5
+    assert len(loaded_session["n99_history"]) == 5
+    assert len(loaded_session["age_history"]) == 5
+    assert len(loaded_session["weather_history"]) == 5
+    assert len(loaded_session["mix_history"]) == 5
