@@ -98,6 +98,13 @@ def load_progress(google_id: str, session: dict[str, Any]) -> None:
         session["weather_incorrect_count"] = data.get("weather_incorrect_count", 0)
         session["weather_history"] = data.get("weather_history", [])
         session["weather_performance"] = data.get("weather_performance", {})
+        # Practice-all progress
+        session["mix_correct_count"] = data.get("mix_correct_count", 0)
+        session["mix_incorrect_count"] = data.get("mix_incorrect_count", 0)
+        session["mix_history"] = data.get("mix_history", [])
+        mix_modules = data.get("mix_modules")
+        if isinstance(mix_modules, dict) and mix_modules:
+            session["mix_modules"] = mix_modules
 
 
 def save_progress(google_id: str, session: dict[str, Any]) -> None:
@@ -134,6 +141,11 @@ def save_progress(google_id: str, session: dict[str, Any]) -> None:
             "weather_incorrect_count": session.get("weather_incorrect_count", 0),
             "weather_history": session.get("weather_history", []),
             "weather_performance": session.get("weather_performance", {}),
+            # Practice-all progress
+            "mix_correct_count": session.get("mix_correct_count", 0),
+            "mix_incorrect_count": session.get("mix_incorrect_count", 0),
+            "mix_history": session.get("mix_history", []),
+            "mix_modules": session.get("mix_modules"),
         }
     )
     now = _now()
