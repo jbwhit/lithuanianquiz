@@ -10,6 +10,7 @@ from age_engine import AgeEngine
 from auth import QuizOAuth, auth_client, init_db_tables, save_progress
 from fasthtml.common import *
 from fastlite import database
+from i18n import UI_LANGUAGE_KEY, normalize_ui_lang, tr, ui_lang_from_session
 from monsterui.all import *
 from number_engine import NumberEngine
 from quiz import ExerciseEngine, highlight_diff, number_pattern
@@ -85,25 +86,37 @@ _custom_css = Style("""\
 
 
 def _not_found(req, exc) -> Any:
+    session = req.scope.get("session", {}) if hasattr(req, "scope") else {}
+    if not isinstance(session, dict):
+        session = {}
+    lang = ui_lang_from_session(session)
     return page_shell(
         Container(
             DivCentered(
                 Span("🇱🇹", cls="text-6xl mb-4"),
-                H2("Page Not Found", cls=(TextT.xl, TextT.bold)),
+                H2(
+                    tr(lang, "Page Not Found", "Puslapis Nerastas"),
+                    cls=(TextT.xl, TextT.bold),
+                ),
                 P(
-                    "The page you're looking for doesn't exist.",
+                    tr(
+                        lang,
+                        "The page you're looking for doesn't exist.",
+                        "Jusu ieskomas puslapis neegzistuoja.",
+                    ),
                     cls=TextPresets.muted_lg,
                 ),
                 A(
                     UkIcon("arrow-left", cls="mr-2"),
-                    "Back to Home",
+                    tr(lang, "Back to Home", "Atgal i Pradzia"),
                     href="/",
                     cls="uk-btn uk-btn-primary mt-6",
                 ),
                 cls="min-h-[40vh]",
             ),
             cls=(ContainerT.xl, "px-8 py-16"),
-        )
+        ),
+        lang=lang,
     )
 
 
@@ -121,17 +134,14 @@ oauth = QuizOAuth(app, auth_client)
 # ------------------------------------------------------------------
 
 _SESSION_HISTORY_LIMIT = 5
-_UI_LANGUAGE_KEY = "ui_lang"
-_SUPPORTED_UI_LANGS = {"en", "lt"}
 
 
 def _ui_lang(session: dict[str, Any]) -> str:
-    lang = session.get(_UI_LANGUAGE_KEY)
-    return lang if lang in _SUPPORTED_UI_LANGS else "en"
+    return ui_lang_from_session(session)
 
 
 def _t(session: dict[str, Any], english: str, lithuanian: str) -> str:
-    return lithuanian if _ui_lang(session) == "lt" else english
+    return tr(_ui_lang(session), english, lithuanian)
 
 
 def _append_history_entry(
@@ -273,7 +283,7 @@ def _new_number_question(
     session[f"{prefix}_row_id"] = ex["row"]["number"]
     session[f"{prefix}_number_pattern"] = ex["number_pattern"]
     session[f"{prefix}_current_question"] = engine_inst.format_question(
-        ex["exercise_type"], ex["row"]
+        ex["exercise_type"], ex["row"], lang=_ui_lang(session)
     )
 
 
@@ -347,7 +357,7 @@ def get_login(req, session) -> Any:
 
 @rt("/set-language")
 def get_set_language(req, session, lang: str = "en") -> RedirectResponse:
-    session[_UI_LANGUAGE_KEY] = lang if lang in _SUPPORTED_UI_LANGS else "en"
+    session[UI_LANGUAGE_KEY] = normalize_ui_lang(lang)
     referer = req.headers.get("referer", "/")
     from urllib.parse import urlparse
 
@@ -811,7 +821,7 @@ def _new_age_question(session: dict[str, Any]) -> None:
     session["age_number_pattern"] = ex["number_pattern"]
     session["age_pronoun"] = ex["pronoun"]["dative"]
     session["age_current_question"] = age_engine.format_question(
-        ex["exercise_type"], ex["row"], ex["pronoun"]
+        ex["exercise_type"], ex["row"], ex["pronoun"], lang=_ui_lang(session)
     )
 
 
@@ -848,7 +858,7 @@ def _new_weather_question(session: dict[str, Any]) -> None:
     session["weather_number_pattern"] = ex["number_pattern"]
     session["weather_negative"] = ex["negative"]
     session["weather_current_question"] = weather_engine.format_question(
-        ex["exercise_type"], ex["row"], ex["negative"]
+        ex["exercise_type"], ex["row"], ex["negative"], lang=_ui_lang(session)
     )
 
 

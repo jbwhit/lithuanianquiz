@@ -140,11 +140,17 @@ class WeatherEngine:
         return f"{sign}{row['number']}"
 
     def format_question(
-        self, exercise_type: str, row: dict[str, Any], negative: bool
+        self,
+        exercise_type: str,
+        row: dict[str, Any],
+        negative: bool,
+        lang: str = "en",
     ) -> str:
         """Format the question text for display."""
         if exercise_type == "produce":
             sign = "-" if negative else ""
+            if lang == "lt":
+                return f"Kaip pasakyti {sign}{row['number']}\u00b0C?"
             return f"How do you say {sign}{row['number']}\u00b0C?"
         # recognize: show the Lithuanian phrase
         prefix = "minus " if negative else ""

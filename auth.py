@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 from fasthtml.common import RedirectResponse
 from fasthtml.oauth import GoogleAppClient, OAuth
 from fastlite import database
+from i18n import UI_LANGUAGE_KEY, normalize_ui_lang
 
 load_dotenv()
 
@@ -22,7 +23,6 @@ auth_client = GoogleAppClient(
 )
 
 _SESSION_HISTORY_LIMIT = 5
-_SUPPORTED_UI_LANGS = {"en", "lt"}
 log = logging.getLogger(__name__)
 
 
@@ -74,10 +74,6 @@ def _is_valid_mix_modules(value: Any) -> bool:
         if correct < 0 or incorrect < 0:
             return False
     return True
-
-
-def _ui_lang(value: Any) -> str:
-    return value if value in _SUPPORTED_UI_LANGS else "en"
 
 
 def init_db_tables() -> None:
@@ -172,7 +168,7 @@ def load_progress(google_id: str, session: dict[str, Any]) -> None:
     else:
         session.pop("mix_modules", None)
 
-    session["ui_lang"] = _ui_lang(data.get("ui_lang"))
+    session[UI_LANGUAGE_KEY] = normalize_ui_lang(data.get(UI_LANGUAGE_KEY))
 
 
 def save_progress(google_id: str, session: dict[str, Any]) -> None:
@@ -216,7 +212,7 @@ def save_progress(google_id: str, session: dict[str, Any]) -> None:
             "mix_incorrect_count": session.get("mix_incorrect_count", 0),
             "mix_history": session.get("mix_history", [])[-_SESSION_HISTORY_LIMIT:],
             "mix_modules": session.get("mix_modules"),
-            "ui_lang": _ui_lang(session.get("ui_lang")),
+            UI_LANGUAGE_KEY: normalize_ui_lang(session.get(UI_LANGUAGE_KEY)),
         }
     )
     now = _now()

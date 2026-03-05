@@ -65,8 +65,8 @@ class TestQuizAreaHtmxSwap:
     def test_quiz_area_lithuanian_controls(self) -> None:
         html = _render(quiz_area("Klausimas?", lang="lt"))
         assert "Pateikti" in html
-        assert "Dabartine Uzduotis" in html
-        assert "Irasykite atsakyma lietuviskai" in html
+        assert "Dabartinė Užduotis" in html
+        assert "Įrašykite atsakymą lietuviškai" in html
 
 
 class TestStatsPanelOob:
@@ -110,5 +110,5 @@ class TestLanguageToggle:
         html = _render(
             feedback_incorrect("blogai", "gerai", "blogai", "gerai", lang="lt")
         )
-        assert "Jusu atsakymas" in html
+        assert "Jūsų atsakymas" in html
         assert "Teisingas atsakymas" in html

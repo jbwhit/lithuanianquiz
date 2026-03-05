@@ -88,6 +88,14 @@ class TestFormatQuestion:
             == "Jam penkeri metai."
         )
 
+    def test_produce_lithuanian_prompt(
+        self, engine: AgeEngine, sample_rows: list[dict]
+    ) -> None:
+        assert (
+            engine.format_question("produce", sample_rows[0], JAM, lang="lt")
+            == "Jam yra 5 metų."
+        )
+
 
 class TestCheck:
     def test_produce_correct(self, engine: AgeEngine) -> None:

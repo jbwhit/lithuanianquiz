@@ -3,6 +3,7 @@
 from typing import Any
 
 from fasthtml.common import *
+from i18n import tr
 from monsterui.all import *
 from quiz import highlight_diff
 from time_engine import ORDINALS_GEN, ORDINALS_NOM, _next_hour
@@ -28,7 +29,7 @@ def _is_lt(lang: str) -> bool:
 
 
 def _txt(lang: str, english: str, lithuanian: str) -> str:
-    return lithuanian if _is_lt(lang) else english
+    return tr(lang, english, lithuanian)
 
 
 def page_shell(

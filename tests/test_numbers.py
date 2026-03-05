@@ -152,3 +152,21 @@ class TestAdaptive:
             engine.update(session, "n99", info2, False)
         weak = engine.get_weak_areas(session, "n99")
         assert "Exercise Types" in weak
+
+
+class TestLocalizedPrompt:
+    def test_produce_prompt_lithuanian(
+        self, engine: NumberEngine, sample_rows: list[dict]
+    ) -> None:
+        assert (
+            engine.format_question("produce", sample_rows[0], lang="lt")
+            == "Kaip pasakyti 5?"
+        )
+
+    def test_recognize_prompt_lithuanian(
+        self, engine: NumberEngine, sample_rows: list[dict]
+    ) -> None:
+        assert (
+            engine.format_question("recognize", sample_rows[1], lang="lt")
+            == "Koks skaičius yra penkiolika?"
+        )
