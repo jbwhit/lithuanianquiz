@@ -121,6 +121,17 @@ oauth = QuizOAuth(app, auth_client)
 # ------------------------------------------------------------------
 
 _SESSION_HISTORY_LIMIT = 5
+_UI_LANGUAGE_KEY = "ui_lang"
+_SUPPORTED_UI_LANGS = {"en", "lt"}
+
+
+def _ui_lang(session: dict[str, Any]) -> str:
+    lang = session.get(_UI_LANGUAGE_KEY)
+    return lang if lang in _SUPPORTED_UI_LANGS else "en"
+
+
+def _t(session: dict[str, Any], english: str, lithuanian: str) -> str:
+    return lithuanian if _ui_lang(session) == "lt" else english
 
 
 def _append_history_entry(
@@ -285,25 +296,33 @@ def _compute_number_stats(
 
 @rt("/error")
 def get_error(session) -> Any:
+    lang = _ui_lang(session)
     return page_shell(
         Container(
             DivCentered(
                 Span("🇱🇹", cls="text-6xl mb-4"),
-                H2("Something Went Wrong", cls=(TextT.xl, TextT.bold)),
+                H2(
+                    _t(session, "Something Went Wrong", "Ivyko Klaida"),
+                    cls=(TextT.xl, TextT.bold),
+                ),
                 P(
-                    "Login failed. This usually happens if you cancel the Google sign-in.",
+                    _t(
+                        session,
+                        "Login failed. This usually happens if you cancel the Google sign-in.",
+                        "Prisijungimas nepavyko. Taip dazniausiai nutinka atsaukus Google prisijungima.",
+                    ),
                     cls=TextPresets.muted_lg,
                 ),
                 Div(
                     A(
                         UkIcon("rotate-ccw", cls="mr-2"),
-                        "Try Again",
+                        _t(session, "Try Again", "Bandyti Dar Karta"),
                         href="/login",
                         cls="uk-btn uk-btn-primary",
                     ),
                     A(
                         UkIcon("arrow-left", cls="mr-2"),
-                        "Back to Home",
+                        _t(session, "Back to Home", "Atgal i Pradzia"),
                         href="/",
                         cls="uk-btn uk-btn-ghost ml-2",
                     ),
@@ -314,6 +333,7 @@ def get_error(session) -> Any:
             cls=(ContainerT.xl, "px-8 py-16"),
         ),
         user_name=session.get("user_name"),
+        lang=lang,
     )
 
 
@@ -321,35 +341,62 @@ def get_error(session) -> Any:
 def get_login(req, session) -> Any:
     if session.get("auth"):
         return RedirectResponse("/", status_code=303)
-    return page_shell(login_page_content(oauth.login_link(req)))
+    lang = _ui_lang(session)
+    return page_shell(login_page_content(oauth.login_link(req), lang=lang), lang=lang)
+
+
+@rt("/set-language")
+def get_set_language(req, session, lang: str = "en") -> RedirectResponse:
+    session[_UI_LANGUAGE_KEY] = lang if lang in _SUPPORTED_UI_LANGS else "en"
+    referer = req.headers.get("referer", "/")
+    from urllib.parse import urlparse
+
+    parsed = urlparse(referer)
+    redirect_to = parsed.path if parsed.path else "/"
+    if parsed.query:
+        redirect_to = f"{redirect_to}?{parsed.query}"
+    if not redirect_to.startswith("/"):
+        redirect_to = "/"
+    return RedirectResponse(redirect_to, status_code=303)
 
 
 @rt("/")
 def get_home(session) -> Any:
+    lang = _ui_lang(session)
     return page_shell(
-        landing_page_content(),
+        landing_page_content(lang=lang),
         user_name=session.get("user_name"),
         active_module="home",
+        lang=lang,
     )
 
 
 @rt("/prices")
 def get_prices(session) -> Any:
+    lang = _ui_lang(session)
     _ensure_session(session)
     stats = _compute_stats(session)
     history = session.get("history", [])
 
     reset_modal = Modal(
-        ModalHeader(H3("Reset Progress?")),
-        ModalBody(P("This will clear all your history. Are you sure?")),
+        ModalHeader(H3(_t(session, "Reset Progress?", "Atstatyti Pazanga?"))),
+        ModalBody(
+            P(
+                _t(
+                    session,
+                    "This will clear all your history. Are you sure?",
+                    "Bus isvalyta visa jusu istorija. Ar tikrai?",
+                )
+            )
+        ),
         ModalFooter(
             Button(
-                "Cancel",
+                _t(session, "Cancel", "Atsaukti"),
                 cls=ButtonT.ghost,
                 data_uk_toggle="target: #reset-modal",
             ),
             Button(
-                "Reset",
+                _t(session, "Reset", "Atstatyti"),
                 cls=ButtonT.destructive,
                 hx_post="/reset",
                 hx_target="#quiz-area",
@@ -360,26 +407,32 @@ def get_prices(session) -> Any:
     )
 
     main_content = Container(
-        H2("Lithuanian Price Practice", cls=(TextT.xl, "mb-2")),
+        H2(
+            _t(session, "Lithuanian Price Practice", "Lietuvisku Kainu Praktika"),
+            cls=(TextT.xl, "mb-2"),
+        ),
         P(
-            "Practice expressing prices in Lithuanian. "
-            "Type the full answer including the euro word.",
+            _t(
+                session,
+                "Practice expressing prices in Lithuanian. Type the full answer including the euro word.",
+                "Praktikuokite kainu israiskas lietuviskai. Irasykite pilna atsakyma su zodziu euras.",
+            ),
             cls="text-base-content/70 text-sm mb-1",
         ),
         P(
-            "Two exercise types: ",
+            _t(session, "Two exercise types: ", "Du uzduociu tipai: "),
             Strong("Kokia kaina?"),
-            " (nominative) and ",
+            _t(session, " (nominative) and ", " (vardininkas) ir "),
             Strong("Kiek kainuoja?"),
-            " (accusative).",
+            _t(session, " (accusative).", " (galininkas)."),
             cls="text-base-content/60 text-xs mb-6",
         ),
-        examples_section(),
-        quiz_area(session["current_question"]),
-        Div(stats_panel(stats, history), cls="mt-6"),
+        examples_section(lang=lang),
+        quiz_area(session["current_question"], lang=lang),
+        Div(stats_panel(stats, history, lang=lang), cls="mt-6"),
         Button(
             UkIcon("refresh-ccw", cls="mr-2"),
-            "Reset Progress",
+            _t(session, "Reset Progress", "Atstatyti Pazanga"),
             cls=(ButtonT.destructive, "mt-6"),
             data_uk_toggle="target: #reset-modal",
         ),
@@ -388,12 +441,16 @@ def get_prices(session) -> Any:
     )
 
     return page_shell(
-        main_content, user_name=session.get("user_name"), active_module="prices"
+        main_content,
+        user_name=session.get("user_name"),
+        active_module="prices",
+        lang=lang,
     )
 
 
 @rt("/answer")
 def post(session, user_answer: str = "") -> Any:
+    lang = _ui_lang(session)
     _ensure_session(session)
 
     row = engine.get_row(session["row_id"])
@@ -441,6 +498,7 @@ def post(session, user_answer: str = "") -> Any:
             exercise_type=exercise_info["exercise_type"],
             grammatical_case=exercise_info["grammatical_case"],
             question=asked,
+            lang=lang,
         )
     else:
         fb = feedback_incorrect(
@@ -453,14 +511,15 @@ def post(session, user_answer: str = "") -> Any:
             number_pattern=exercise_info["number_pattern"],
             row=row,
             question=asked,
+            lang=lang,
         )
 
     # Return quiz area + OOB stats update
     stats = _compute_stats(session)
-    oob_stats = stats_panel(stats, session.get("history", []), oob=True)
+    oob_stats = stats_panel(stats, session.get("history", []), oob=True, lang=lang)
 
     return (
-        quiz_area(session["current_question"], feedback=fb),
+        quiz_area(session["current_question"], feedback=fb, lang=lang),
         oob_stats,
     )
 
@@ -482,6 +541,7 @@ _PRICE_SESSION_KEYS = {
 
 @rt("/reset")
 def post_reset(session) -> Any:
+    lang = _ui_lang(session)
     for key in _PRICE_SESSION_KEYS & set(session.keys()):
         del session[key]
 
@@ -491,15 +551,16 @@ def post_reset(session) -> Any:
         save_progress(session["auth"], session)
 
     stats = _compute_stats(session)
-    oob_stats = stats_panel(stats, [], oob=True)
+    oob_stats = stats_panel(stats, [], oob=True, lang=lang)
     return (
-        quiz_area(session["current_question"]),
+        quiz_area(session["current_question"], lang=lang),
         oob_stats,
     )
 
 
 @rt("/stats")
 def get_stats(session) -> Any:
+    lang = _ui_lang(session)
     stats = _compute_stats(session)
     time_stats = _compute_time_stats(session)
     n20_stats = _compute_number_stats(session, "n20", number_engine_20)
@@ -515,16 +576,20 @@ def get_stats(session) -> Any:
             n99_stats=n99_stats,
             age_stats=age_stats,
             weather_stats=weather_stats,
+            lang=lang,
         ),
         user_name=session.get("user_name"),
+        lang=lang,
     )
 
 
 @rt("/about")
 def get_about(session) -> Any:
+    lang = _ui_lang(session)
     return page_shell(
-        about_page_content(),
+        about_page_content(lang=lang),
         user_name=session.get("user_name"),
+        lang=lang,
     )
 
 
@@ -535,21 +600,30 @@ def get_about(session) -> Any:
 
 @rt("/time")
 def get_time(session) -> Any:
+    lang = _ui_lang(session)
     _ensure_time_session(session)
     stats = _compute_time_stats(session)
     history = session.get("time_history", [])
 
     reset_modal = Modal(
-        ModalHeader(H3("Reset Progress?")),
-        ModalBody(P("This will clear all your time practice history. Are you sure?")),
+        ModalHeader(H3(_t(session, "Reset Progress?", "Atstatyti Pazanga?"))),
+        ModalBody(
+            P(
+                _t(
+                    session,
+                    "This will clear all your time practice history. Are you sure?",
+                    "Bus isvalyta visa laiko praktikos istorija. Ar tikrai?",
+                )
+            )
+        ),
         ModalFooter(
             Button(
-                "Cancel",
+                _t(session, "Cancel", "Atsaukti"),
                 cls=ButtonT.ghost,
                 data_uk_toggle="target: #reset-modal",
             ),
             Button(
-                "Reset",
+                _t(session, "Reset", "Atstatyti"),
                 cls=ButtonT.destructive,
                 hx_post="/time/reset",
                 hx_target="#quiz-area",
@@ -560,31 +634,41 @@ def get_time(session) -> Any:
     )
 
     main_content = Container(
-        H2("Lithuanian Time Practice", cls=(TextT.xl, "mb-2")),
+        H2(
+            _t(session, "Lithuanian Time Practice", "Lietuvisko Laiko Praktika"),
+            cls=(TextT.xl, "mb-2"),
+        ),
         P(
-            "Practice expressing time in Lithuanian. Type the full answer.",
+            _t(
+                session,
+                "Practice expressing time in Lithuanian. Type the full answer.",
+                "Praktikuokite laiko israiskas lietuviskai. Irasykite pilna atsakyma.",
+            ),
             cls="text-base-content/70 text-sm mb-1",
         ),
         P(
-            "Four exercise types: ",
-            Strong("whole hours"),
+            _t(session, "Four exercise types: ", "Keturi uzduociu tipai: "),
+            Strong(_t(session, "whole hours", "pilnos valandos")),
             ", ",
-            Strong("half past"),
+            Strong(_t(session, "half past", "puse")),
             ", ",
-            Strong("quarter past"),
+            Strong(_t(session, "quarter past", "ketvirtis po")),
             ", and ",
-            Strong("quarter to"),
+            Strong(_t(session, "quarter to", "be ketvircio")),
             ".",
             cls="text-base-content/60 text-xs mb-6",
         ),
-        time_examples_section(),
+        time_examples_section(lang=lang),
         quiz_area(
-            session["time_current_question"], post_url="/time/answer", label="Time"
+            session["time_current_question"],
+            post_url="/time/answer",
+            label=_t(session, "Time", "Laikas"),
+            lang=lang,
         ),
-        Div(stats_panel(stats, history), cls="mt-6"),
+        Div(stats_panel(stats, history, lang=lang), cls="mt-6"),
         Button(
             UkIcon("refresh-ccw", cls="mr-2"),
-            "Reset Progress",
+            _t(session, "Reset Progress", "Atstatyti Pazanga"),
             cls=(ButtonT.destructive, "mt-6"),
             data_uk_toggle="target: #reset-modal",
         ),
@@ -593,12 +677,16 @@ def get_time(session) -> Any:
     )
 
     return page_shell(
-        main_content, user_name=session.get("user_name"), active_module="time"
+        main_content,
+        user_name=session.get("user_name"),
+        active_module="time",
+        lang=lang,
     )
 
 
 @rt("/time/answer")
 def post_time_answer(session, user_answer: str = "") -> Any:
+    lang = _ui_lang(session)
     _ensure_time_session(session)
 
     correct_answer = time_engine.correct_answer(
@@ -645,6 +733,7 @@ def post_time_answer(session, user_answer: str = "") -> Any:
             exercise_type=exercise_info["exercise_type"],
             grammatical_case=exercise_info["grammatical_case"],
             question=asked,
+            lang=lang,
         )
     else:
         fb = feedback_incorrect(
@@ -657,17 +746,19 @@ def post_time_answer(session, user_answer: str = "") -> Any:
             number_pattern=exercise_info["number_pattern"],
             hour=answered_hour,
             question=asked,
+            lang=lang,
         )
 
     stats = _compute_time_stats(session)
-    oob_stats = stats_panel(stats, session.get("time_history", []), oob=True)
+    oob_stats = stats_panel(stats, session.get("time_history", []), oob=True, lang=lang)
 
     return (
         quiz_area(
             session["time_current_question"],
             feedback=fb,
             post_url="/time/answer",
-            label="Time",
+            label=_t(session, "Time", "Laikas"),
+            lang=lang,
         ),
         oob_stats,
     )
@@ -675,6 +766,7 @@ def post_time_answer(session, user_answer: str = "") -> Any:
 
 @rt("/time/reset")
 def post_time_reset(session) -> Any:
+    lang = _ui_lang(session)
     for key in [k for k in list(session.keys()) if k.startswith("time_")]:
         del session[key]
 
@@ -684,10 +776,13 @@ def post_time_reset(session) -> Any:
         save_progress(session["auth"], session)
 
     stats = _compute_time_stats(session)
-    oob_stats = stats_panel(stats, [], oob=True)
+    oob_stats = stats_panel(stats, [], oob=True, lang=lang)
     return (
         quiz_area(
-            session["time_current_question"], post_url="/time/answer", label="Time"
+            session["time_current_question"],
+            post_url="/time/answer",
+            label=_t(session, "Time", "Laikas"),
+            lang=lang,
         ),
         oob_stats,
     )
@@ -774,21 +869,30 @@ def _compute_weather_stats(session: dict[str, Any]) -> dict[str, Any]:
 
 @rt("/age")
 def get_age(session) -> Any:
+    lang = _ui_lang(session)
     _ensure_age_session(session)
     stats = _compute_age_stats(session)
     history = session.get("age_history", [])
 
     reset_modal = Modal(
-        ModalHeader(H3("Reset Progress?")),
-        ModalBody(P("This will clear all your age practice history. Are you sure?")),
+        ModalHeader(H3(_t(session, "Reset Progress?", "Atstatyti Pazanga?"))),
+        ModalBody(
+            P(
+                _t(
+                    session,
+                    "This will clear all your age practice history. Are you sure?",
+                    "Bus isvalyta visa amziaus praktikos istorija. Ar tikrai?",
+                )
+            )
+        ),
         ModalFooter(
             Button(
-                "Cancel",
+                _t(session, "Cancel", "Atsaukti"),
                 cls=ButtonT.ghost,
                 data_uk_toggle="target: #reset-modal",
             ),
             Button(
-                "Reset",
+                _t(session, "Reset", "Atstatyti"),
                 cls=ButtonT.destructive,
                 hx_post="/age/reset",
                 hx_target="#quiz-area",
@@ -799,29 +903,45 @@ def get_age(session) -> Any:
     )
 
     main_content = Container(
-        H2("Lithuanian Age Practice", cls=(TextT.xl, "mb-2")),
+        H2(
+            _t(session, "Lithuanian Age Practice", "Lietuvisko Amziaus Praktika"),
+            cls=(TextT.xl, "mb-2"),
+        ),
         P(
-            "Practice expressing ages in Lithuanian with dative pronouns.",
+            _t(
+                session,
+                "Practice expressing ages in Lithuanian with dative pronouns.",
+                "Praktikuokite amziaus israiskas lietuviskai su naudininko ivardziais.",
+            ),
             cls="text-base-content/70 text-sm mb-1",
         ),
         P(
-            "Two exercise types: ",
-            Strong("produce"),
-            " (say the age in Lithuanian) and ",
-            Strong("recognize"),
-            " (identify the age from Lithuanian).",
+            _t(session, "Two exercise types: ", "Du uzduociu tipai: "),
+            Strong(_t(session, "produce", "kurimas")),
+            _t(
+                session,
+                " (say the age in Lithuanian) and ",
+                " (pasakykite amziu lietuviskai) ir ",
+            ),
+            Strong(_t(session, "recognize", "atpazinimas")),
+            _t(
+                session,
+                " (identify the age from Lithuanian).",
+                " (atpazinkite amziu is lietuviskos frazes).",
+            ),
             cls="text-base-content/60 text-xs mb-6",
         ),
-        age_examples_section(),
+        age_examples_section(lang=lang),
         quiz_area(
             session["age_current_question"],
             post_url="/age/answer",
-            label="Age",
+            label=_t(session, "Age", "Amzius"),
+            lang=lang,
         ),
-        Div(stats_panel(stats, history), cls="mt-6"),
+        Div(stats_panel(stats, history, lang=lang), cls="mt-6"),
         Button(
             UkIcon("refresh-ccw", cls="mr-2"),
-            "Reset Progress",
+            _t(session, "Reset Progress", "Atstatyti Pazanga"),
             cls=(ButtonT.destructive, "mt-6"),
             data_uk_toggle="target: #reset-modal",
         ),
@@ -830,12 +950,16 @@ def get_age(session) -> Any:
     )
 
     return page_shell(
-        main_content, user_name=session.get("user_name"), active_module="age"
+        main_content,
+        user_name=session.get("user_name"),
+        active_module="age",
+        lang=lang,
     )
 
 
 @rt("/age/answer")
 def post_age_answer(session, user_answer: str = "") -> Any:
+    lang = _ui_lang(session)
     _ensure_age_session(session)
 
     row_id = session["age_row_id"]
@@ -883,7 +1007,7 @@ def post_age_answer(session, user_answer: str = "") -> Any:
     asked = entry["question"]
     if is_correct:
         fb = feedback_correct(
-            user_answer.strip(), exercise_type=ex_type, question=asked
+            user_answer.strip(), exercise_type=ex_type, question=asked, lang=lang
         )
     else:
         fb = feedback_incorrect(
@@ -894,17 +1018,19 @@ def post_age_answer(session, user_answer: str = "") -> Any:
             exercise_type=ex_type,
             number_pattern=exercise_info["number_pattern"],
             question=asked,
+            lang=lang,
         )
 
     stats = _compute_age_stats(session)
-    oob_stats = stats_panel(stats, session.get("age_history", []), oob=True)
+    oob_stats = stats_panel(stats, session.get("age_history", []), oob=True, lang=lang)
 
     return (
         quiz_area(
             session["age_current_question"],
             feedback=fb,
             post_url="/age/answer",
-            label="Age",
+            label=_t(session, "Age", "Amzius"),
+            lang=lang,
         ),
         oob_stats,
     )
@@ -912,6 +1038,7 @@ def post_age_answer(session, user_answer: str = "") -> Any:
 
 @rt("/age/reset")
 def post_age_reset(session) -> Any:
+    lang = _ui_lang(session)
     for key in [k for k in list(session.keys()) if k.startswith("age_")]:
         del session[key]
 
@@ -921,12 +1048,13 @@ def post_age_reset(session) -> Any:
         save_progress(session["auth"], session)
 
     stats = _compute_age_stats(session)
-    oob_stats = stats_panel(stats, [], oob=True)
+    oob_stats = stats_panel(stats, [], oob=True, lang=lang)
     return (
         quiz_area(
             session["age_current_question"],
             post_url="/age/answer",
-            label="Age",
+            label=_t(session, "Age", "Amzius"),
+            lang=lang,
         ),
         oob_stats,
     )
@@ -939,23 +1067,30 @@ def post_age_reset(session) -> Any:
 
 @rt("/weather")
 def get_weather(session) -> Any:
+    lang = _ui_lang(session)
     _ensure_weather_session(session)
     stats = _compute_weather_stats(session)
     history = session.get("weather_history", [])
 
     reset_modal = Modal(
-        ModalHeader(H3("Reset Progress?")),
+        ModalHeader(H3(_t(session, "Reset Progress?", "Atstatyti Pazanga?"))),
         ModalBody(
-            P("This will clear all your weather practice history. Are you sure?")
+            P(
+                _t(
+                    session,
+                    "This will clear all your weather practice history. Are you sure?",
+                    "Bus isvalyta visa oro praktikos istorija. Ar tikrai?",
+                )
+            )
         ),
         ModalFooter(
             Button(
-                "Cancel",
+                _t(session, "Cancel", "Atsaukti"),
                 cls=ButtonT.ghost,
                 data_uk_toggle="target: #reset-modal",
             ),
             Button(
-                "Reset",
+                _t(session, "Reset", "Atstatyti"),
                 cls=ButtonT.destructive,
                 hx_post="/weather/reset",
                 hx_target="#quiz-area",
@@ -966,29 +1101,45 @@ def get_weather(session) -> Any:
     )
 
     main_content = Container(
-        H2("Lithuanian Weather Practice", cls=(TextT.xl, "mb-2")),
+        H2(
+            _t(session, "Lithuanian Weather Practice", "Lietuvisko Oro Praktika"),
+            cls=(TextT.xl, "mb-2"),
+        ),
         P(
-            "Practice expressing temperatures in Lithuanian.",
+            _t(
+                session,
+                "Practice expressing temperatures in Lithuanian.",
+                "Praktikuokite temperaturos israiskas lietuviskai.",
+            ),
             cls="text-base-content/70 text-sm mb-1",
         ),
         P(
-            "Two exercise types: ",
-            Strong("produce"),
-            " (say the temperature in Lithuanian) and ",
-            Strong("recognize"),
-            " (identify the temperature from Lithuanian).",
+            _t(session, "Two exercise types: ", "Du uzduociu tipai: "),
+            Strong(_t(session, "produce", "kurimas")),
+            _t(
+                session,
+                " (say the temperature in Lithuanian) and ",
+                " (pasakykite temperatura lietuviskai) ir ",
+            ),
+            Strong(_t(session, "recognize", "atpazinimas")),
+            _t(
+                session,
+                " (identify the temperature from Lithuanian).",
+                " (atpazinkite temperatura is lietuviskos frazes).",
+            ),
             cls="text-base-content/60 text-xs mb-6",
         ),
-        weather_examples_section(),
+        weather_examples_section(lang=lang),
         quiz_area(
             session["weather_current_question"],
             post_url="/weather/answer",
-            label="Weather",
+            label=_t(session, "Weather", "Oras"),
+            lang=lang,
         ),
-        Div(stats_panel(stats, history), cls="mt-6"),
+        Div(stats_panel(stats, history, lang=lang), cls="mt-6"),
         Button(
             UkIcon("refresh-ccw", cls="mr-2"),
-            "Reset Progress",
+            _t(session, "Reset Progress", "Atstatyti Pazanga"),
             cls=(ButtonT.destructive, "mt-6"),
             data_uk_toggle="target: #reset-modal",
         ),
@@ -997,12 +1148,16 @@ def get_weather(session) -> Any:
     )
 
     return page_shell(
-        main_content, user_name=session.get("user_name"), active_module="weather"
+        main_content,
+        user_name=session.get("user_name"),
+        active_module="weather",
+        lang=lang,
     )
 
 
 @rt("/weather/answer")
 def post_weather_answer(session, user_answer: str = "") -> Any:
+    lang = _ui_lang(session)
     _ensure_weather_session(session)
 
     row_id = session["weather_row_id"]
@@ -1049,7 +1204,7 @@ def post_weather_answer(session, user_answer: str = "") -> Any:
     asked = entry["question"]
     if is_correct:
         fb = feedback_correct(
-            user_answer.strip(), exercise_type=ex_type, question=asked
+            user_answer.strip(), exercise_type=ex_type, question=asked, lang=lang
         )
     else:
         fb = feedback_incorrect(
@@ -1060,17 +1215,21 @@ def post_weather_answer(session, user_answer: str = "") -> Any:
             exercise_type=ex_type,
             number_pattern=exercise_info["number_pattern"],
             question=asked,
+            lang=lang,
         )
 
     stats = _compute_weather_stats(session)
-    oob_stats = stats_panel(stats, session.get("weather_history", []), oob=True)
+    oob_stats = stats_panel(
+        stats, session.get("weather_history", []), oob=True, lang=lang
+    )
 
     return (
         quiz_area(
             session["weather_current_question"],
             feedback=fb,
             post_url="/weather/answer",
-            label="Weather",
+            label=_t(session, "Weather", "Oras"),
+            lang=lang,
         ),
         oob_stats,
     )
@@ -1078,6 +1237,7 @@ def post_weather_answer(session, user_answer: str = "") -> Any:
 
 @rt("/weather/reset")
 def post_weather_reset(session) -> Any:
+    lang = _ui_lang(session)
     for key in [k for k in list(session.keys()) if k.startswith("weather_")]:
         del session[key]
 
@@ -1087,12 +1247,13 @@ def post_weather_reset(session) -> Any:
         save_progress(session["auth"], session)
 
     stats = _compute_weather_stats(session)
-    oob_stats = stats_panel(stats, [], oob=True)
+    oob_stats = stats_panel(stats, [], oob=True, lang=lang)
     return (
         quiz_area(
             session["weather_current_question"],
             post_url="/weather/answer",
-            label="Weather",
+            label=_t(session, "Weather", "Oras"),
+            lang=lang,
         ),
         oob_stats,
     )
@@ -1116,23 +1277,50 @@ def _make_number_routes(
 
     @rt(route_base)
     def get_numbers(session) -> Any:
+        lang = _ui_lang(session)
         _ensure_number_session(session, engine_inst, prefix, seed_prefix=seed_prefix)
         stats = _compute_number_stats(session, prefix, engine_inst)
         history = session.get(f"{prefix}_history", [])
+        title_text = title
+        subtitle_text = subtitle
+        if module_name == "numbers-20":
+            title_text = _t(
+                session, "Lithuanian Numbers 1-20", "Lietuviski Skaiciai 1-20"
+            )
+            subtitle_text = _t(
+                session,
+                "Learn the basic Lithuanian number words.",
+                "Mokykites pagrindiniu lietuvisku skaiciaus zodziu.",
+            )
+        elif module_name == "numbers-99":
+            title_text = _t(
+                session, "Lithuanian Numbers 1-99", "Lietuviski Skaiciai 1-99"
+            )
+            subtitle_text = _t(
+                session,
+                "All numbers including decades and compounds.",
+                "Visi skaiciai, iskaitant desimtis ir sudetinius.",
+            )
 
         reset_modal = Modal(
-            ModalHeader(H3("Reset Progress?")),
+            ModalHeader(H3(_t(session, "Reset Progress?", "Atstatyti Pazanga?"))),
             ModalBody(
-                P("This will clear all your number practice history. Are you sure?")
+                P(
+                    _t(
+                        session,
+                        "This will clear all your number practice history. Are you sure?",
+                        "Bus isvalyta visa skaiciu praktikos istorija. Ar tikrai?",
+                    )
+                )
             ),
             ModalFooter(
                 Button(
-                    "Cancel",
+                    _t(session, "Cancel", "Atsaukti"),
                     cls=ButtonT.ghost,
                     data_uk_toggle="target: #reset-modal",
                 ),
                 Button(
-                    "Reset",
+                    _t(session, "Reset", "Atstatyti"),
                     cls=ButtonT.destructive,
                     hx_post=f"{route_base}/reset",
                     hx_target="#quiz-area",
@@ -1143,29 +1331,38 @@ def _make_number_routes(
         )
 
         main_content = Container(
-            H2(title, cls=(TextT.xl, "mb-2")),
+            H2(title_text, cls=(TextT.xl, "mb-2")),
             P(
-                subtitle,
+                subtitle_text,
                 cls="text-base-content/70 text-sm mb-1",
             ),
             P(
-                "Two exercise types: ",
-                Strong("produce"),
-                " (say the number in Lithuanian) and ",
-                Strong("recognize"),
-                " (identify the number from Lithuanian).",
+                _t(session, "Two exercise types: ", "Du uzduociu tipai: "),
+                Strong(_t(session, "produce", "kurimas")),
+                _t(
+                    session,
+                    " (say the number in Lithuanian) and ",
+                    " (pasakykite skaiciu lietuviskai) ir ",
+                ),
+                Strong(_t(session, "recognize", "atpazinimas")),
+                _t(
+                    session,
+                    " (identify the number from Lithuanian).",
+                    " (atpazinkite skaiciu is lietuviskos israiskos).",
+                ),
                 cls="text-base-content/60 text-xs mb-6",
             ),
-            number_examples_section(engine_inst.max_number),
+            number_examples_section(engine_inst.max_number, lang=lang),
             quiz_area(
                 session[f"{prefix}_current_question"],
                 post_url=f"{route_base}/answer",
-                label="Numbers",
+                label=_t(session, "Numbers", "Skaiciai"),
+                lang=lang,
             ),
-            Div(stats_panel(stats, history), cls="mt-6"),
+            Div(stats_panel(stats, history, lang=lang), cls="mt-6"),
             Button(
                 UkIcon("refresh-ccw", cls="mr-2"),
-                "Reset Progress",
+                _t(session, "Reset Progress", "Atstatyti Pazanga"),
                 cls=(ButtonT.destructive, "mt-6"),
                 data_uk_toggle="target: #reset-modal",
             ),
@@ -1174,11 +1371,15 @@ def _make_number_routes(
         )
 
         return page_shell(
-            main_content, user_name=session.get("user_name"), active_module=module_name
+            main_content,
+            user_name=session.get("user_name"),
+            active_module=module_name,
+            lang=lang,
         )
 
     @rt(f"{route_base}/answer")
     def post_number_answer(session, user_answer: str = "") -> Any:
+        lang = _ui_lang(session)
         _ensure_number_session(session, engine_inst, prefix, seed_prefix=seed_prefix)
 
         row_id = session[f"{prefix}_row_id"]
@@ -1226,7 +1427,7 @@ def _make_number_routes(
         asked = entry["question"]
         if is_correct:
             fb = feedback_correct(
-                user_answer.strip(), exercise_type=ex_type, question=asked
+                user_answer.strip(), exercise_type=ex_type, question=asked, lang=lang
             )
         else:
             fb = feedback_incorrect(
@@ -1237,23 +1438,28 @@ def _make_number_routes(
                 exercise_type=ex_type,
                 number_pattern=exercise_info["number_pattern"],
                 question=asked,
+                lang=lang,
             )
 
         stats = _compute_number_stats(session, prefix, engine_inst)
-        oob_stats = stats_panel(stats, session.get(f"{prefix}_history", []), oob=True)
+        oob_stats = stats_panel(
+            stats, session.get(f"{prefix}_history", []), oob=True, lang=lang
+        )
 
         return (
             quiz_area(
                 session[f"{prefix}_current_question"],
                 feedback=fb,
                 post_url=f"{route_base}/answer",
-                label="Numbers",
+                label=_t(session, "Numbers", "Skaiciai"),
+                lang=lang,
             ),
             oob_stats,
         )
 
     @rt(f"{route_base}/reset")
     def post_number_reset(session) -> Any:
+        lang = _ui_lang(session)
         for key in [k for k in list(session.keys()) if k.startswith(f"{prefix}_")]:
             del session[key]
 
@@ -1263,12 +1469,13 @@ def _make_number_routes(
             save_progress(session["auth"], session)
 
         stats = _compute_number_stats(session, prefix, engine_inst)
-        oob_stats = stats_panel(stats, [], oob=True)
+        oob_stats = stats_panel(stats, [], oob=True, lang=lang)
         return (
             quiz_area(
                 session[f"{prefix}_current_question"],
                 post_url=f"{route_base}/answer",
-                label="Numbers",
+                label=_t(session, "Numbers", "Skaiciai"),
+                lang=lang,
             ),
             oob_stats,
         )
@@ -1387,6 +1594,19 @@ def _clear_mix_transient_state(session: dict[str, Any], keep_module: str) -> Non
             continue
         for key in keys:
             session.pop(key, None)
+
+
+def _mix_module_label(session: dict[str, Any], module_name: str) -> str:
+    labels = {
+        "n20": ("1-20", "1-20"),
+        "n99": ("1-99", "1-99"),
+        "age": ("Age", "Amzius"),
+        "weather": ("Weather", "Oras"),
+        "prices": ("Prices", "Kainos"),
+        "time": ("Time", "Laikas"),
+    }
+    en, lt = labels.get(module_name, (module_name, module_name))
+    return _t(session, en, lt)
 
 
 def _ensure_mix_session(session: dict[str, Any]) -> None:
@@ -1528,23 +1748,32 @@ def _check_mix_answer(
 
 @rt("/practice-all")
 def get_practice_all(session) -> Any:
+    lang = _ui_lang(session)
     _ensure_mix_session(session)
     stats = _compute_mix_stats(session)
     history = session.get("mix_history", [])
     mod = session.get("mix_current_module", "n20")
-    label = _MIX_MODULES[mod]["label"]
+    label = _mix_module_label(session, mod)
 
     reset_modal = Modal(
-        ModalHeader(H3("Reset Progress?")),
-        ModalBody(P("This will clear your Practice All history. Are you sure?")),
+        ModalHeader(H3(_t(session, "Reset Progress?", "Atstatyti Pazanga?"))),
+        ModalBody(
+            P(
+                _t(
+                    session,
+                    "This will clear your Practice All history. Are you sure?",
+                    "Bus isvalyta Bendra Praktika istorija. Ar tikrai?",
+                )
+            )
+        ),
         ModalFooter(
             Button(
-                "Cancel",
+                _t(session, "Cancel", "Atsaukti"),
                 cls=ButtonT.ghost,
                 data_uk_toggle="target: #reset-modal",
             ),
             Button(
-                "Reset",
+                _t(session, "Reset", "Atstatyti"),
                 cls=ButtonT.destructive,
                 hx_post="/practice-all/reset",
                 hx_target="#quiz-area",
@@ -1555,20 +1784,25 @@ def get_practice_all(session) -> Any:
     )
 
     main_content = Container(
-        H2("Practice All", cls=(TextT.xl, "mb-2")),
+        H2(_t(session, "Practice All", "Bendra Praktika"), cls=(TextT.xl, "mb-2")),
         P(
-            "Random exercises from all modules, weighted toward your weak spots.",
+            _t(
+                session,
+                "Random exercises from all modules, weighted toward your weak spots.",
+                "Atsitiktines uzduotys is visu moduliu, daugiau demesio silpniausioms vietoms.",
+            ),
             cls="text-base-content/70 text-sm mb-6",
         ),
         quiz_area(
             session["mix_current_question"],
             post_url="/practice-all/answer",
             label=label,
+            lang=lang,
         ),
-        Div(stats_panel(stats, history), cls="mt-6"),
+        Div(stats_panel(stats, history, lang=lang), cls="mt-6"),
         Button(
             UkIcon("refresh-ccw", cls="mr-2"),
-            "Reset Progress",
+            _t(session, "Reset Progress", "Atstatyti Pazanga"),
             cls=(ButtonT.destructive, "mt-6"),
             data_uk_toggle="target: #reset-modal",
         ),
@@ -1580,11 +1814,13 @@ def get_practice_all(session) -> Any:
         main_content,
         user_name=session.get("user_name"),
         active_module="practice-all",
+        lang=lang,
     )
 
 
 @rt("/practice-all/answer")
 def post_practice_all_answer(session, user_answer: str = "") -> Any:
+    lang = _ui_lang(session)
     _ensure_mix_session(session)
 
     is_correct, correct_answer, exercise_info, row = _check_mix_answer(
@@ -1631,6 +1867,7 @@ def post_practice_all_answer(session, user_answer: str = "") -> Any:
             exercise_type=ex_type,
             grammatical_case=exercise_info.get("grammatical_case"),
             question=asked,
+            lang=lang,
         )
     else:
         fb_kwargs: dict[str, Any] = {
@@ -1649,14 +1886,15 @@ def post_practice_all_answer(session, user_answer: str = "") -> Any:
             correct_answer.strip(),
             diff_u,
             diff_c,
+            lang=lang,
             **fb_kwargs,
         )
 
     new_mod = session["mix_current_module"]
-    new_label = _MIX_MODULES[new_mod]["label"]
+    new_label = _mix_module_label(session, new_mod)
 
     stats = _compute_mix_stats(session)
-    oob_stats = stats_panel(stats, session.get("mix_history", []), oob=True)
+    oob_stats = stats_panel(stats, session.get("mix_history", []), oob=True, lang=lang)
 
     return (
         quiz_area(
@@ -1664,6 +1902,7 @@ def post_practice_all_answer(session, user_answer: str = "") -> Any:
             feedback=fb,
             post_url="/practice-all/answer",
             label=new_label,
+            lang=lang,
         ),
         oob_stats,
     )
@@ -1671,6 +1910,7 @@ def post_practice_all_answer(session, user_answer: str = "") -> Any:
 
 @rt("/practice-all/reset")
 def post_practice_all_reset(session) -> Any:
+    lang = _ui_lang(session)
     for key in [k for k in list(session.keys()) if k.startswith("mix_")]:
         del session[key]
 
@@ -1680,15 +1920,16 @@ def post_practice_all_reset(session) -> Any:
         save_progress(session["auth"], session)
 
     mod = session.get("mix_current_module", "n20")
-    label = _MIX_MODULES[mod]["label"]
+    label = _mix_module_label(session, mod)
 
     stats = _compute_mix_stats(session)
-    oob_stats = stats_panel(stats, [], oob=True)
+    oob_stats = stats_panel(stats, [], oob=True, lang=lang)
     return (
         quiz_area(
             session["mix_current_question"],
             post_url="/practice-all/answer",
             label=label,
+            lang=lang,
         ),
         oob_stats,
     )

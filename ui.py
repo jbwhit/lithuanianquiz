@@ -23,17 +23,29 @@ MODULE_NAMES = {
 }
 
 
+def _is_lt(lang: str) -> bool:
+    return lang == "lt"
+
+
+def _txt(lang: str, english: str, lithuanian: str) -> str:
+    return lithuanian if _is_lt(lang) else english
+
+
 def page_shell(
     *content: Any,
     user_name: str | None = None,
     active_module: str | None = None,
+    lang: str = "en",
 ) -> Div:
     """Full page wrapper with navbar."""
     brand = A(
         DivLAligned(
             Span("🇱🇹", cls="text-2xl mr-2"),
-            H3("Lithuanian", cls=(TextT.xl, TextT.bold, "text-primary")),
-            P("Practice", cls=TextT.muted),
+            H3(
+                _txt(lang, "Lithuanian", "Lietuviu"),
+                cls=(TextT.xl, TextT.bold, "text-primary"),
+            ),
+            P(_txt(lang, "Practice", "Praktika"), cls=TextT.muted),
             cls="items-center",
         ),
         href="/",
@@ -42,42 +54,69 @@ def page_shell(
     # Modules dropdown
     is_module_active = active_module in MODULE_NAMES
     modules_btn = A(
-        "Modules",
+        _txt(lang, "Modules", "Moduliai"),
         UkIcon("chevron-down", cls="ml-1", height=14, width=14),
         cls="uk-btn uk-btn-ghost"
         + (" uk-active font-bold" if is_module_active else ""),
     )
     modules_dropdown = DropDownNavContainer(
-        Li(A("Numbers 1-20", href="/numbers-20")),
-        Li(A("Numbers 1-99", href="/numbers-99")),
-        Li(A("Age", href="/age")),
-        Li(A("Weather", href="/weather")),
-        Li(A("Prices", href="/prices")),
-        Li(A("Time", href="/time")),
+        Li(A(_txt(lang, "Numbers 1-20", "Skaiciai 1-20"), href="/numbers-20")),
+        Li(A(_txt(lang, "Numbers 1-99", "Skaiciai 1-99"), href="/numbers-99")),
+        Li(A(_txt(lang, "Age", "Amzius"), href="/age")),
+        Li(A(_txt(lang, "Weather", "Oras"), href="/weather")),
+        Li(A(_txt(lang, "Prices", "Kainos"), href="/prices")),
+        Li(A(_txt(lang, "Time", "Laikas"), href="/time")),
         NavDividerLi(),
-        Li(A("Practice All", href="/practice-all")),
-        Li(A("About", href="/about")),
+        Li(A(_txt(lang, "Practice All", "Bendra Praktika"), href="/practice-all")),
+        Li(A(_txt(lang, "About", "Apie"), href="/about")),
     )
     modules_nav = Div(modules_btn, modules_dropdown, cls="inline-block")
+    language_toggle = Div(
+        A(
+            "English",
+            href="/set-language?lang=en",
+            cls="uk-btn uk-btn-ghost"
+            + (" uk-active font-bold" if lang == "en" else ""),
+        ),
+        Span("|", cls="text-base-content/50"),
+        A(
+            "Lietuviu",
+            href="/set-language?lang=lt",
+            cls="uk-btn uk-btn-ghost"
+            + (" uk-active font-bold" if lang == "lt" else ""),
+        ),
+        cls="inline-flex items-center gap-1",
+    )
     nav_items: list[Any] = [
         modules_nav,
-        A("Stats", href="/stats", cls="uk-btn uk-btn-ghost"),
+        A(_txt(lang, "Stats", "Statistika"), href="/stats", cls="uk-btn uk-btn-ghost"),
         A(
-            "Feedback",
+            _txt(lang, "Feedback", "Atsiliepimai"),
             href="https://github.com/jbwhit/lithuanianquiz/issues/new",
             cls="uk-btn uk-btn-ghost",
             target="_blank",
         ),
+        language_toggle,
     ]
     if user_name:
         nav_items.extend(
             [
                 Span(user_name, cls=(TextT.sm, "px-3 py-2")),
-                A("Logout", href="/logout", cls="uk-btn uk-btn-ghost"),
+                A(
+                    _txt(lang, "Logout", "Atsijungti"),
+                    href="/logout",
+                    cls="uk-btn uk-btn-ghost",
+                ),
             ]
         )
     else:
-        nav_items.append(A("Login", href="/login", cls="uk-btn uk-btn-ghost"))
+        nav_items.append(
+            A(
+                _txt(lang, "Login", "Prisijungti"),
+                href="/login",
+                cls="uk-btn uk-btn-ghost",
+            )
+        )
     nav = Container(
         NavBar(
             *nav_items,
@@ -90,7 +129,7 @@ def page_shell(
     return Div(nav, *content, cls="min-h-screen px-4")
 
 
-def login_page_content(login_url: str) -> Container:
+def login_page_content(login_url: str, lang: str = "en") -> Container:
     """Centered login card."""
     return Container(
         DivCentered(
@@ -99,11 +138,19 @@ def login_page_content(login_url: str) -> Container:
                     DivCentered(
                         Span("🇱🇹", cls="text-5xl mb-3"),
                         H2(
-                            "Lithuanian Price Quiz",
+                            _txt(
+                                lang,
+                                "Lithuanian Price Quiz",
+                                "Lietuviu Kainu Viktorina",
+                            ),
                             cls=(TextT.xl, TextT.bold),
                         ),
                         P(
-                            "Practice expressing prices in Lithuanian",
+                            _txt(
+                                lang,
+                                "Practice expressing prices in Lithuanian",
+                                "Praktikuokite kainu israiskas lietuviu kalba",
+                            ),
                             cls=TextPresets.muted_lg,
                         ),
                     )
@@ -112,13 +159,16 @@ def login_page_content(login_url: str) -> Container:
                     DivCentered(
                         A(
                             UkIcon("log-in", cls="mr-2"),
-                            "Login with Google",
+                            _txt(lang, "Login with Google", "Prisijungti su Google"),
                             href=login_url,
                             cls=(ButtonT.primary, "px-8 py-3 text-lg"),
                         ),
                         P(
-                            "Free and private. We only store your quiz "
-                            "progress — nothing else.",
+                            _txt(
+                                lang,
+                                "Free and private. We only store your quiz progress, nothing else.",
+                                "Nemokama ir privatu. Saugome tik jusu viktorinos pazanga.",
+                            ),
                             cls="text-base-content/50 text-xs mt-4 max-w-xs text-center",
                         ),
                     )
@@ -131,7 +181,7 @@ def login_page_content(login_url: str) -> Container:
     )
 
 
-def landing_page_content() -> Container:
+def landing_page_content(lang: str = "en") -> Container:
     """Landing page with module cards."""
 
     def _module_card(
@@ -162,7 +212,7 @@ def landing_page_content() -> Container:
             CardFooter(
                 DivCentered(
                     A(
-                        "Start Practicing",
+                        _txt(lang, "Start Practicing", "Pradeti Praktika"),
                         href=href,
                         cls=(ButtonT.primary, "px-6 py-2"),
                     ),
@@ -175,9 +225,16 @@ def landing_page_content() -> Container:
     return Container(
         DivCentered(
             Span("🇱🇹", cls="text-6xl mb-4"),
-            H1("Lithuanian Practice", cls=(TextT.xl, TextT.bold)),
+            H1(
+                _txt(lang, "Lithuanian Practice", "Lietuviu Praktika"),
+                cls=(TextT.xl, TextT.bold),
+            ),
             P(
-                "Master Lithuanian through adaptive exercises",
+                _txt(
+                    lang,
+                    "Master Lithuanian through adaptive exercises",
+                    "Mokykites lietuviu kalbos per adaptyvias uzduotis",
+                ),
                 cls=TextPresets.muted_lg,
             ),
             cls="mb-10",
@@ -185,46 +242,68 @@ def landing_page_content() -> Container:
         Grid(
             _module_card(
                 "🔢",
-                "Numbers 1-20",
-                "Learn the basic Lithuanian number words.",
+                _txt(lang, "Numbers 1-20", "Skaiciai 1-20"),
+                _txt(
+                    lang,
+                    "Learn the basic Lithuanian number words.",
+                    "Mokykites pagrindiniu lietuvisku skaiciu zodziu.",
+                ),
                 "/numbers-20",
                 "border-t-success",
-                badge="Start here",
+                badge=_txt(lang, "Start here", "Pradekite cia"),
             ),
             _module_card(
                 "🔢",
-                "Numbers 1-99",
-                "All numbers including decades and compounds.",
+                _txt(lang, "Numbers 1-99", "Skaiciai 1-99"),
+                _txt(
+                    lang,
+                    "All numbers including decades and compounds.",
+                    "Visi skaiciai, iskaitant desimtis ir sudetinius.",
+                ),
                 "/numbers-99",
                 "border-t-info",
             ),
             _module_card(
                 "🎂",
-                "Age",
-                "Practice expressing ages with dative pronouns (Man, Tau, Jam, Jai).",
+                _txt(lang, "Age", "Amzius"),
+                _txt(
+                    lang,
+                    "Practice expressing ages with dative pronouns (Man, Tau, Jam, Jai).",
+                    "Praktikuokite amziu israiskas su naudininko ivardziais (Man, Tau, Jam, Jai).",
+                ),
                 "/age",
                 "border-t-warning",
             ),
             _module_card(
                 "🌡️",
-                "Weather",
-                "Practice expressing temperatures with laipsnis/laipsniai/laipsnių.",
+                _txt(lang, "Weather", "Oras"),
+                _txt(
+                    lang,
+                    "Practice expressing temperatures with laipsnis/laipsniai/laipsniu.",
+                    "Praktikuokite temperaturos israiskas su laipsnis/laipsniai/laipsniu.",
+                ),
                 "/weather",
                 "border-t-error",
             ),
             _module_card(
                 "💶",
-                "Prices",
-                "Practice expressing prices with Kokia kaina? (nominative) "
-                "and Kiek kainuoja? (accusative).",
+                _txt(lang, "Prices", "Kainos"),
+                _txt(
+                    lang,
+                    "Practice expressing prices with Kokia kaina? (nominative) and Kiek kainuoja? (accusative).",
+                    "Praktikuokite kainas su Kokia kaina? (vardininkas) ir Kiek kainuoja? (galininkas).",
+                ),
                 "/prices",
                 "border-t-primary",
             ),
             _module_card(
                 "🕐",
-                "Time",
-                "Practice telling time — whole hours, half past, "
-                "quarter past, and quarter to.",
+                _txt(lang, "Time", "Laikas"),
+                _txt(
+                    lang,
+                    "Practice telling time: whole hours, half past, quarter past, and quarter to.",
+                    "Praktikuokite laiko pasakyma: pilnos valandos, puse, ketvirtis po ir be ketvircio.",
+                ),
                 "/time",
                 "border-t-secondary",
             ),
@@ -235,9 +314,12 @@ def landing_page_content() -> Container:
         Div(
             _module_card(
                 "🎯",
-                "Practice All",
-                "Random exercises from all modules, weighted toward "
-                "your weakest areas.",
+                _txt(lang, "Practice All", "Bendra Praktika"),
+                _txt(
+                    lang,
+                    "Random exercises from all modules, weighted toward your weakest areas.",
+                    "Atsitiktines uzduotys is visu moduliu, daugiau demesio silpniausioms vietoms.",
+                ),
                 "/practice-all",
                 "border-t-accent",
             ),
@@ -246,9 +328,17 @@ def landing_page_content() -> Container:
         Div(
             P(
                 UkIcon("shield", cls="inline mr-1", height=14, width=14),
-                "Free to use. No tracking beyond your current browser session. ",
-                A("Log in", href="/login", cls="underline"),
-                " only to save progress across visits.",
+                _txt(
+                    lang,
+                    "Free to use. No tracking beyond your current browser session. ",
+                    "Nemokama. Sekimas nevykdomas uz dabartines narsykles sesijos ribu. ",
+                ),
+                A(_txt(lang, "Log in", "Prisijunkite"), href="/login", cls="underline"),
+                _txt(
+                    lang,
+                    " only to save progress across visits.",
+                    " tik jei norite issaugoti pazanga tarp apsilankymu.",
+                ),
                 cls="text-base-content/50 text-xs",
             ),
             cls="mt-10 text-center",
@@ -262,7 +352,7 @@ def landing_page_content() -> Container:
 # ------------------------------------------------------------------
 
 
-def examples_section() -> Details:
+def examples_section(lang: str = "en") -> Details:
     """Collapsible 'Show an example' section."""
 
     def _example(question: str, answer: str, case: str) -> Div:
@@ -280,7 +370,7 @@ def examples_section() -> Details:
     return Details(
         Summary(
             UkIcon("help-circle", cls="inline mr-1", height=16, width=16),
-            "Show an example",
+            _txt(lang, "Show an example", "Rodyti pavyzdi"),
             cls="cursor-pointer text-sm text-base-content/60 hover:text-base-content "
             "list-none mb-3 select-none",
         ),
@@ -293,14 +383,18 @@ def examples_section() -> Details:
             _example(
                 "Kiek kainuoja knyga? (€21)",
                 "dvidešimt vieną eurą.",
-                "Accusative — saying what something costs",
+                _txt(
+                    lang,
+                    "Accusative — saying what something costs",
+                    "Galininkas - sakoma, kiek kas kainuoja",
+                ),
             ),
             cls="grid grid-cols-1 gap-3 sm:grid-cols-2 mb-4",
         ),
     )
 
 
-def time_examples_section() -> Details:
+def time_examples_section(lang: str = "en") -> Details:
     """Collapsible examples for time exercises."""
 
     def _example(question: str, answer: str, note: str) -> Div:
@@ -318,7 +412,7 @@ def time_examples_section() -> Details:
     return Details(
         Summary(
             UkIcon("help-circle", cls="inline mr-1", height=16, width=16),
-            "Show an example",
+            _txt(lang, "Show an example", "Rodyti pavyzdi"),
             cls="cursor-pointer text-sm text-base-content/60 hover:text-base-content "
             "list-none mb-3 select-none",
         ),
@@ -326,29 +420,45 @@ def time_examples_section() -> Details:
             _example(
                 "Kiek valandų? (3:00)",
                 "Trečia valanda.",
-                "Whole hour — feminine ordinal + valanda",
+                _txt(
+                    lang,
+                    "Whole hour - feminine ordinal + valanda",
+                    "Pilna valanda - moteriskos g. kelintinis + valanda",
+                ),
             ),
             _example(
                 "Kiek valandų? (2:30)",
                 "Pusė trečios.",
-                "Half past — pusė + genitive of next hour",
+                _txt(
+                    lang,
+                    "Half past - puse + genitive of next hour",
+                    "Puse - puse + kitos valandos kilmininkas",
+                ),
             ),
             _example(
                 "Kiek valandų? (1:15)",
                 "Ketvirtis antros.",
-                "Quarter past — ketvirtis + genitive of next hour",
+                _txt(
+                    lang,
+                    "Quarter past - ketvirtis + genitive of next hour",
+                    "Ketvirtis po - ketvirtis + kitos valandos kilmininkas",
+                ),
             ),
             _example(
                 "Kiek valandų? (2:45)",
                 "Be ketvirčio trečia.",
-                "Quarter to — be ketvirčio + nominative of next hour",
+                _txt(
+                    lang,
+                    "Quarter to - be ketvircio + nominative of next hour",
+                    "Be ketvircio - be ketvircio + kitos valandos vardininkas",
+                ),
             ),
             cls="grid grid-cols-1 gap-3 sm:grid-cols-2 mb-4",
         ),
     )
 
 
-def number_examples_section(max_number: int) -> Details:
+def number_examples_section(max_number: int, lang: str = "en") -> Details:
     """Collapsible examples for number exercises."""
 
     def _example(question: str, answer: str, note: str) -> Div:
@@ -366,28 +476,48 @@ def number_examples_section(max_number: int) -> Details:
     if max_number <= 20:
         examples = Div(
             _example(
-                "How do you say 5?",
+                _txt(lang, "How do you say 5?", "Kaip pasakyti 5?"),
                 "penki",
-                "Produce — type the Lithuanian number word",
+                _txt(
+                    lang,
+                    "Produce - type the Lithuanian number word",
+                    "Kurimas - irasykite lietuviska skaiciaus zodi",
+                ),
             ),
             _example(
-                "What number is penkiolika?",
+                _txt(
+                    lang, "What number is penkiolika?", "Koks skaicius yra penkiolika?"
+                ),
                 "15",
-                "Recognize — identify the number from Lithuanian",
+                _txt(
+                    lang,
+                    "Recognize - identify the number from Lithuanian",
+                    "Atpazinimas - nustatykite skaiciu is lietuvisko zodzio",
+                ),
             ),
             cls="grid grid-cols-1 gap-3 sm:grid-cols-2 mb-4",
         )
     else:
         examples = Div(
             _example(
-                "How do you say 45?",
+                _txt(lang, "How do you say 45?", "Kaip pasakyti 45?"),
                 "keturiasdešimt penki",
-                "Produce — compounds have two words",
+                _txt(
+                    lang,
+                    "Produce - compounds have two words",
+                    "Kurimas - sudetiniai skaiciai turi du zodzius",
+                ),
             ),
             _example(
-                "What number is trisdešimt?",
+                _txt(
+                    lang, "What number is trisdesimt?", "Koks skaicius yra trisdesimt?"
+                ),
                 "30",
-                "Recognize — identify the number from Lithuanian",
+                _txt(
+                    lang,
+                    "Recognize - identify the number from Lithuanian",
+                    "Atpazinimas - nustatykite skaiciu is lietuvisko zodzio",
+                ),
             ),
             cls="grid grid-cols-1 gap-3 sm:grid-cols-2 mb-4",
         )
@@ -395,7 +525,7 @@ def number_examples_section(max_number: int) -> Details:
     return Details(
         Summary(
             UkIcon("help-circle", cls="inline mr-1", height=16, width=16),
-            "Show an example",
+            _txt(lang, "Show an example", "Rodyti pavyzdi"),
             cls="cursor-pointer text-sm text-base-content/60 hover:text-base-content "
             "list-none mb-3 select-none",
         ),
@@ -403,7 +533,7 @@ def number_examples_section(max_number: int) -> Details:
     )
 
 
-def age_examples_section() -> Details:
+def age_examples_section(lang: str = "en") -> Details:
     """Collapsible examples for age exercises."""
 
     def _example(question: str, answer: str, note: str) -> Div:
@@ -421,27 +551,35 @@ def age_examples_section() -> Details:
     return Details(
         Summary(
             UkIcon("help-circle", cls="inline mr-1", height=16, width=16),
-            "Show an example",
+            _txt(lang, "Show an example", "Rodyti pavyzdi"),
             cls="cursor-pointer text-sm text-base-content/60 hover:text-base-content "
             "list-none mb-3 select-none",
         ),
         Div(
             _example(
-                "He is 25 years old.",
+                _txt(lang, "He is 25 years old.", "Jam yra 25 metai."),
                 "Jam dvidešimt penkeri metai.",
-                "Produce — dative pronoun + number word + metai/metų",
+                _txt(
+                    lang,
+                    "Produce - dative pronoun + number word + metai/metu",
+                    "Kurimas - naudininko ivardis + skaiciaus zodis + metai/metu",
+                ),
             ),
             _example(
                 "Jai penkiolika metų.",
                 "15",
-                "Recognize — identify the age from Lithuanian",
+                _txt(
+                    lang,
+                    "Recognize - identify the age from Lithuanian",
+                    "Atpazinimas - nustatykite amziu is lietuviskos frazes",
+                ),
             ),
             cls="grid grid-cols-1 gap-3 sm:grid-cols-2 mb-4",
         ),
     )
 
 
-def weather_examples_section() -> Details:
+def weather_examples_section(lang: str = "en") -> Details:
     """Collapsible examples for weather exercises."""
 
     def _example(question: str, answer: str, note: str) -> Div:
@@ -459,20 +597,28 @@ def weather_examples_section() -> Details:
     return Details(
         Summary(
             UkIcon("help-circle", cls="inline mr-1", height=16, width=16),
-            "Show an example",
+            _txt(lang, "Show an example", "Rodyti pavyzdi"),
             cls="cursor-pointer text-sm text-base-content/60 hover:text-base-content "
             "list-none mb-3 select-none",
         ),
         Div(
             _example(
-                "How do you say 25°C?",
+                _txt(lang, "How do you say 25C?", "Kaip pasakyti 25C?"),
                 "dvidešimt penki laipsniai",
-                "Produce — number word + correct degree form",
+                _txt(
+                    lang,
+                    "Produce - number word + correct degree form",
+                    "Kurimas - skaiciaus zodis + tinkama laipsnio forma",
+                ),
             ),
             _example(
                 "minus penkiolika laipsnių",
                 "-15",
-                "Recognize — identify the temperature from Lithuanian",
+                _txt(
+                    lang,
+                    "Recognize - identify the temperature from Lithuanian",
+                    "Atpazinimas - nustatykite temperatura is lietuviskos frazes",
+                ),
             ),
             cls="grid grid-cols-1 gap-3 sm:grid-cols-2 mb-4",
         ),
@@ -489,13 +635,18 @@ def quiz_area(
     feedback: Any | None = None,
     post_url: str = "/answer",
     label: str = "Practice",
+    lang: str = "en",
 ) -> Div:
     """Card with question + answer form, optional feedback alert above."""
     form = Form(
         Input(
             id="user_answer",
             name="user_answer",
-            placeholder="Type your answer in Lithuanian...",
+            placeholder=_txt(
+                lang,
+                "Type your answer in Lithuanian...",
+                "Irasykite atsakyma lietuviskai...",
+            ),
             autofocus=True,
             autocomplete="off",
             spellcheck="false",
@@ -505,7 +656,7 @@ def quiz_area(
         DivRAligned(
             Button(
                 UkIcon("send", cls="mr-2"),
-                "Submit",
+                _txt(lang, "Submit", "Pateikti"),
                 type="submit",
                 cls=(ButtonT.primary, "px-6 mt-4"),
             )
@@ -518,7 +669,7 @@ def quiz_area(
     card = Card(
         CardHeader(
             DivFullySpaced(
-                H3("Current Exercise", cls=TextT.lg),
+                H3(_txt(lang, "Current Exercise", "Dabartine Uzduotis"), cls=TextT.lg),
                 Label(label, cls=LabelT.primary),
             )
         ),
@@ -547,34 +698,46 @@ def quiz_area(
 # Feedback alerts (inline, not modals)
 # ------------------------------------------------------------------
 
-_CASE_LABELS: dict[str, str] = {
-    "nominative": "nominative case (vardininkas)",
-    "accusative": "accusative case (galininkas)",
-    "genitive": "genitive case (kilmininkas)",
+_CASE_LABELS: dict[str, dict[str, str]] = {
+    "nominative": {"en": "nominative case (vardininkas)", "lt": "vardininkas"},
+    "accusative": {"en": "accusative case (galininkas)", "lt": "galininkas"},
+    "genitive": {"en": "genitive case (kilmininkas)", "lt": "kilmininkas"},
 }
-_TYPE_LABELS: dict[str, str] = {
-    "kokia": "Kokia kaina?",
-    "kiek": "Kiek kainuoja?",
-    "whole_hour": "Whole hour",
-    "half_past": "Half past",
-    "quarter_past": "Quarter past",
-    "quarter_to": "Quarter to",
-    "produce": "Produce (say the number)",
-    "recognize": "Recognize (identify the number)",
+_TYPE_LABELS: dict[str, dict[str, str]] = {
+    "kokia": {"en": "Kokia kaina?", "lt": "Kokia kaina?"},
+    "kiek": {"en": "Kiek kainuoja?", "lt": "Kiek kainuoja?"},
+    "whole_hour": {"en": "Whole hour", "lt": "Pilna valanda"},
+    "half_past": {"en": "Half past", "lt": "Puse"},
+    "quarter_past": {"en": "Quarter past", "lt": "Ketvirtis po"},
+    "quarter_to": {"en": "Quarter to", "lt": "Be ketvircio"},
+    "produce": {"en": "Produce (say the number)", "lt": "Kurimas (pasakyk skaiciu)"},
+    "recognize": {
+        "en": "Recognize (identify the number)",
+        "lt": "Atpazinimas (atpazink skaiciu)",
+    },
 }
-_GRAMMAR_HINTS: dict[str, str] = {
-    "nominative": "Nominative: used when stating a price (Kokia kaina?).",
-    "accusative": "Accusative: used when saying what something costs (Kiek kainuoja?).",
-    "genitive": "Genitive: used with pusė/ketvirtis (half past/quarter past).",
+_GRAMMAR_HINTS: dict[str, dict[str, str]] = {
+    "nominative": {
+        "en": "Nominative: used when stating a price (Kokia kaina?).",
+        "lt": "Vardininkas: vartojamas nurodant kaina (Kokia kaina?).",
+    },
+    "accusative": {
+        "en": "Accusative: used when saying what something costs (Kiek kainuoja?).",
+        "lt": "Galininkas: vartojamas sakant, kiek kas kainuoja (Kiek kainuoja?).",
+    },
+    "genitive": {
+        "en": "Genitive: used with puse/ketvirtis (half past/quarter past).",
+        "lt": "Kilmininkas: vartojamas su puse/ketvirtis.",
+    },
 }
 
 
-def _grammar_hint_collapsible(hint_content: list[Any]) -> Details:
+def _grammar_hint_collapsible(hint_content: list[Any], lang: str) -> Details:
     """Wrap grammar hint content in a collapsible Details/Summary."""
     return Details(
         Summary(
             UkIcon("book-open", cls="inline mr-1", height=16, width=16),
-            "Grammar breakdown",
+            _txt(lang, "Grammar breakdown", "Gramatikos paaiskinimas"),
             cls="cursor-pointer text-sm text-base-content/60 hover:text-base-content "
             "list-none select-none",
         ),
@@ -712,13 +875,14 @@ def _time_grammar_hint(
 def _exercise_context_text(
     exercise_type: str | None,
     grammatical_case: str | None,
+    lang: str,
 ) -> str:
     """One-line description of what this exercise tested."""
     parts = []
     if exercise_type:
-        parts.append(_TYPE_LABELS.get(exercise_type, exercise_type))
+        parts.append(_TYPE_LABELS.get(exercise_type, {}).get(lang, exercise_type))
     if grammatical_case:
-        parts.append(_CASE_LABELS.get(grammatical_case, grammatical_case))
+        parts.append(_CASE_LABELS.get(grammatical_case, {}).get(lang, grammatical_case))
     return " — ".join(parts)
 
 
@@ -727,20 +891,27 @@ def feedback_correct(
     exercise_type: str | None = None,
     grammatical_case: str | None = None,
     question: str | None = None,
+    lang: str = "en",
 ) -> Div:
     """Green inline alert for correct answer."""
-    ctx = _exercise_context_text(exercise_type, grammatical_case)
+    ctx = _exercise_context_text(exercise_type, grammatical_case, lang)
     return Div(
         DivLAligned(
             UkIcon("check-circle", cls="text-success mr-2"),
             Div(
-                P("Correct!", cls=(TextT.bold, "text-success")),
+                P(
+                    _txt(lang, "Correct!", "Teisingai!"),
+                    cls=(TextT.bold, "text-success"),
+                ),
                 *(
                     [P(question, cls="text-base-content/70 text-sm italic")]
                     if question
                     else []
                 ),
-                P(f"Your answer: {user_answer}", cls=TextT.sm),
+                P(
+                    f"{_txt(lang, 'Your answer', 'Jusu atsakymas')}: {user_answer}",
+                    cls=TextT.sm,
+                ),
                 *([P(ctx, cls="text-base-content/60 text-xs mt-1")] if ctx else []),
             ),
         ),
@@ -759,10 +930,11 @@ def feedback_incorrect(
     row: dict[str, Any] | None = None,
     hour: int | None = None,
     question: str | None = None,
+    lang: str = "en",
 ) -> Div:
     """Red inline alert with diff highlighting and grammar context."""
-    ctx = _exercise_context_text(exercise_type, grammatical_case)
-    hint = _GRAMMAR_HINTS.get(grammatical_case or "")
+    ctx = _exercise_context_text(exercise_type, grammatical_case, lang)
+    hint = _GRAMMAR_HINTS.get(grammatical_case or "", {}).get(lang)
 
     # Build grammar breakdown (price or time)
     grammar_lines = None
@@ -775,7 +947,10 @@ def feedback_incorrect(
         DivLAligned(
             UkIcon("x-circle", cls="text-error mr-2", height=24, width=24),
             Div(
-                P("Not quite right", cls=(TextT.bold, "text-error")),
+                P(
+                    _txt(lang, "Not quite right", "Netikslu"),
+                    cls=(TextT.bold, "text-error"),
+                ),
                 *(
                     [P(question, cls="text-base-content/70 text-sm italic")]
                     if question
@@ -784,9 +959,15 @@ def feedback_incorrect(
             ),
         ),
         Div(
-            P("Your answer:", cls=(TextT.bold, "text-sm mt-2")),
+            P(
+                f"{_txt(lang, 'Your answer', 'Jusu atsakymas')}:",
+                cls=(TextT.bold, "text-sm mt-2"),
+            ),
             P(NotStr(diff_user), cls="ml-4"),
-            P("Correct answer:", cls=(TextT.bold, "text-sm mt-2")),
+            P(
+                f"{_txt(lang, 'Correct answer', 'Teisingas atsakymas')}:",
+                cls=(TextT.bold, "text-sm mt-2"),
+            ),
             P(NotStr(diff_correct), cls="ml-4"),
             cls="mt-2",
         ),
@@ -800,7 +981,7 @@ def feedback_incorrect(
                         else []
                     ),
                     *(
-                        [_grammar_hint_collapsible(grammar_lines)]
+                        [_grammar_hint_collapsible(grammar_lines, lang)]
                         if grammar_lines
                         else []
                     ),
@@ -833,12 +1014,15 @@ def _stat_metric(icon: str, value: str, label: str, color: str = "text-primary")
     )
 
 
-def _accuracy_bar(accuracy: float) -> Div:
+def _accuracy_bar(accuracy: float, lang: str = "en") -> Div:
     color = (
         "bg-error" if accuracy < 60 else "bg-warning" if accuracy < 80 else "bg-success"
     )
     return Div(
-        P(f"Accuracy: {accuracy:.1f}%", cls=(TextT.bold, "mb-1")),
+        P(
+            f"{_txt(lang, 'Accuracy', 'Tikslumas')}: {accuracy:.1f}%",
+            cls=(TextT.bold, "mb-1"),
+        ),
         Progress(
             value=int(min(100, accuracy)),
             max=100,
@@ -867,19 +1051,34 @@ def _weak_area_item(area: dict[str, Any]) -> Li:
 
 def _weak_areas_section(
     weak_areas: dict[str, list[dict[str, Any]]],
+    lang: str = "en",
 ) -> Card:
     if not weak_areas:
         body = DivCentered(
             UkIcon("target", height=40, width=40, cls="text-muted mb-2"),
-            P("Complete more exercises", cls=TextPresets.muted_sm),
+            P(
+                _txt(lang, "Complete more exercises", "Atlikite daugiau uzduociu"),
+                cls=TextPresets.muted_sm,
+            ),
             cls="py-8",
         )
     else:
         sections = []
+        cat_labels = {
+            "Exercise Types": "Uzduociu Tipai",
+            "Number Patterns": "Skaiciu Modeliai",
+            "Grammatical Cases": "Linksniai",
+            "Hour Patterns": "Valandu Modeliai",
+            "Pronouns": "Ivardziai",
+            "Sign": "Zenklas",
+        }
         for cat, areas in weak_areas.items():
             sections.append(
                 Div(
-                    H4(cat, cls=(TextT.bold, "mb-2")),
+                    H4(
+                        cat if not _is_lt(lang) else cat_labels.get(cat, cat),
+                        cls=(TextT.bold, "mb-2"),
+                    ),
                     Ul(
                         *[_weak_area_item(a) for a in areas],
                         cls="space-y-2",
@@ -891,15 +1090,19 @@ def _weak_areas_section(
 
     return Card(
         CardHeader(
-            H3("Areas to Improve", cls=TextT.lg),
-            Subtitle("Focus on these areas"),
+            H3(_txt(lang, "Areas to Improve", "Tobulintinos Sritys"), cls=TextT.lg),
+            Subtitle(
+                _txt(lang, "Focus on these areas", "Skirkite demesi sioms sritims")
+            ),
         ),
         CardBody(body),
         cls="shadow-lg border-t-4 border-t-warning h-full",
     )
 
 
-def _history_entry(entry: dict[str, Any], idx: int, total: int) -> Div:
+def _history_entry(
+    entry: dict[str, Any], idx: int, total: int, lang: str = "en"
+) -> Div:
     correct = entry["correct"]
     diff_u, diff_c = highlight_diff(entry["answer"], entry["true_answer"], correct)
     return Div(
@@ -913,12 +1116,15 @@ def _history_entry(entry: dict[str, Any], idx: int, total: int) -> Div:
             cls="flex items-center",
         ),
         Div(
-            P("Your answer:", cls=(TextT.gray, TextT.bold, "text-sm mt-2")),
+            P(
+                f"{_txt(lang, 'Your answer', 'Jusu atsakymas')}:",
+                cls=(TextT.gray, TextT.bold, "text-sm mt-2"),
+            ),
             P(NotStr(diff_u), cls="ml-4"),
             *(
                 [
                     P(
-                        "Correct answer:",
+                        f"{_txt(lang, 'Correct answer', 'Teisingas atsakymas')}:",
                         cls=(TextT.gray, TextT.bold, "text-sm mt-2"),
                     ),
                     P(NotStr(diff_c), cls="ml-4"),
@@ -932,19 +1138,27 @@ def _history_entry(entry: dict[str, Any], idx: int, total: int) -> Div:
     )
 
 
-def _history_card(history: list[dict[str, Any]]) -> Card:
+def _history_card(history: list[dict[str, Any]], lang: str = "en") -> Card:
     total = len(history)
     if history:
         items = [
-            _history_entry(e, i, total) for i, e in enumerate(reversed(history[-5:]))
+            _history_entry(e, i, total, lang=lang)
+            for i, e in enumerate(reversed(history[-5:]))
         ]
         body = Div(*items)
     else:
         body = DivCentered(
             UkIcon("history", height=40, width=40, cls="text-muted mb-2"),
-            P("No history yet", cls=TextPresets.muted_lg),
             P(
-                "Your exercise history will appear here",
+                _txt(lang, "No history yet", "Istorijos dar nera"),
+                cls=TextPresets.muted_lg,
+            ),
+            P(
+                _txt(
+                    lang,
+                    "Your exercise history will appear here",
+                    "Cia bus rodoma jusu uzduociu istorija",
+                ),
                 cls=TextPresets.muted_sm,
             ),
             cls="py-16",
@@ -954,12 +1168,18 @@ def _history_card(history: list[dict[str, Any]]) -> Card:
             DivFullySpaced(
                 H3("Recent Exercises", cls=TextT.lg),
                 A(
-                    "View All",
+                    _txt(lang, "View All", "Ziureti Viska"),
                     href="/stats",
                     cls="uk-btn uk-btn-ghost",
                 ),
             ),
-            Subtitle("Review your previous exercises"),
+            Subtitle(
+                _txt(
+                    lang,
+                    "Review your previous exercises",
+                    "Perziurekite ankstesnes uzduotis",
+                )
+            ),
         ),
         CardBody(body, cls="max-h-[400px] overflow-y-auto pr-2"),
         cls="shadow-lg border-t-4 border-t-accent h-full",
@@ -967,17 +1187,33 @@ def _history_card(history: list[dict[str, Any]]) -> Card:
 
 
 def stats_panel(
-    stats: dict[str, Any], history: list[dict[str, Any]], *, oob: bool = False
+    stats: dict[str, Any],
+    history: list[dict[str, Any]],
+    *,
+    oob: bool = False,
+    lang: str = "en",
 ) -> Div:
     """Full right-side stats panel for OOB swap."""
     metrics = Grid(
-        _stat_metric("list", str(stats["total"]), "Total", "text-primary"),
-        _stat_metric("check", str(stats["correct"]), "Correct", "text-success"),
-        _stat_metric("x", str(stats["incorrect"]), "Incorrect", "text-error"),
+        _stat_metric(
+            "list", str(stats["total"]), _txt(lang, "Total", "Is Viso"), "text-primary"
+        ),
+        _stat_metric(
+            "check",
+            str(stats["correct"]),
+            _txt(lang, "Correct", "Teisingi"),
+            "text-success",
+        ),
+        _stat_metric(
+            "x",
+            str(stats["incorrect"]),
+            _txt(lang, "Incorrect", "Neteisingi"),
+            "text-error",
+        ),
         _stat_metric(
             "flame",
             str(stats["current_streak"]),
-            "Streak",
+            _txt(lang, "Streak", "Serija"),
             "text-warning",
         ),
         cols=4,
@@ -985,15 +1221,15 @@ def stats_panel(
         gap=4,
         cls="mb-6",
     )
-    weak = _weak_areas_section(stats.get("weak_areas", {}))
-    hist = _history_card(history)
+    weak = _weak_areas_section(stats.get("weak_areas", {}), lang=lang)
+    hist = _history_card(history, lang=lang)
 
     kwargs: dict[str, Any] = {"id": "stats-panel"}
     if oob:
         kwargs["hx_swap_oob"] = "true"
     return Div(
         metrics,
-        _accuracy_bar(stats["accuracy"]),
+        _accuracy_bar(stats["accuracy"], lang=lang),
         Div(cls="mt-6"),
         Grid(
             Div(weak, cls="h-full col-span-1"),
@@ -1011,7 +1247,11 @@ def stats_panel(
 # ------------------------------------------------------------------
 
 
-def _perf_by_category(category_data: dict[str, dict[str, int]], title: str) -> Card:
+def _perf_by_category(
+    category_data: dict[str, dict[str, int]],
+    title: str,
+    lang: str = "en",
+) -> Card:
     items = []
     for key, s in category_data.items():
         total = s["correct"] + s["incorrect"]
@@ -1035,7 +1275,9 @@ def _perf_by_category(category_data: dict[str, dict[str, int]], title: str) -> C
     return Card(
         CardHeader(
             H3(title, cls=TextT.lg),
-            Subtitle("Performance by category"),
+            Subtitle(
+                _txt(lang, "Performance by category", "Rezultatai pagal kategorija")
+            ),
         ),
         CardBody(*items),
         cls="shadow-lg border-t-4 border-t-primary h-full",
@@ -1054,32 +1296,40 @@ def _module_stats_section(
     perf_key: str,
     history_key: str,
     border_color: str = "border-t-secondary",
+    lang: str = "en",
 ) -> list[Any]:
     """Build stats cards for a single module (prices or time)."""
     stats_card = Card(
         CardHeader(
             H3(title, cls=TextT.lg),
-            Subtitle("Track your learning journey"),
+            Subtitle(
+                _txt(lang, "Track your learning journey", "Sekite savo mokymosi kelia")
+            ),
         ),
         CardBody(
             Grid(
-                _stat_metric("list", str(stats["total"]), "Total", "text-primary"),
+                _stat_metric(
+                    "list",
+                    str(stats["total"]),
+                    _txt(lang, "Total", "Is Viso"),
+                    "text-primary",
+                ),
                 _stat_metric(
                     "check",
                     str(stats["correct"]),
-                    "Correct",
+                    _txt(lang, "Correct", "Teisingi"),
                     "text-success",
                 ),
                 _stat_metric(
                     "x",
                     str(stats["incorrect"]),
-                    "Incorrect",
+                    _txt(lang, "Incorrect", "Neteisingi"),
                     "text-error",
                 ),
                 _stat_metric(
                     "flame",
                     str(stats["current_streak"]),
-                    "Streak",
+                    _txt(lang, "Streak", "Serija"),
                     "text-warning",
                 ),
                 cols=4,
@@ -1087,12 +1337,12 @@ def _module_stats_section(
                 gap=4,
                 cls="mb-4",
             ),
-            _accuracy_bar(stats["accuracy"]),
+            _accuracy_bar(stats["accuracy"], lang=lang),
         ),
         cls=f"shadow-lg border-t-4 {border_color} h-full",
     )
 
-    weak_card = _weak_areas_section(stats.get("weak_areas", {}))
+    weak_card = _weak_areas_section(stats.get("weak_areas", {}), lang=lang)
 
     perf_cards: list[Any] = []
     perf = session.get(perf_key, {})
@@ -1117,7 +1367,17 @@ def _module_stats_section(
         ]
     for key, cat_title in perf_categories:
         if perf.get(key):
-            perf_cards.append(_perf_by_category(perf[key], cat_title))
+            perf_title = cat_title
+            if _is_lt(lang):
+                perf_title = {
+                    "Exercise Types": "Uzduociu Tipai",
+                    "Number Patterns": "Skaiciu Modeliai",
+                    "Grammatical Cases": "Linksniai",
+                    "Hour Patterns": "Valandu Modeliai",
+                    "Pronouns": "Ivardziai",
+                    "Sign (+/-)": "Zenklas (+/-)",
+                }.get(cat_title, cat_title)
+            perf_cards.append(_perf_by_category(perf[key], perf_title, lang=lang))
 
     detail_section = (
         Grid(*perf_cards, cols_md=1, cols_lg=2, cols_xl=3, gap=6)
@@ -1125,7 +1385,11 @@ def _module_stats_section(
         else DivCentered(
             UkIcon("info", height=40, width=40, cls="text-muted mb-2"),
             P(
-                "Complete more exercises to see detailed performance",
+                _txt(
+                    lang,
+                    "Complete more exercises to see detailed performance",
+                    "Atlikite daugiau uzduociu, kad matytumete issamesnius rezultatus",
+                ),
                 cls=TextPresets.muted_lg,
             ),
             cls="py-8 bg-base-200 rounded-lg mt-4",
@@ -1136,19 +1400,23 @@ def _module_stats_section(
     total = len(history)
     if history:
         hist_items = [
-            _history_entry(e, i, total) for i, e in enumerate(reversed(history))
+            _history_entry(e, i, total, lang=lang)
+            for i, e in enumerate(reversed(history))
         ]
         hist_body = Div(*hist_items)
     else:
         hist_body = DivCentered(
-            P("No history yet", cls=TextPresets.muted_lg),
+            P(
+                _txt(lang, "No history yet", "Istorijos dar nera"),
+                cls=TextPresets.muted_lg,
+            ),
             cls="py-8",
         )
 
     hist_card = Card(
         CardHeader(
-            H3("History", cls=TextT.lg),
-            Subtitle("Your exercises"),
+            H3(_txt(lang, "History", "Istorija"), cls=TextT.lg),
+            Subtitle(_txt(lang, "Your exercises", "Jusu uzduotys")),
         ),
         CardBody(hist_body, cls="max-h-[400px] overflow-y-auto pr-2"),
         cls="shadow-lg border-t-4 border-t-accent h-full",
@@ -1170,100 +1438,137 @@ def stats_page_content(
     n99_stats: dict[str, Any] | None = None,
     age_stats: dict[str, Any] | None = None,
     weather_stats: dict[str, Any] | None = None,
+    lang: str = "en",
 ) -> Container:
     """Full stats page body with all module sections."""
     sections: list[Any] = [
-        H2("Your Statistics", cls=TextT.xl),
-        P("Track your learning progress", cls=TextPresets.muted_lg),
+        H2(_txt(lang, "Your Statistics", "Jusu Statistika"), cls=TextT.xl),
+        P(
+            _txt(lang, "Track your learning progress", "Sekite savo mokymosi pazanga"),
+            cls=TextPresets.muted_lg,
+        ),
     ]
 
     # Numbers 1-20 stats
     if n20_stats is not None:
-        sections.append(H3("Numbers 1-20", cls=(TextT.lg, "mt-8 mb-0")))
+        sections.append(
+            H3(_txt(lang, "Numbers 1-20", "Skaiciai 1-20"), cls=(TextT.lg, "mt-8 mb-0"))
+        )
         sections.extend(
             _module_stats_section(
-                "Numbers 1-20 Progress",
+                _txt(lang, "Numbers 1-20 Progress", "Skaiciu 1-20 Pazanga"),
                 n20_stats,
                 session,
                 perf_key="n20_performance",
                 history_key="n20_history",
                 border_color="border-t-success",
+                lang=lang,
             )
         )
 
     # Numbers 1-99 stats
     if n99_stats is not None:
-        sections.append(H3("Numbers 1-99", cls=(TextT.lg, "mt-10 mb-0")))
+        sections.append(
+            H3(
+                _txt(lang, "Numbers 1-99", "Skaiciai 1-99"),
+                cls=(TextT.lg, "mt-10 mb-0"),
+            )
+        )
         sections.extend(
             _module_stats_section(
-                "Numbers 1-99 Progress",
+                _txt(lang, "Numbers 1-99 Progress", "Skaiciu 1-99 Pazanga"),
                 n99_stats,
                 session,
                 perf_key="n99_performance",
                 history_key="n99_history",
                 border_color="border-t-info",
+                lang=lang,
             )
         )
 
     # Age stats
     if age_stats is not None:
-        sections.append(H3("Age Exercises", cls=(TextT.lg, "mt-10 mb-0")))
+        sections.append(
+            H3(
+                _txt(lang, "Age Exercises", "Amziaus Uzduotys"),
+                cls=(TextT.lg, "mt-10 mb-0"),
+            )
+        )
         sections.extend(
             _module_stats_section(
-                "Age Progress",
+                _txt(lang, "Age Progress", "Amziaus Pazanga"),
                 age_stats,
                 session,
                 perf_key="age_performance",
                 history_key="age_history",
                 border_color="border-t-warning",
+                lang=lang,
             )
         )
 
     # Weather stats
     if weather_stats is not None:
-        sections.append(H3("Weather Exercises", cls=(TextT.lg, "mt-10 mb-0")))
+        sections.append(
+            H3(
+                _txt(lang, "Weather Exercises", "Oro Uzduotys"),
+                cls=(TextT.lg, "mt-10 mb-0"),
+            )
+        )
         sections.extend(
             _module_stats_section(
-                "Weather Progress",
+                _txt(lang, "Weather Progress", "Oro Pazanga"),
                 weather_stats,
                 session,
                 perf_key="weather_performance",
                 history_key="weather_history",
                 border_color="border-t-error",
+                lang=lang,
             )
         )
 
     # Price stats
-    sections.append(H3("Price Exercises", cls=(TextT.lg, "mt-10 mb-0")))
+    sections.append(
+        H3(
+            _txt(lang, "Price Exercises", "Kainu Uzduotys"),
+            cls=(TextT.lg, "mt-10 mb-0"),
+        )
+    )
     sections.extend(
         _module_stats_section(
-            "Price Progress",
+            _txt(lang, "Price Progress", "Kainu Pazanga"),
             stats,
             session,
             perf_key="performance",
             history_key="history",
             border_color="border-t-secondary",
+            lang=lang,
         )
     )
 
     # Time stats
     if time_stats is not None:
-        sections.append(H3("Time Exercises", cls=(TextT.lg, "mt-10 mb-0")))
+        sections.append(
+            H3(
+                _txt(lang, "Time Exercises", "Laiko Uzduotys"),
+                cls=(TextT.lg, "mt-10 mb-0"),
+            )
+        )
         sections.extend(
             _module_stats_section(
-                "Time Progress",
+                _txt(lang, "Time Progress", "Laiko Pazanga"),
                 time_stats,
                 session,
                 perf_key="time_performance",
                 history_key="time_history",
                 border_color="border-t-info",
+                lang=lang,
             )
         )
 
     sections.append(
         A(
             UkIcon("arrow-left", cls="mr-2"),
-            "Back to Practice",
+            _txt(lang, "Back to Practice", "Atgal i Praktika"),
             href="/",
             cls="uk-btn uk-btn-primary mt-8",
         )
@@ -1272,132 +1577,215 @@ def stats_page_content(
     return Container(*sections, cls=(ContainerT.xl, "px-8 py-8"))
 
 
-def about_page_content() -> Container:
+def about_page_content(lang: str = "en") -> Container:
     return Container(
-        H2("About This App", cls=TextT.xl),
+        H2(_txt(lang, "About This App", "Apie Sia Programa"), cls=TextT.xl),
         P(
-            "Practice Lithuanian number expressions with adaptive exercises!",
+            _txt(
+                lang,
+                "Practice Lithuanian number expressions with adaptive exercises!",
+                "Praktikuokite lietuviskas skaiciu israiskas su adaptyviomis uzduotimis!",
+            ),
             cls=TextPresets.muted_lg,
         ),
         P(
-            "This app helps you practice Lithuanian numbers, prices, and times "
-            "through interactive exercises. An adaptive learning "
-            "system uses Thompson sampling to target your weak areas.",
+            _txt(
+                lang,
+                "This app helps you practice Lithuanian numbers, prices, and times through interactive exercises. An adaptive learning system uses Thompson sampling to target your weak areas.",
+                "Si programa padeda praktikuoti lietuviskus skaicius, kainas ir laika per interaktyvias uzduotis. Adaptyvi mokymosi sistema naudoja Thompson atranka silpnoms vietoms stiprinti.",
+            ),
             cls="mt-4",
         ),
-        H3("Number Exercises", cls=(TextT.lg, "mt-6")),
-        P("Two modules for building number vocabulary:", cls="mt-2"),
-        Ul(
-            Li(
-                Strong("Numbers 1-20"),
-                " — Learn the basic (often irregular) number words.",
-            ),
-            Li(
-                Strong("Numbers 1-99"),
-                " — All numbers including decades and compounds.",
-            ),
-            cls="list-disc ml-6 mt-2 space-y-2",
-        ),
+        H3(_txt(lang, "Number Exercises", "Skaiciu Uzduotys"), cls=(TextT.lg, "mt-6")),
         P(
-            "Each module has two exercise types: ",
-            Strong("produce"),
-            " (say the number in Lithuanian) and ",
-            Strong("recognize"),
-            " (identify the number from Lithuanian).",
-            cls="mt-2",
-        ),
-        H3("Age Exercises", cls=(TextT.lg, "mt-6")),
-        P(
-            "Practice expressing ages using dative pronouns "
-            "(Man, Tau, Jam, Jai) with the correct year word "
-            "(metai/metų).",
+            _txt(
+                lang,
+                "Two modules for building number vocabulary:",
+                "Du moduliai skaiciu zodynui plesti:",
+            ),
             cls="mt-2",
         ),
         Ul(
             Li(
-                Strong("Produce"),
-                ' — given an English prompt like "He is 25 years old.", '
-                "type the Lithuanian phrase.",
+                Strong(_txt(lang, "Numbers 1-20", "Skaiciai 1-20")),
+                _txt(
+                    lang,
+                    " - Learn the basic (often irregular) number words.",
+                    " - Mokykites pagrindiniu (daznai netaisyklingu) skaiciaus zodziu.",
+                ),
             ),
             Li(
-                Strong("Recognize"),
-                " — given a Lithuanian age phrase, identify the age as a number.",
+                Strong(_txt(lang, "Numbers 1-99", "Skaiciai 1-99")),
+                _txt(
+                    lang,
+                    " - All numbers including decades and compounds.",
+                    " - Visi skaiciai, iskaitant desimtis ir sudetinius.",
+                ),
             ),
             cls="list-disc ml-6 mt-2 space-y-2",
         ),
-        H3("Weather Exercises", cls=(TextT.lg, "mt-6")),
         P(
-            "Practice expressing temperatures with the word "
-            '"laipsnis" (degree), which declines like other Lithuanian nouns:',
+            _txt(
+                lang,
+                "Each module has two exercise types: ",
+                "Kiekvienas modulis turi du uzduociu tipus: ",
+            ),
+            Strong(_txt(lang, "produce", "kurimas")),
+            _txt(
+                lang,
+                " (say the number in Lithuanian) and ",
+                " (pasakykite skaiciu lietuviskai) ir ",
+            ),
+            Strong(_txt(lang, "recognize", "atpazinimas")),
+            _txt(
+                lang,
+                " (identify the number from Lithuanian).",
+                " (atpazinkite skaiciu is lietuviskos israiskos).",
+            ),
+            cls="mt-2",
+        ),
+        H3(_txt(lang, "Age Exercises", "Amziaus Uzduotys"), cls=(TextT.lg, "mt-6")),
+        P(
+            _txt(
+                lang,
+                "Practice expressing ages using dative pronouns (Man, Tau, Jam, Jai) with the correct year word (metai/metu).",
+                "Praktikuokite amziu israiskas su naudininko ivardziais (Man, Tau, Jam, Jai) ir tinkamu zodziu metai/metu.",
+            ),
             cls="mt-2",
         ),
         Ul(
             Li(
-                Strong("Produce"),
-                " — given a temperature like 25°C, type the Lithuanian phrase.",
+                Strong(_txt(lang, "Produce", "Kurimas")),
+                _txt(
+                    lang,
+                    ' - given an English prompt like "He is 25 years old.", type the Lithuanian phrase.',
+                    ' - pateikus angliska uzduoti, pvz., "He is 25 years old.", irasykite lietuviska fraze.',
+                ),
             ),
             Li(
-                Strong("Recognize"),
-                " — given a Lithuanian temperature phrase, identify the number.",
+                Strong(_txt(lang, "Recognize", "Atpazinimas")),
+                _txt(
+                    lang,
+                    " - given a Lithuanian age phrase, identify the age as a number.",
+                    " - pateikus lietuviska amziaus fraze, nustatykite amziu skaiciumi.",
+                ),
+            ),
+            cls="list-disc ml-6 mt-2 space-y-2",
+        ),
+        H3(_txt(lang, "Weather Exercises", "Oro Uzduotys"), cls=(TextT.lg, "mt-6")),
+        P(
+            _txt(
+                lang,
+                'Practice expressing temperatures with the word "laipsnis" (degree), which declines like other Lithuanian nouns:',
+                'Praktikuokite temperaturos israiskas su zodziu "laipsnis", kuris linksniuojamas kaip ir kiti lietuviski daiktavardziai:',
+            ),
+            cls="mt-2",
+        ),
+        Ul(
+            Li(
+                Strong(_txt(lang, "Produce", "Kurimas")),
+                _txt(
+                    lang,
+                    " - given a temperature like 25C, type the Lithuanian phrase.",
+                    " - pateikus temperatura, pvz., 25C, irasykite lietuviska fraze.",
+                ),
+            ),
+            Li(
+                Strong(_txt(lang, "Recognize", "Atpazinimas")),
+                _txt(
+                    lang,
+                    " - given a Lithuanian temperature phrase, identify the number.",
+                    " - pateikus lietuviska temperaturos fraze, nustatykite skaiciu.",
+                ),
             ),
             cls="list-disc ml-6 mt-2 space-y-2",
         ),
         P(
-            "Negative temperatures (down to -20) add ",
+            _txt(
+                lang,
+                "Negative temperatures (down to -20) add ",
+                "Neigiamos temperaturos (iki -20) prideda ",
+            ),
             Em("minus"),
-            " before the number word.",
+            _txt(lang, " before the number word.", " pries skaiciaus zodi."),
             cls="mt-2",
         ),
-        H3("Price Exercises", cls=(TextT.lg, "mt-6")),
-        P("Two exercise types:", cls="mt-2"),
+        H3(_txt(lang, "Price Exercises", "Kainu Uzduotys"), cls=(TextT.lg, "mt-6")),
+        P(_txt(lang, "Two exercise types:", "Du uzduociu tipai:"), cls="mt-2"),
         Ul(
             Li(
                 Strong("Kokia kaina?"),
-                " (What is the price?) — ",
-                "Nominative case (vardininkas). State the price directly.",
+                _txt(
+                    lang,
+                    " (What is the price?) - Nominative case (vardininkas). State the price directly.",
+                    " (Kokia kaina?) - Vardininkas. Kaina nurodoma tiesiogiai.",
+                ),
             ),
             Li(
                 Strong("Kiek kainuoja?"),
-                " (How much does it cost?) — ",
-                "Accusative case (galininkas). The number changes form.",
+                _txt(
+                    lang,
+                    " (How much does it cost?) - Accusative case (galininkas). The number changes form.",
+                    " (Kiek kainuoja?) - Galininkas. Skaiciaus forma keiciasi.",
+                ),
             ),
             cls="list-disc ml-6 mt-2 space-y-2",
         ),
-        H3("Time Exercises", cls=(TextT.lg, "mt-6")),
-        P("Four exercise types:", cls="mt-2"),
+        H3(_txt(lang, "Time Exercises", "Laiko Uzduotys"), cls=(TextT.lg, "mt-6")),
+        P(_txt(lang, "Four exercise types:", "Keturi uzduociu tipai:"), cls="mt-2"),
         Ul(
             Li(
-                Strong("Whole hours"),
-                " — Feminine ordinal + valanda (e.g., ",
+                Strong(_txt(lang, "Whole hours", "Pilnos valandos")),
+                _txt(
+                    lang,
+                    " - Feminine ordinal + valanda (e.g., ",
+                    " - Moteriskos g. kelintinis + valanda (pvz., ",
+                ),
                 Em("Trečia valanda"),
                 ").",
             ),
             Li(
-                Strong("Half past"),
-                " — Pusė + genitive of next hour (e.g., ",
+                Strong(_txt(lang, "Half past", "Puse")),
+                _txt(
+                    lang,
+                    " - Puse + genitive of next hour (e.g., ",
+                    " - Puse + kitos valandos kilmininkas (pvz., ",
+                ),
                 Em("Pusė ketvirtos"),
                 ").",
             ),
             Li(
-                Strong("Quarter past"),
-                " — Ketvirtis + genitive of next hour (e.g., ",
+                Strong(_txt(lang, "Quarter past", "Ketvirtis po")),
+                _txt(
+                    lang,
+                    " - Ketvirtis + genitive of next hour (e.g., ",
+                    " - Ketvirtis + kitos valandos kilmininkas (pvz., ",
+                ),
                 Em("Ketvirtis antros"),
                 ").",
             ),
             Li(
-                Strong("Quarter to"),
-                " — Be ketvirčio + nominative of next hour (e.g., ",
+                Strong(_txt(lang, "Quarter to", "Be ketvircio")),
+                _txt(
+                    lang,
+                    " - Be ketvircio + nominative of next hour (e.g., ",
+                    " - Be ketvircio + kitos valandos vardininkas (pvz., ",
+                ),
                 Em("Be ketvirčio trečia"),
                 ").",
             ),
             cls="list-disc ml-6 mt-2 space-y-2",
         ),
         P(
-            "Practice regularly to improve your Lithuanian language skills!",
+            _txt(
+                lang,
+                "Practice regularly to improve your Lithuanian language skills!",
+                "Praktikuokites reguliariai ir gerinkite lietuviu kalbos igudzius!",
+            ),
             cls="mt-6",
         ),
         P(
-            "Made by ",
+            _txt(lang, "Made by ", "Sukure "),
             A(
                 "Jonathan Whitmore",
                 href="https://jonathanwhitmore.com",
@@ -1409,7 +1797,7 @@ def about_page_content() -> Container:
         ),
         A(
             UkIcon("arrow-left", cls="mr-2"),
-            "Back to Practice",
+            _txt(lang, "Back to Practice", "Atgal i Praktika"),
             href="/",
             cls="uk-btn uk-btn-primary mt-6",
         ),

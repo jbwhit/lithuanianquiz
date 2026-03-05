@@ -1,7 +1,7 @@
 """Tests for ui.py — quiz area and HTMX swap behaviour."""
 
 from fasthtml.common import to_xml
-from ui import feedback_incorrect, quiz_area, stats_panel
+from ui import feedback_incorrect, page_shell, quiz_area, stats_panel
 
 
 def _render(component: object) -> str:
@@ -62,6 +62,12 @@ class TestQuizAreaHtmxSwap:
         assert "Not quite right" not in html
         assert "Correct!" not in html
 
+    def test_quiz_area_lithuanian_controls(self) -> None:
+        html = _render(quiz_area("Klausimas?", lang="lt"))
+        assert "Pateikti" in html
+        assert "Dabartine Uzduotis" in html
+        assert "Irasykite atsakyma lietuviskai" in html
+
 
 class TestStatsPanelOob:
     """Ensure OOB stats swap doesn't produce duplicate stats-panel IDs."""
@@ -91,3 +97,18 @@ class TestStatsPanelOob:
     def test_non_oob_panel_lacks_swap_attr(self) -> None:
         html = _render(stats_panel(self._STATS, []))
         assert "hx-swap-oob" not in html
+
+
+class TestLanguageToggle:
+    def test_page_shell_shows_language_switch_links(self) -> None:
+        html = _render(page_shell("X", lang="lt"))
+        assert 'href="/set-language?lang=en"' in html
+        assert 'href="/set-language?lang=lt"' in html
+        assert "Lietuviu" in html
+
+    def test_feedback_incorrect_lithuanian_copy(self) -> None:
+        html = _render(
+            feedback_incorrect("blogai", "gerai", "blogai", "gerai", lang="lt")
+        )
+        assert "Jusu atsakymas" in html
+        assert "Teisingas atsakymas" in html

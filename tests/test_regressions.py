@@ -41,6 +41,7 @@ def test_save_and_load_progress_persists_mix_fields(monkeypatch) -> None:
             "time": {"correct": 3, "incorrect": 1},
             "prices": {"correct": 1, "incorrect": 2},
         },
+        "ui_lang": "lt",
     }
     auth.save_progress("user-1", saved_session)
 
@@ -54,6 +55,7 @@ def test_save_and_load_progress_persists_mix_fields(monkeypatch) -> None:
         "time": {"correct": 3, "incorrect": 1},
         "prices": {"correct": 1, "incorrect": 2},
     }
+    assert loaded_session["ui_lang"] == "lt"
 
 
 def test_load_progress_skips_missing_mix_modules(monkeypatch) -> None:
@@ -263,3 +265,26 @@ def test_append_history_entry_resets_non_list_history() -> None:
 
     assert isinstance(session["history"], list)
     assert len(session["history"]) == 1
+
+
+def test_set_language_updates_session_and_redirects_to_referrer() -> None:
+    class _Req:
+        headers = {"referer": "https://example.com/time?from=header"}
+
+    session: dict = {}
+    response = main.get_set_language(_Req(), session, lang="lt")
+
+    assert session["ui_lang"] == "lt"
+    assert response.status_code == 303
+    assert response.headers["location"] == "/time?from=header"
+
+
+def test_set_language_sanitizes_bad_input() -> None:
+    class _Req:
+        headers = {"referer": "javascript:alert(1)"}
+
+    session: dict = {}
+    response = main.get_set_language(_Req(), session, lang="fr")
+
+    assert session["ui_lang"] == "en"
+    assert response.headers["location"] == "/"
