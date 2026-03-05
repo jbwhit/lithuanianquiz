@@ -201,3 +201,65 @@ def test_load_progress_caps_oversized_histories(monkeypatch) -> None:
     assert len(loaded_session["age_history"]) == 5
     assert len(loaded_session["weather_history"]) == 5
     assert len(loaded_session["mix_history"]) == 5
+
+
+def test_load_progress_skips_invalid_json_without_clobbering_session(
+    monkeypatch,
+) -> None:
+    db = _SQLiteDB()
+    monkeypatch.setattr(auth, "_db", db)
+
+    db.execute(
+        """
+        INSERT INTO user_progress (google_id, data, updated_at)
+        VALUES (?, ?, ?)
+        """,
+        ["user-4", "{not json", "2026-03-02T00:00:00+00:00"],
+    )
+
+    loaded_session = {"mix_modules": {"time": {"correct": 1, "incorrect": 1}}}
+    auth.load_progress("user-4", loaded_session)
+
+    assert loaded_session == {"mix_modules": {"time": {"correct": 1, "incorrect": 1}}}
+
+
+def test_load_progress_drops_invalid_mix_modules(monkeypatch) -> None:
+    db = _SQLiteDB()
+    monkeypatch.setattr(auth, "_db", db)
+
+    data = json.dumps(
+        {
+            "mix_correct_count": 1,
+            "mix_incorrect_count": 2,
+            "mix_history": [],
+            "mix_modules": {
+                "time": {"correct": 3},
+            },
+        }
+    )
+    db.execute(
+        """
+        INSERT INTO user_progress (google_id, data, updated_at)
+        VALUES (?, ?, ?)
+        """,
+        ["user-5", data, "2026-03-02T00:00:00+00:00"],
+    )
+
+    loaded_session = {"mix_modules": {"prices": {"correct": 9, "incorrect": 1}}}
+    auth.load_progress("user-5", loaded_session)
+
+    assert loaded_session["mix_correct_count"] == 1
+    assert loaded_session["mix_incorrect_count"] == 2
+    assert "mix_modules" not in loaded_session
+
+
+def test_append_history_entry_resets_non_list_history() -> None:
+    session = {"history": "bad-data"}
+    main._append_history_entry(
+        session,
+        "history",
+        {"question": "Q", "answer": "A", "correct": False, "true_answer": "T"},
+    )
+
+    assert isinstance(session["history"], list)
+    assert len(session["history"]) == 1

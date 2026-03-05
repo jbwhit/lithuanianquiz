@@ -1,6 +1,7 @@
 """Google OAuth integration and user progress persistence."""
 
 import json
+import logging
 import os
 from datetime import UTC, datetime
 from typing import Any
@@ -21,6 +22,57 @@ auth_client = GoogleAppClient(
 )
 
 _SESSION_HISTORY_LIMIT = 5
+log = logging.getLogger(__name__)
+
+
+def _load_progress_payload(raw: Any, google_id: str) -> dict[str, Any] | None:
+    """Parse saved progress JSON and return None when payload is unusable."""
+    if not isinstance(raw, str):
+        log.warning("Skipping progress load for %s: payload is not a string", google_id)
+        return None
+
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        log.warning("Skipping progress load for %s: invalid JSON payload", google_id)
+        return None
+
+    if not isinstance(data, dict):
+        log.warning(
+            "Skipping progress load for %s: payload is not an object", google_id
+        )
+        return None
+
+    return data
+
+
+def _capped_history(value: Any) -> list[Any]:
+    """Return the latest history items when value is a list."""
+    if isinstance(value, list):
+        return value[-_SESSION_HISTORY_LIMIT:]
+    return []
+
+
+def _get_perf_dict(data: dict[str, Any], key: str) -> dict[str, Any]:
+    """Return a validated performance dictionary from a payload key."""
+    value = data.get(key)
+    return value if isinstance(value, dict) else {}
+
+
+def _is_valid_mix_modules(value: Any) -> bool:
+    """Validate persisted mix-module counters before loading."""
+    if not isinstance(value, dict) or not value:
+        return False
+    for stats in value.values():
+        if not isinstance(stats, dict):
+            return False
+        correct = stats.get("correct")
+        incorrect = stats.get("incorrect")
+        if not isinstance(correct, int) or not isinstance(incorrect, int):
+            return False
+        if correct < 0 or incorrect < 0:
+            return False
+    return True
 
 
 def init_db_tables() -> None:
@@ -68,47 +120,52 @@ def load_progress(google_id: str, session: dict[str, Any]) -> None:
     row = _db.execute(
         "SELECT data FROM user_progress WHERE google_id = ?", [google_id]
     ).fetchone()
-    if row:
-        data = json.loads(row[0])
-        # Price progress
-        session["correct_count"] = data.get("correct_count", 0)
-        session["incorrect_count"] = data.get("incorrect_count", 0)
-        session["history"] = data.get("history", [])[-_SESSION_HISTORY_LIMIT:]
-        session["performance"] = data.get("performance", {})
-        # Time progress
-        session["time_correct_count"] = data.get("time_correct_count", 0)
-        session["time_incorrect_count"] = data.get("time_incorrect_count", 0)
-        session["time_history"] = data.get("time_history", [])[-_SESSION_HISTORY_LIMIT:]
-        session["time_performance"] = data.get("time_performance", {})
-        # Numbers 1-20 progress
-        session["n20_correct_count"] = data.get("n20_correct_count", 0)
-        session["n20_incorrect_count"] = data.get("n20_incorrect_count", 0)
-        session["n20_history"] = data.get("n20_history", [])[-_SESSION_HISTORY_LIMIT:]
-        session["n20_performance"] = data.get("n20_performance", {})
-        # Numbers 1-99 progress
-        session["n99_correct_count"] = data.get("n99_correct_count", 0)
-        session["n99_incorrect_count"] = data.get("n99_incorrect_count", 0)
-        session["n99_history"] = data.get("n99_history", [])[-_SESSION_HISTORY_LIMIT:]
-        session["n99_performance"] = data.get("n99_performance", {})
-        # Age progress
-        session["age_correct_count"] = data.get("age_correct_count", 0)
-        session["age_incorrect_count"] = data.get("age_incorrect_count", 0)
-        session["age_history"] = data.get("age_history", [])[-_SESSION_HISTORY_LIMIT:]
-        session["age_performance"] = data.get("age_performance", {})
-        # Weather progress
-        session["weather_correct_count"] = data.get("weather_correct_count", 0)
-        session["weather_incorrect_count"] = data.get("weather_incorrect_count", 0)
-        session["weather_history"] = data.get("weather_history", [])[
-            -_SESSION_HISTORY_LIMIT:
-        ]
-        session["weather_performance"] = data.get("weather_performance", {})
-        # Practice-all progress
-        session["mix_correct_count"] = data.get("mix_correct_count", 0)
-        session["mix_incorrect_count"] = data.get("mix_incorrect_count", 0)
-        session["mix_history"] = data.get("mix_history", [])[-_SESSION_HISTORY_LIMIT:]
-        mix_modules = data.get("mix_modules")
-        if isinstance(mix_modules, dict) and mix_modules:
-            session["mix_modules"] = mix_modules
+    if not row:
+        return
+
+    data = _load_progress_payload(row[0], google_id)
+    if data is None:
+        return
+
+    # Price progress
+    session["correct_count"] = data.get("correct_count", 0)
+    session["incorrect_count"] = data.get("incorrect_count", 0)
+    session["history"] = _capped_history(data.get("history"))
+    session["performance"] = _get_perf_dict(data, "performance")
+    # Time progress
+    session["time_correct_count"] = data.get("time_correct_count", 0)
+    session["time_incorrect_count"] = data.get("time_incorrect_count", 0)
+    session["time_history"] = _capped_history(data.get("time_history"))
+    session["time_performance"] = _get_perf_dict(data, "time_performance")
+    # Numbers 1-20 progress
+    session["n20_correct_count"] = data.get("n20_correct_count", 0)
+    session["n20_incorrect_count"] = data.get("n20_incorrect_count", 0)
+    session["n20_history"] = _capped_history(data.get("n20_history"))
+    session["n20_performance"] = _get_perf_dict(data, "n20_performance")
+    # Numbers 1-99 progress
+    session["n99_correct_count"] = data.get("n99_correct_count", 0)
+    session["n99_incorrect_count"] = data.get("n99_incorrect_count", 0)
+    session["n99_history"] = _capped_history(data.get("n99_history"))
+    session["n99_performance"] = _get_perf_dict(data, "n99_performance")
+    # Age progress
+    session["age_correct_count"] = data.get("age_correct_count", 0)
+    session["age_incorrect_count"] = data.get("age_incorrect_count", 0)
+    session["age_history"] = _capped_history(data.get("age_history"))
+    session["age_performance"] = _get_perf_dict(data, "age_performance")
+    # Weather progress
+    session["weather_correct_count"] = data.get("weather_correct_count", 0)
+    session["weather_incorrect_count"] = data.get("weather_incorrect_count", 0)
+    session["weather_history"] = _capped_history(data.get("weather_history"))
+    session["weather_performance"] = _get_perf_dict(data, "weather_performance")
+    # Practice-all progress
+    session["mix_correct_count"] = data.get("mix_correct_count", 0)
+    session["mix_incorrect_count"] = data.get("mix_incorrect_count", 0)
+    session["mix_history"] = _capped_history(data.get("mix_history"))
+    mix_modules = data.get("mix_modules")
+    if _is_valid_mix_modules(mix_modules):
+        session["mix_modules"] = mix_modules
+    else:
+        session.pop("mix_modules", None)
 
 
 def save_progress(google_id: str, session: dict[str, Any]) -> None:

@@ -4,6 +4,9 @@
 # Claude Code
 .claude/
 
+# Local git worktrees
+.worktrees/
+
 # SQLite WAL files
 lithuanian_data.db-shm
 lithuanian_data.db-wal
