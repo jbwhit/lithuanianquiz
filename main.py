@@ -127,7 +127,9 @@ def _append_history_entry(
     session: dict[str, Any], history_key: str, entry: dict[str, Any]
 ) -> None:
     """Append one history entry and keep only the most recent N entries."""
-    history = session.get(history_key, [])
+    history = session.get(history_key)
+    if not isinstance(history, list):
+        history = []
     history.append(entry)
     session[history_key] = history[-_SESSION_HISTORY_LIMIT:]
 
