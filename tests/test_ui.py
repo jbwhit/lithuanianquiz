@@ -1,7 +1,7 @@
 """Tests for ui.py — quiz area and HTMX swap behaviour."""
 
 from fasthtml.common import to_xml
-from ui import feedback_incorrect, quiz_area, stats_panel
+from ui import feedback_incorrect, page_shell, quiz_area, stats_panel
 
 
 def _render(component: object) -> str:
@@ -91,3 +91,23 @@ class TestStatsPanelOob:
     def test_non_oob_panel_lacks_swap_attr(self) -> None:
         html = _render(stats_panel(self._STATS, []))
         assert "hx-swap-oob" not in html
+
+
+class TestDiacriticModeToggle:
+    def test_page_shell_defaults_to_strict_mode(self) -> None:
+        html = _render(page_shell("content", current_path="/prices"))
+        assert "set-diacritic-mode?enabled=0&amp;next_path=/prices" in html
+        assert "set-diacritic-mode?enabled=1&amp;next_path=/prices" in html
+        assert "Strict" in html
+        assert "Tolerant" in html
+        assert 'uk-active font-bold">Strict<' in html
+        assert 'uk-active font-bold">Tolerant<' not in html
+
+    def test_page_shell_marks_tolerant_mode_active(self) -> None:
+        html = _render(
+            page_shell("content", diacritic_tolerant=True, current_path="/time")
+        )
+        assert "set-diacritic-mode?enabled=0&amp;next_path=/time" in html
+        assert "set-diacritic-mode?enabled=1&amp;next_path=/time" in html
+        assert 'uk-active font-bold">Tolerant<' in html
+        assert 'uk-active font-bold">Strict<' not in html

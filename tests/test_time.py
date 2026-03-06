@@ -190,6 +190,23 @@ class TestTimeEngineBasics:
     def test_check_case_insensitive(self, engine: TimeEngine) -> None:
         assert engine.check("pirma valanda", "Pirma valanda.") is True
 
+    def test_check_is_strict_for_diacritics_by_default(
+        self, engine: TimeEngine
+    ) -> None:
+        assert engine.check("Puse antros.", "Pusė antros.") is False
+
+    def test_check_accepts_missing_diacritics_in_tolerant_mode(
+        self, engine: TimeEngine
+    ) -> None:
+        assert (
+            engine.check(
+                "Puse antros.",
+                "Pusė antros.",
+                diacritic_tolerant=True,
+            )
+            is True
+        )
+
     def test_check_incorrect(self, engine: TimeEngine) -> None:
         assert engine.check("Antra valanda.", "Pirma valanda.") is False
 

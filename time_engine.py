@@ -188,5 +188,9 @@ class TimeEngine:
         return f"Kiek valandų? ({display_time})"
 
     @staticmethod
-    def check(user_answer: str, correct_answer: str) -> bool:
-        return normalize(user_answer) == normalize(correct_answer)
+    def check(
+        user_answer: str, correct_answer: str, *, diacritic_tolerant: bool = False
+    ) -> bool:
+        return normalize(user_answer, fold_diacritics=diacritic_tolerant) == normalize(
+            correct_answer, fold_diacritics=diacritic_tolerant
+        )

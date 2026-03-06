@@ -1,6 +1,7 @@
 """UI component functions for Lithuanian price quiz."""
 
 from typing import Any
+from urllib.parse import quote
 
 from fasthtml.common import *
 from monsterui.all import *
@@ -27,6 +28,8 @@ def page_shell(
     *content: Any,
     user_name: str | None = None,
     active_module: str | None = None,
+    diacritic_tolerant: bool = False,
+    current_path: str = "/",
 ) -> Div:
     """Full page wrapper with navbar."""
     brand = A(
@@ -59,9 +62,32 @@ def page_shell(
         Li(A("About", href="/about")),
     )
     modules_nav = Div(modules_btn, modules_dropdown, cls="inline-block")
+    strict_cls = "uk-btn uk-btn-ghost btn-sm"
+    tolerant_cls = "uk-btn uk-btn-ghost btn-sm"
+    if diacritic_tolerant:
+        tolerant_cls += " uk-active font-bold"
+    else:
+        strict_cls += " uk-active font-bold"
+    next_path = quote(current_path or "/", safe="/")
+    mode_toggle = Div(
+        Span("Input:", cls=(TextT.sm, "text-base-content/60 mr-1")),
+        A(
+            "Strict",
+            href=f"/set-diacritic-mode?enabled=0&next_path={next_path}",
+            cls=strict_cls,
+        ),
+        A(
+            "Tolerant",
+            href=f"/set-diacritic-mode?enabled=1&next_path={next_path}",
+            cls=tolerant_cls,
+        ),
+        cls="inline-flex items-center gap-1",
+    )
+
     nav_items: list[Any] = [
         modules_nav,
         A("Stats", href="/stats", cls="uk-btn uk-btn-ghost"),
+        mode_toggle,
         A(
             "Feedback",
             href="https://github.com/jbwhit/lithuanianquiz/issues/new",
