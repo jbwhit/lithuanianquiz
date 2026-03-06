@@ -62,6 +62,12 @@ class TestQuizAreaHtmxSwap:
         assert "Not quite right" not in html
         assert "Correct!" not in html
 
+    def test_quiz_area_lithuanian_controls(self) -> None:
+        html = _render(quiz_area("Klausimas?", lang="lt"))
+        assert "Pateikti" in html
+        assert "Dabartinė Užduotis" in html
+        assert "Įrašykite atsakymą lietuviškai" in html
+
 
 class TestStatsPanelOob:
     """Ensure OOB stats swap doesn't produce duplicate stats-panel IDs."""
@@ -93,21 +99,41 @@ class TestStatsPanelOob:
         assert "hx-swap-oob" not in html
 
 
+class TestLanguageToggle:
+    def test_page_shell_shows_language_switch_links(self) -> None:
+        html = _render(page_shell("X", lang="lt"))
+        assert 'href="/set-language?lang=en"' in html
+        assert 'href="/set-language?lang=lt"' in html
+        assert "Lietuviu" in html
+
+    def test_feedback_incorrect_lithuanian_copy(self) -> None:
+        html = _render(
+            feedback_incorrect("blogai", "gerai", "blogai", "gerai", lang="lt")
+        )
+        assert "Jūsų atsakymas" in html
+        assert "Teisingas atsakymas" in html
+
+
 class TestDiacriticModeToggle:
     def test_page_shell_defaults_to_strict_mode(self) -> None:
-        html = _render(page_shell("content", current_path="/prices"))
+        html = _render(page_shell("X", current_path="/prices", lang="lt"))
         assert "set-diacritic-mode?enabled=0&amp;next_path=/prices" in html
         assert "set-diacritic-mode?enabled=1&amp;next_path=/prices" in html
-        assert "Strict" in html
-        assert "Tolerant" in html
-        assert 'uk-active font-bold">Strict<' in html
-        assert 'uk-active font-bold">Tolerant<' not in html
+        assert "Grieztas" in html
+        assert "Lankstus" in html
+        assert 'uk-active font-bold">Grieztas<' in html
+        assert 'uk-active font-bold">Lankstus<' not in html
 
     def test_page_shell_marks_tolerant_mode_active(self) -> None:
         html = _render(
-            page_shell("content", diacritic_tolerant=True, current_path="/time")
+            page_shell(
+                "X",
+                diacritic_tolerant=True,
+                current_path="/time",
+                lang="lt",
+            )
         )
         assert "set-diacritic-mode?enabled=0&amp;next_path=/time" in html
         assert "set-diacritic-mode?enabled=1&amp;next_path=/time" in html
-        assert 'uk-active font-bold">Tolerant<' in html
-        assert 'uk-active font-bold">Strict<' not in html
+        assert 'uk-active font-bold">Lankstus<' in html
+        assert 'uk-active font-bold">Grieztas<' not in html

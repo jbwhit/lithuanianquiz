@@ -41,6 +41,7 @@ def test_save_and_load_progress_persists_mix_fields(monkeypatch) -> None:
             "time": {"correct": 3, "incorrect": 1},
             "prices": {"correct": 1, "incorrect": 2},
         },
+        "ui_lang": "lt",
         "diacritic_tolerant": True,
     }
     auth.save_progress("user-1", saved_session)
@@ -55,6 +56,7 @@ def test_save_and_load_progress_persists_mix_fields(monkeypatch) -> None:
         "time": {"correct": 3, "incorrect": 1},
         "prices": {"correct": 1, "incorrect": 2},
     }
+    assert loaded_session["ui_lang"] == "lt"
     assert loaded_session["diacritic_tolerant"] is True
 
 
@@ -74,26 +76,6 @@ def test_load_progress_defaults_diacritic_mode_to_strict(monkeypatch) -> None:
     loaded_session: dict = {}
     auth.load_progress("user-0", loaded_session)
     assert loaded_session["diacritic_tolerant"] is False
-
-
-def test_set_diacritic_mode_route_updates_session_and_redirects() -> None:
-    session: dict = {}
-    resp = main.get_set_diacritic_mode(session, enabled="1", next_path="/practice-all")
-
-    assert session["diacritic_tolerant"] is True
-    assert resp.status_code == 303
-    assert resp.headers.get("location") == "/practice-all"
-
-
-def test_set_diacritic_mode_rejects_non_local_redirects() -> None:
-    session: dict = {"diacritic_tolerant": True}
-    resp = main.get_set_diacritic_mode(
-        session, enabled="0", next_path="https://evil.example"
-    )
-
-    assert session["diacritic_tolerant"] is False
-    assert resp.status_code == 303
-    assert resp.headers.get("location") == "/"
 
 
 def test_load_progress_skips_missing_mix_modules(monkeypatch) -> None:
@@ -303,3 +285,48 @@ def test_append_history_entry_resets_non_list_history() -> None:
 
     assert isinstance(session["history"], list)
     assert len(session["history"]) == 1
+
+
+def test_set_language_updates_session_and_redirects_to_referrer() -> None:
+    class _Req:
+        headers = {"referer": "https://example.com/time?from=header"}
+
+    session: dict = {}
+    response = main.get_set_language(_Req(), session, lang="lt")
+
+    assert session["ui_lang"] == "lt"
+    assert response.status_code == 303
+    assert response.headers["location"] == "/time?from=header"
+
+
+def test_set_language_sanitizes_bad_input() -> None:
+    class _Req:
+        headers = {"referer": "javascript:alert(1)"}
+
+    session: dict = {}
+    response = main.get_set_language(_Req(), session, lang="fr")
+
+    assert session["ui_lang"] == "en"
+    assert response.headers["location"] == "/"
+
+
+def test_set_diacritic_mode_route_updates_session_and_redirects() -> None:
+    session: dict = {}
+    response = main.get_set_diacritic_mode(
+        session, enabled="1", next_path="/practice-all"
+    )
+
+    assert session["diacritic_tolerant"] is True
+    assert response.status_code == 303
+    assert response.headers.get("location") == "/practice-all"
+
+
+def test_set_diacritic_mode_rejects_non_local_redirects() -> None:
+    session: dict = {"diacritic_tolerant": True}
+    response = main.get_set_diacritic_mode(
+        session, enabled="0", next_path="https://evil.example"
+    )
+
+    assert session["diacritic_tolerant"] is False
+    assert response.status_code == 303
+    assert response.headers.get("location") == "/"

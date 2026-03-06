@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 from fasthtml.common import RedirectResponse
 from fasthtml.oauth import GoogleAppClient, OAuth
 from fastlite import database
+from i18n import UI_LANGUAGE_KEY, normalize_ui_lang
 
 load_dotenv()
 
@@ -175,6 +176,8 @@ def load_progress(google_id: str, session: dict[str, Any]) -> None:
     else:
         session.pop("mix_modules", None)
 
+    session[UI_LANGUAGE_KEY] = normalize_ui_lang(data.get(UI_LANGUAGE_KEY))
+
 
 def save_progress(google_id: str, session: dict[str, Any]) -> None:
     """Write session progress state to the DB."""
@@ -218,6 +221,7 @@ def save_progress(google_id: str, session: dict[str, Any]) -> None:
             "mix_history": session.get("mix_history", [])[-_SESSION_HISTORY_LIMIT:],
             "mix_modules": session.get("mix_modules"),
             "diacritic_tolerant": session.get("diacritic_tolerant", False),
+            UI_LANGUAGE_KEY: normalize_ui_lang(session.get(UI_LANGUAGE_KEY)),
         }
     )
     now = _now()

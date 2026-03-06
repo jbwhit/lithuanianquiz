@@ -91,15 +91,20 @@ class NumberEngine:
         # recognize
         return str(row["number"])
 
-    def format_question(self, exercise_type: str, row: dict[str, Any]) -> str:
+    def format_question(
+        self, exercise_type: str, row: dict[str, Any], lang: str = "en"
+    ) -> str:
         """Format the question text for display."""
         if exercise_type == "produce":
+            if lang == "lt":
+                return f"Kaip pasakyti {row['number']}?"
             return f"How do you say {row['number']}?"
         # recognize: show the nominative form
         parts = [row["kokia_kaina"]]
         if row.get("kokia_kaina_compound"):
             parts.append(row["kokia_kaina_compound"])
-        return f"What number is {' '.join(parts)}?"
+        prompt = "Koks skaičius yra" if lang == "lt" else "What number is"
+        return f"{prompt} {' '.join(parts)}?"
 
     def check(
         self,
