@@ -108,6 +108,24 @@ class TestCheck:
             engine.check("jam penkeri metai.", "Jam penkeri metai.", "produce") is True
         )
 
+    def test_produce_is_strict_for_diacritics_by_default(
+        self, engine: AgeEngine
+    ) -> None:
+        assert engine.check("Jam sesi metai.", "Jam šeši metai.", "produce") is False
+
+    def test_produce_accepts_missing_diacritics_in_tolerant_mode(
+        self, engine: AgeEngine
+    ) -> None:
+        assert (
+            engine.check(
+                "Jam sesi metai.",
+                "Jam šeši metai.",
+                "produce",
+                diacritic_tolerant=True,
+            )
+            is True
+        )
+
     def test_produce_wrong(self, engine: AgeEngine) -> None:
         assert engine.check("Jam šeši metai.", "Jam penkeri metai.", "produce") is False
 

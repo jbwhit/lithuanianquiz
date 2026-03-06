@@ -1,6 +1,7 @@
 """UI component functions for Lithuanian price quiz."""
 
 from typing import Any
+from urllib.parse import quote
 
 from fasthtml.common import *
 from i18n import tr
@@ -37,6 +38,8 @@ def page_shell(
     user_name: str | None = None,
     active_module: str | None = None,
     lang: str = "en",
+    diacritic_tolerant: bool = False,
+    current_path: str = "/",
 ) -> Div:
     """Full page wrapper with navbar."""
     brand = A(
@@ -88,9 +91,34 @@ def page_shell(
         ),
         cls="inline-flex items-center gap-1",
     )
+    strict_cls = "uk-btn uk-btn-ghost btn-sm"
+    tolerant_cls = "uk-btn uk-btn-ghost btn-sm"
+    if diacritic_tolerant:
+        tolerant_cls += " uk-active font-bold"
+    else:
+        strict_cls += " uk-active font-bold"
+    next_path = quote(current_path or "/", safe="/")
+    mode_toggle = Div(
+        Span(
+            _txt(lang, "Input:", "Ivestis:"),
+            cls=(TextT.sm, "text-base-content/60 mr-1"),
+        ),
+        A(
+            _txt(lang, "Strict", "Grieztas"),
+            href=f"/set-diacritic-mode?enabled=0&next_path={next_path}",
+            cls=strict_cls,
+        ),
+        A(
+            _txt(lang, "Tolerant", "Lankstus"),
+            href=f"/set-diacritic-mode?enabled=1&next_path={next_path}",
+            cls=tolerant_cls,
+        ),
+        cls="inline-flex items-center gap-1",
+    )
     nav_items: list[Any] = [
         modules_nav,
         A(_txt(lang, "Stats", "Statistika"), href="/stats", cls="uk-btn uk-btn-ghost"),
+        mode_toggle,
         A(
             _txt(lang, "Feedback", "Atsiliepimai"),
             href="https://github.com/jbwhit/lithuanianquiz/issues/new",

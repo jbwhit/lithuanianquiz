@@ -42,6 +42,7 @@ def test_save_and_load_progress_persists_mix_fields(monkeypatch) -> None:
             "prices": {"correct": 1, "incorrect": 2},
         },
         "ui_lang": "lt",
+        "diacritic_tolerant": True,
     }
     auth.save_progress("user-1", saved_session)
 
@@ -56,6 +57,25 @@ def test_save_and_load_progress_persists_mix_fields(monkeypatch) -> None:
         "prices": {"correct": 1, "incorrect": 2},
     }
     assert loaded_session["ui_lang"] == "lt"
+    assert loaded_session["diacritic_tolerant"] is True
+
+
+def test_load_progress_defaults_diacritic_mode_to_strict(monkeypatch) -> None:
+    db = _SQLiteDB()
+    monkeypatch.setattr(auth, "_db", db)
+
+    data = json.dumps({"mix_history": []})
+    db.execute(
+        """
+        INSERT INTO user_progress (google_id, data, updated_at)
+        VALUES (?, ?, ?)
+        """,
+        ["user-0", data, "2026-03-02T00:00:00+00:00"],
+    )
+
+    loaded_session: dict = {}
+    auth.load_progress("user-0", loaded_session)
+    assert loaded_session["diacritic_tolerant"] is False
 
 
 def test_load_progress_skips_missing_mix_modules(monkeypatch) -> None:
@@ -288,3 +308,25 @@ def test_set_language_sanitizes_bad_input() -> None:
 
     assert session["ui_lang"] == "en"
     assert response.headers["location"] == "/"
+
+
+def test_set_diacritic_mode_route_updates_session_and_redirects() -> None:
+    session: dict = {}
+    response = main.get_set_diacritic_mode(
+        session, enabled="1", next_path="/practice-all"
+    )
+
+    assert session["diacritic_tolerant"] is True
+    assert response.status_code == 303
+    assert response.headers.get("location") == "/practice-all"
+
+
+def test_set_diacritic_mode_rejects_non_local_redirects() -> None:
+    session: dict = {"diacritic_tolerant": True}
+    response = main.get_set_diacritic_mode(
+        session, enabled="0", next_path="https://evil.example"
+    )
+
+    assert session["diacritic_tolerant"] is False
+    assert response.status_code == 303
+    assert response.headers.get("location") == "/"

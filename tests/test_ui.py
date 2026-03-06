@@ -112,3 +112,28 @@ class TestLanguageToggle:
         )
         assert "Jūsų atsakymas" in html
         assert "Teisingas atsakymas" in html
+
+
+class TestDiacriticModeToggle:
+    def test_page_shell_defaults_to_strict_mode(self) -> None:
+        html = _render(page_shell("X", current_path="/prices", lang="lt"))
+        assert "set-diacritic-mode?enabled=0&amp;next_path=/prices" in html
+        assert "set-diacritic-mode?enabled=1&amp;next_path=/prices" in html
+        assert "Grieztas" in html
+        assert "Lankstus" in html
+        assert 'uk-active font-bold">Grieztas<' in html
+        assert 'uk-active font-bold">Lankstus<' not in html
+
+    def test_page_shell_marks_tolerant_mode_active(self) -> None:
+        html = _render(
+            page_shell(
+                "X",
+                diacritic_tolerant=True,
+                current_path="/time",
+                lang="lt",
+            )
+        )
+        assert "set-diacritic-mode?enabled=0&amp;next_path=/time" in html
+        assert "set-diacritic-mode?enabled=1&amp;next_path=/time" in html
+        assert 'uk-active font-bold">Lankstus<' in html
+        assert 'uk-active font-bold">Grieztas<' not in html

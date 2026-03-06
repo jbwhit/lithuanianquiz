@@ -154,6 +154,27 @@ class TestCheck:
     def test_produce_case_insensitive(self, engine: WeatherEngine) -> None:
         assert engine.check("Penki Laipsniai", "penki laipsniai", "produce") is True
 
+    def test_produce_is_strict_for_diacritics_by_default(
+        self, engine: WeatherEngine
+    ) -> None:
+        assert (
+            engine.check("penkiolika laipsniu", "penkiolika laipsnių", "produce")
+            is False
+        )
+
+    def test_produce_accepts_missing_diacritics_in_tolerant_mode(
+        self, engine: WeatherEngine
+    ) -> None:
+        assert (
+            engine.check(
+                "penkiolika laipsniu",
+                "penkiolika laipsnių",
+                "produce",
+                diacritic_tolerant=True,
+            )
+            is True
+        )
+
     def test_produce_wrong(self, engine: WeatherEngine) -> None:
         assert engine.check("šeši laipsniai", "penki laipsniai", "produce") is False
 
