@@ -14,13 +14,30 @@ ITEMS: list[str] = [
     "kepurė",
 ]
 
+_LT_DIACRITIC_MAP = str.maketrans(
+    {
+        "ą": "a",
+        "č": "c",
+        "ę": "e",
+        "ė": "e",
+        "į": "i",
+        "š": "s",
+        "ų": "u",
+        "ū": "u",
+        "ž": "z",
+    }
+)
 
-def normalize(answer: str) -> str:
+
+def normalize(answer: str, *, fold_diacritics: bool = False) -> str:
     """Normalize an answer for comparison."""
     s = answer.strip().lower()
     if s.endswith("."):
         s = s[:-1]
-    return " ".join(s.split())
+    s = " ".join(s.split())
+    if fold_diacritics:
+        return s.translate(_LT_DIACRITIC_MAP)
+    return s
 
 
 def number_pattern(n: int) -> str:
@@ -122,5 +139,9 @@ class ExerciseEngine:
         return f"Kiek kainuoja {item}? ({price})"
 
     @staticmethod
-    def check(user_answer: str, correct_answer: str) -> bool:
-        return normalize(user_answer) == normalize(correct_answer)
+    def check(
+        user_answer: str, correct_answer: str, *, diacritic_tolerant: bool = False
+    ) -> bool:
+        return normalize(user_answer, fold_diacritics=diacritic_tolerant) == normalize(
+            correct_answer, fold_diacritics=diacritic_tolerant
+        )

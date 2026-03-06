@@ -51,6 +51,16 @@ class TestCheck:
     def test_produce_trailing_period(self, engine: NumberEngine) -> None:
         assert engine.check("penki.", "penki", "produce") is True
 
+    def test_produce_is_strict_for_diacritics_by_default(
+        self, engine: NumberEngine
+    ) -> None:
+        assert engine.check("sesi", "šeši", "produce") is False
+
+    def test_produce_accepts_missing_diacritics_in_tolerant_mode(
+        self, engine: NumberEngine
+    ) -> None:
+        assert engine.check("sesi", "šeši", "produce", diacritic_tolerant=True) is True
+
     def test_produce_wrong(self, engine: NumberEngine) -> None:
         assert engine.check("šeši", "penki", "produce") is False
 

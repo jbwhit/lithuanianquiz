@@ -30,6 +30,18 @@ class TestNormalize:
     def test_combined(self) -> None:
         assert normalize("  Du   Eurai. ") == "du eurai"
 
+    def test_keeps_diacritics_by_default(self) -> None:
+        assert normalize("ĄČĘĖĮŠŲŪŽ") == "ąčęėįšųūž"
+
+    def test_optionally_folds_lithuanian_diacritics(self) -> None:
+        assert normalize("ĄČĘĖĮŠŲŪŽ", fold_diacritics=True) == "aceeisuuz"
+
+    def test_diacritic_and_ascii_forms_match_in_tolerant_mode(self) -> None:
+        assert normalize("dvidešimt vieną eurą.", fold_diacritics=True) == normalize(
+            "dvidesimt viena eura.",
+            fold_diacritics=True,
+        )
+
 
 # ------------------------------------------------------------------
 # number_pattern
@@ -131,6 +143,23 @@ class TestExerciseEngine:
 
     def test_check_case_insensitive(self, engine: ExerciseEngine) -> None:
         assert engine.check("Vienas Euras", "vienas euras.") is True
+
+    def test_check_is_strict_by_default_for_diacritics(
+        self, engine: ExerciseEngine
+    ) -> None:
+        assert engine.check("dvidesimt viena eura", "dvidešimt vieną eurą.") is False
+
+    def test_check_accepts_missing_lithuanian_diacritics_when_tolerant(
+        self, engine: ExerciseEngine
+    ) -> None:
+        assert (
+            engine.check(
+                "dvidesimt viena eura",
+                "dvidešimt vieną eurą.",
+                diacritic_tolerant=True,
+            )
+            is True
+        )
 
     def test_check_incorrect(self, engine: ExerciseEngine) -> None:
         assert engine.check("du eurai", "vienas euras.") is False

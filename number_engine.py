@@ -101,11 +101,20 @@ class NumberEngine:
             parts.append(row["kokia_kaina_compound"])
         return f"What number is {' '.join(parts)}?"
 
-    def check(self, user_answer: str, correct_answer: str, exercise_type: str) -> bool:
+    def check(
+        self,
+        user_answer: str,
+        correct_answer: str,
+        exercise_type: str,
+        *,
+        diacritic_tolerant: bool = False,
+    ) -> bool:
         """Check whether the user's answer is correct."""
         if exercise_type == "recognize":
             return user_answer.strip() == correct_answer
-        return normalize(user_answer) == normalize(correct_answer)
+        return normalize(user_answer, fold_diacritics=diacritic_tolerant) == normalize(
+            correct_answer, fold_diacritics=diacritic_tolerant
+        )
 
     def update(
         self,

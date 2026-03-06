@@ -85,6 +85,7 @@ _custom_css = Style("""\
 
 
 def _not_found(req, exc) -> Any:
+    session = req.scope.get("session", {}) if req else {}
     return page_shell(
         Container(
             DivCentered(
@@ -103,7 +104,10 @@ def _not_found(req, exc) -> Any:
                 cls="min-h-[40vh]",
             ),
             cls=(ContainerT.xl, "px-8 py-16"),
-        )
+        ),
+        user_name=session.get("user_name"),
+        diacritic_tolerant=_is_diacritic_tolerant(session),
+        current_path=req.url.path if req else "/",
     )
 
 
@@ -121,6 +125,33 @@ oauth = QuizOAuth(app, auth_client)
 # ------------------------------------------------------------------
 
 _SESSION_HISTORY_LIMIT = 5
+_DIACRITIC_MODE_KEY = "diacritic_tolerant"
+
+
+def _is_diacritic_tolerant(session: dict[str, Any]) -> bool:
+    """Return whether diacritic-tolerant answer checking is enabled."""
+    return bool(session.get(_DIACRITIC_MODE_KEY, False))
+
+
+def _check_kwargs(session: dict[str, Any]) -> dict[str, bool]:
+    """Shared answer-check options derived from current session settings."""
+    return {"diacritic_tolerant": _is_diacritic_tolerant(session)}
+
+
+def _render_page(
+    session: dict[str, Any],
+    *content: Any,
+    active_module: str | None = None,
+    current_path: str = "/",
+) -> Any:
+    """Render a full page with common shell options."""
+    return page_shell(
+        *content,
+        user_name=session.get("user_name"),
+        active_module=active_module,
+        diacritic_tolerant=_is_diacritic_tolerant(session),
+        current_path=current_path,
+    )
 
 
 def _append_history_entry(
@@ -285,7 +316,8 @@ def _compute_number_stats(
 
 @rt("/error")
 def get_error(session) -> Any:
-    return page_shell(
+    return _render_page(
+        session,
         Container(
             DivCentered(
                 Span("🇱🇹", cls="text-6xl mb-4"),
@@ -313,7 +345,7 @@ def get_error(session) -> Any:
             ),
             cls=(ContainerT.xl, "px-8 py-16"),
         ),
-        user_name=session.get("user_name"),
+        current_path="/error",
     )
 
 
@@ -321,15 +353,18 @@ def get_error(session) -> Any:
 def get_login(req, session) -> Any:
     if session.get("auth"):
         return RedirectResponse("/", status_code=303)
-    return page_shell(login_page_content(oauth.login_link(req)))
+    return _render_page(
+        session, login_page_content(oauth.login_link(req)), current_path="/login"
+    )
 
 
 @rt("/")
 def get_home(session) -> Any:
-    return page_shell(
+    return _render_page(
+        session,
         landing_page_content(),
-        user_name=session.get("user_name"),
         active_module="home",
+        current_path="/",
     )
 
 
@@ -387,8 +422,11 @@ def get_prices(session) -> Any:
         cls=(ContainerT.xl, "px-8 py-8"),
     )
 
-    return page_shell(
-        main_content, user_name=session.get("user_name"), active_module="prices"
+    return _render_page(
+        session,
+        main_content,
+        active_module="prices",
+        current_path="/prices",
     )
 
 
@@ -398,7 +436,7 @@ def post(session, user_answer: str = "") -> Any:
 
     row = engine.get_row(session["row_id"])
     correct_answer = engine.correct_answer(session["exercise_type"], row)
-    is_correct = engine.check(user_answer, correct_answer)
+    is_correct = engine.check(user_answer, correct_answer, **_check_kwargs(session))
 
     # Update counters
     if is_correct:
@@ -506,7 +544,8 @@ def get_stats(session) -> Any:
     n99_stats = _compute_number_stats(session, "n99", number_engine_99)
     age_stats = _compute_age_stats(session)
     weather_stats = _compute_weather_stats(session)
-    return page_shell(
+    return _render_page(
+        session,
         stats_page_content(
             stats,
             session,
@@ -516,16 +555,24 @@ def get_stats(session) -> Any:
             age_stats=age_stats,
             weather_stats=weather_stats,
         ),
-        user_name=session.get("user_name"),
+        current_path="/stats",
     )
 
 
 @rt("/about")
 def get_about(session) -> Any:
-    return page_shell(
-        about_page_content(),
-        user_name=session.get("user_name"),
+    return _render_page(session, about_page_content(), current_path="/about")
+
+
+@rt("/set-diacritic-mode")
+def get_set_diacritic_mode(session, enabled: str = "0", next_path: str = "/") -> Any:
+    session[_DIACRITIC_MODE_KEY] = enabled == "1"
+    if session.get("auth"):
+        save_progress(session["auth"], session)
+    safe_next = (
+        next_path if isinstance(next_path, str) and next_path.startswith("/") else "/"
     )
+    return RedirectResponse(safe_next, status_code=303)
 
 
 # ------------------------------------------------------------------
@@ -592,8 +639,11 @@ def get_time(session) -> Any:
         cls=(ContainerT.xl, "px-8 py-8"),
     )
 
-    return page_shell(
-        main_content, user_name=session.get("user_name"), active_module="time"
+    return _render_page(
+        session,
+        main_content,
+        active_module="time",
+        current_path="/time",
     )
 
 
@@ -606,7 +656,9 @@ def post_time_answer(session, user_answer: str = "") -> Any:
         session["time_hour"],
         session["time_minute"],
     )
-    is_correct = time_engine.check(user_answer, correct_answer)
+    is_correct = time_engine.check(
+        user_answer, correct_answer, **_check_kwargs(session)
+    )
 
     if is_correct:
         session["time_correct_count"] = session.get("time_correct_count", 0) + 1
@@ -829,8 +881,11 @@ def get_age(session) -> Any:
         cls=(ContainerT.xl, "px-8 py-8"),
     )
 
-    return page_shell(
-        main_content, user_name=session.get("user_name"), active_module="age"
+    return _render_page(
+        session,
+        main_content,
+        active_module="age",
+        current_path="/age",
     )
 
 
@@ -852,7 +907,9 @@ def post_age_answer(session, user_answer: str = "") -> Any:
 
     pronoun = _pronoun_by_dative(pronoun_dative)
     correct = age_engine.correct_answer(ex_type, row, pronoun)
-    is_correct = age_engine.check(user_answer, correct, ex_type)
+    is_correct = age_engine.check(
+        user_answer, correct, ex_type, **_check_kwargs(session)
+    )
 
     if is_correct:
         session["age_correct_count"] = session.get("age_correct_count", 0) + 1
@@ -996,8 +1053,11 @@ def get_weather(session) -> Any:
         cls=(ContainerT.xl, "px-8 py-8"),
     )
 
-    return page_shell(
-        main_content, user_name=session.get("user_name"), active_module="weather"
+    return _render_page(
+        session,
+        main_content,
+        active_module="weather",
+        current_path="/weather",
     )
 
 
@@ -1016,7 +1076,9 @@ def post_weather_answer(session, user_answer: str = "") -> Any:
             break
 
     correct = weather_engine.correct_answer(ex_type, row, negative)
-    is_correct = weather_engine.check(user_answer, correct, ex_type)
+    is_correct = weather_engine.check(
+        user_answer, correct, ex_type, **_check_kwargs(session)
+    )
 
     if is_correct:
         session["weather_correct_count"] = session.get("weather_correct_count", 0) + 1
@@ -1173,8 +1235,11 @@ def _make_number_routes(
             cls=(ContainerT.xl, "px-8 py-8"),
         )
 
-        return page_shell(
-            main_content, user_name=session.get("user_name"), active_module=module_name
+        return _render_page(
+            session,
+            main_content,
+            active_module=module_name,
+            current_path=route_base,
         )
 
     @rt(f"{route_base}/answer")
@@ -1190,7 +1255,9 @@ def _make_number_routes(
                 break
 
         correct = engine_inst.correct_answer(ex_type, row)
-        is_correct = engine_inst.check(user_answer, correct, ex_type)
+        is_correct = engine_inst.check(
+            user_answer, correct, ex_type, **_check_kwargs(session)
+        )
 
         if is_correct:
             session[f"{prefix}_correct_count"] = (
@@ -1445,6 +1512,7 @@ def _check_mix_answer(
     Returns (is_correct, correct_answer, exercise_info, row_or_none).
     """
     mod = session["mix_current_module"]
+    check_kwargs = _check_kwargs(session)
 
     if mod in ("n20", "n99"):
         prefix = mod
@@ -1453,7 +1521,7 @@ def _check_mix_answer(
         ex_type = session[f"{prefix}_exercise_type"]
         row = next((r for r in eng.rows if r["number"] == row_id), eng.rows[0])
         correct = eng.correct_answer(ex_type, row)
-        is_correct = eng.check(user_answer, correct, ex_type)
+        is_correct = eng.check(user_answer, correct, ex_type, **check_kwargs)
         exercise_info = {
             "exercise_type": ex_type,
             "number_pattern": session.get(f"{prefix}_number_pattern"),
@@ -1470,7 +1538,7 @@ def _check_mix_answer(
         row = next((r for r in age_rows if r["number"] == row_id), age_rows[0])
         pronoun = _pronoun_by_dative(pronoun_dative)
         correct = age_engine.correct_answer(ex_type, row, pronoun)
-        is_correct = age_engine.check(user_answer, correct, ex_type)
+        is_correct = age_engine.check(user_answer, correct, ex_type, **check_kwargs)
         exercise_info = {
             "exercise_type": ex_type,
             "number_pattern": session.get("age_number_pattern"),
@@ -1485,7 +1553,7 @@ def _check_mix_answer(
         negative = session["weather_negative"]
         row = next((r for r in weather_rows if r["number"] == row_id), weather_rows[0])
         correct = weather_engine.correct_answer(ex_type, row, negative)
-        is_correct = weather_engine.check(user_answer, correct, ex_type)
+        is_correct = weather_engine.check(user_answer, correct, ex_type, **check_kwargs)
         exercise_info = {
             "exercise_type": ex_type,
             "number_pattern": session.get("weather_number_pattern"),
@@ -1497,7 +1565,7 @@ def _check_mix_answer(
     if mod == "prices":
         row = engine.get_row(session["row_id"])
         correct = engine.correct_answer(session["exercise_type"], row)
-        is_correct = engine.check(user_answer, correct)
+        is_correct = engine.check(user_answer, correct, **check_kwargs)
         exercise_info = {
             "exercise_type": session["exercise_type"],
             "number_pattern": session.get("number_pattern"),
@@ -1511,7 +1579,7 @@ def _check_mix_answer(
     correct = time_engine.correct_answer(
         ex_type, session["time_hour"], session["time_minute"]
     )
-    is_correct = time_engine.check(user_answer, correct)
+    is_correct = time_engine.check(user_answer, correct, **check_kwargs)
     exercise_info = {
         "exercise_type": ex_type,
         "number_pattern": session.get("time_number_pattern"),
@@ -1576,10 +1644,11 @@ def get_practice_all(session) -> Any:
         cls=(ContainerT.xl, "px-8 py-8"),
     )
 
-    return page_shell(
+    return _render_page(
+        session,
         main_content,
-        user_name=session.get("user_name"),
         active_module="practice-all",
+        current_path="/practice-all",
     )
 
 

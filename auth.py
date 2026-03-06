@@ -59,6 +59,12 @@ def _get_perf_dict(data: dict[str, Any], key: str) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
 
+def _get_bool(data: dict[str, Any], key: str, default: bool = False) -> bool:
+    """Return a validated boolean from payload key."""
+    value = data.get(key, default)
+    return value if isinstance(value, bool) else default
+
+
 def _is_valid_mix_modules(value: Any) -> bool:
     """Validate persisted mix-module counters before loading."""
     if not isinstance(value, dict) or not value:
@@ -126,6 +132,8 @@ def load_progress(google_id: str, session: dict[str, Any]) -> None:
     data = _load_progress_payload(row[0], google_id)
     if data is None:
         return
+
+    session["diacritic_tolerant"] = _get_bool(data, "diacritic_tolerant")
 
     # Price progress
     session["correct_count"] = data.get("correct_count", 0)
@@ -209,6 +217,7 @@ def save_progress(google_id: str, session: dict[str, Any]) -> None:
             "mix_incorrect_count": session.get("mix_incorrect_count", 0),
             "mix_history": session.get("mix_history", [])[-_SESSION_HISTORY_LIMIT:],
             "mix_modules": session.get("mix_modules"),
+            "diacritic_tolerant": session.get("diacritic_tolerant", False),
         }
     )
     now = _now()
