@@ -195,7 +195,7 @@ def landing_page_content() -> Container:
                 ),
                 cls="mt-auto",
             ),
-            cls=f"shadow-lg border-t-4 {border_color} h-full flex flex-col module-card",
+            cls=f"shadow-lg border-t-4 {border_color} h-full flex flex-col module-card hover:shadow-xl hover:-translate-y-1 transition-all duration-200",
         )
 
     return Container(
