@@ -165,6 +165,80 @@ def _append_history_entry(
     session[history_key] = history[-_SESSION_HISTORY_LIMIT:]
 
 
+def _build_answer_snapshot(
+    question: str,
+    user_answer: str,
+    correct_answer: str,
+    is_correct: bool,
+    *,
+    exercise_info: dict[str, Any] | None = None,
+    row: dict[str, Any] | None = None,
+    hour: int | None = None,
+) -> dict[str, Any]:
+    """Capture the answered exercise before the session mutates to the next one."""
+    answer_text = user_answer.strip()
+    correct_text = correct_answer.strip()
+    diff_user, diff_correct = highlight_diff(answer_text, correct_text, is_correct)
+    return {
+        "question": question,
+        "answer": answer_text,
+        "correct": is_correct,
+        "true_answer": correct_text,
+        "diff_user": diff_user,
+        "diff_correct": diff_correct,
+        "exercise_info": exercise_info or {},
+        "row": row,
+        "hour": hour,
+    }
+
+
+def _history_entry_from_snapshot(snapshot: dict[str, Any]) -> dict[str, Any]:
+    """Persist only the stable fields needed for exercise history."""
+    return {
+        "question": snapshot["question"],
+        "answer": snapshot["answer"],
+        "correct": snapshot["correct"],
+        "true_answer": snapshot["true_answer"],
+    }
+
+
+def _append_snapshot_history(
+    session: dict[str, Any], history_key: str, snapshot: dict[str, Any]
+) -> None:
+    _append_history_entry(session, history_key, _history_entry_from_snapshot(snapshot))
+
+
+def _feedback_from_snapshot(snapshot: dict[str, Any]) -> Any:
+    """Build feedback from frozen answered state instead of live session keys."""
+    exercise_info = snapshot.get("exercise_info", {})
+    if snapshot["correct"]:
+        return feedback_correct(
+            snapshot["answer"],
+            exercise_type=exercise_info.get("exercise_type"),
+            grammatical_case=exercise_info.get("grammatical_case"),
+            question=snapshot["question"],
+        )
+
+    fb_kwargs: dict[str, Any] = {
+        "exercise_type": exercise_info.get("exercise_type"),
+        "number_pattern": exercise_info.get("number_pattern"),
+        "question": snapshot["question"],
+    }
+    if exercise_info.get("grammatical_case"):
+        fb_kwargs["grammatical_case"] = exercise_info["grammatical_case"]
+    if snapshot.get("row") is not None:
+        fb_kwargs["row"] = snapshot["row"]
+    if snapshot.get("hour") is not None:
+        fb_kwargs["hour"] = snapshot["hour"]
+    return feedback_incorrect(
+        snapshot["answer"],
+        snapshot["true_answer"],
+        snapshot["diff_user"],
+        snapshot["diff_correct"],
+        **fb_kwargs,
+    )
+
+
 def _ensure_session(session: dict[str, Any]) -> None:
     """Initialise defaults and generate first question if needed."""
     session.setdefault("history", [])
@@ -444,24 +518,21 @@ def post(session, user_answer: str = "") -> Any:
     else:
         session["incorrect_count"] = session.get("incorrect_count", 0) + 1
 
-    # Build history entry (minimal — diffs regenerated on display)
-    diff_u, diff_c = highlight_diff(
-        user_answer.strip(), correct_answer.strip(), is_correct
-    )
-    entry = {
-        "question": session["current_question"],
-        "answer": user_answer.strip(),
-        "correct": is_correct,
-        "true_answer": correct_answer.strip(),
-    }
-    _append_history_entry(session, "history", entry)
-
     # Update adaptive model
     exercise_info = {
         "exercise_type": session["exercise_type"],
         "number_pattern": session.get("number_pattern"),
         "grammatical_case": session.get("grammatical_case"),
     }
+    snapshot = _build_answer_snapshot(
+        session["current_question"],
+        user_answer,
+        correct_answer,
+        is_correct,
+        exercise_info=exercise_info,
+        row=row,
+    )
+    _append_snapshot_history(session, "history", snapshot)
     adaptive.update(session, exercise_info, is_correct)
 
     # Pick next question
@@ -472,26 +543,7 @@ def post(session, user_answer: str = "") -> Any:
         save_progress(session["auth"], session)
 
     # Build feedback
-    asked = entry["question"]
-    if is_correct:
-        fb = feedback_correct(
-            user_answer.strip(),
-            exercise_type=exercise_info["exercise_type"],
-            grammatical_case=exercise_info["grammatical_case"],
-            question=asked,
-        )
-    else:
-        fb = feedback_incorrect(
-            user_answer.strip(),
-            correct_answer.strip(),
-            diff_u,
-            diff_c,
-            exercise_type=exercise_info["exercise_type"],
-            grammatical_case=exercise_info["grammatical_case"],
-            number_pattern=exercise_info["number_pattern"],
-            row=row,
-            question=asked,
-        )
+    fb = _feedback_from_snapshot(snapshot)
 
     # Return quiz area + OOB stats update
     stats = _compute_stats(session)
@@ -665,51 +717,29 @@ def post_time_answer(session, user_answer: str = "") -> Any:
     else:
         session["time_incorrect_count"] = session.get("time_incorrect_count", 0) + 1
 
-    diff_u, diff_c = highlight_diff(
-        user_answer.strip(), correct_answer.strip(), is_correct
-    )
-    entry = {
-        "question": session["time_current_question"],
-        "answer": user_answer.strip(),
-        "correct": is_correct,
-        "true_answer": correct_answer.strip(),
-    }
-    _append_history_entry(session, "time_history", entry)
-
     exercise_info = {
         "exercise_type": session["time_exercise_type"],
         "number_pattern": session.get("time_number_pattern"),
         "grammatical_case": session.get("time_grammatical_case"),
     }
+    snapshot = _build_answer_snapshot(
+        session["time_current_question"],
+        user_answer,
+        correct_answer,
+        is_correct,
+        exercise_info=exercise_info,
+        hour=session["time_hour"],
+    )
+    _append_snapshot_history(session, "time_history", snapshot)
     time_engine.update(session, exercise_info, is_correct)
 
-    answered_hour = session["time_hour"]
     _new_time_question(session)
 
     # Persist progress (only when logged in)
     if session.get("auth"):
         save_progress(session["auth"], session)
 
-    asked = entry["question"]
-    if is_correct:
-        fb = feedback_correct(
-            user_answer.strip(),
-            exercise_type=exercise_info["exercise_type"],
-            grammatical_case=exercise_info["grammatical_case"],
-            question=asked,
-        )
-    else:
-        fb = feedback_incorrect(
-            user_answer.strip(),
-            correct_answer.strip(),
-            diff_u,
-            diff_c,
-            exercise_type=exercise_info["exercise_type"],
-            grammatical_case=exercise_info["grammatical_case"],
-            number_pattern=exercise_info["number_pattern"],
-            hour=answered_hour,
-            question=asked,
-        )
+    fb = _feedback_from_snapshot(snapshot)
 
     stats = _compute_time_stats(session)
     oob_stats = stats_panel(stats, session.get("time_history", []), oob=True)
@@ -916,20 +946,19 @@ def post_age_answer(session, user_answer: str = "") -> Any:
     else:
         session["age_incorrect_count"] = session.get("age_incorrect_count", 0) + 1
 
-    diff_u, diff_c = highlight_diff(user_answer.strip(), correct.strip(), is_correct)
-    entry = {
-        "question": session["age_current_question"],
-        "answer": user_answer.strip(),
-        "correct": is_correct,
-        "true_answer": correct.strip(),
-    }
-    _append_history_entry(session, "age_history", entry)
-
     exercise_info = {
         "exercise_type": ex_type,
         "number_pattern": session.get("age_number_pattern"),
         "pronoun": pronoun_dative,
     }
+    snapshot = _build_answer_snapshot(
+        session["age_current_question"],
+        user_answer,
+        correct,
+        is_correct,
+        exercise_info=exercise_info,
+    )
+    _append_snapshot_history(session, "age_history", snapshot)
     age_engine.update(session, "age", exercise_info, is_correct)
 
     _new_age_question(session)
@@ -937,21 +966,7 @@ def post_age_answer(session, user_answer: str = "") -> Any:
     if session.get("auth"):
         save_progress(session["auth"], session)
 
-    asked = entry["question"]
-    if is_correct:
-        fb = feedback_correct(
-            user_answer.strip(), exercise_type=ex_type, question=asked
-        )
-    else:
-        fb = feedback_incorrect(
-            user_answer.strip(),
-            correct.strip(),
-            diff_u,
-            diff_c,
-            exercise_type=ex_type,
-            number_pattern=exercise_info["number_pattern"],
-            question=asked,
-        )
+    fb = _feedback_from_snapshot(snapshot)
 
     stats = _compute_age_stats(session)
     oob_stats = stats_panel(stats, session.get("age_history", []), oob=True)
@@ -1087,20 +1102,19 @@ def post_weather_answer(session, user_answer: str = "") -> Any:
             session.get("weather_incorrect_count", 0) + 1
         )
 
-    diff_u, diff_c = highlight_diff(user_answer.strip(), correct.strip(), is_correct)
-    entry = {
-        "question": session["weather_current_question"],
-        "answer": user_answer.strip(),
-        "correct": is_correct,
-        "true_answer": correct.strip(),
-    }
-    _append_history_entry(session, "weather_history", entry)
-
     exercise_info = {
         "exercise_type": ex_type,
         "number_pattern": session.get("weather_number_pattern"),
         "sign": "negative" if negative else "positive",
     }
+    snapshot = _build_answer_snapshot(
+        session["weather_current_question"],
+        user_answer,
+        correct,
+        is_correct,
+        exercise_info=exercise_info,
+    )
+    _append_snapshot_history(session, "weather_history", snapshot)
     weather_engine.update(session, "weather", exercise_info, is_correct)
 
     _new_weather_question(session)
@@ -1108,21 +1122,7 @@ def post_weather_answer(session, user_answer: str = "") -> Any:
     if session.get("auth"):
         save_progress(session["auth"], session)
 
-    asked = entry["question"]
-    if is_correct:
-        fb = feedback_correct(
-            user_answer.strip(), exercise_type=ex_type, question=asked
-        )
-    else:
-        fb = feedback_incorrect(
-            user_answer.strip(),
-            correct.strip(),
-            diff_u,
-            diff_c,
-            exercise_type=ex_type,
-            number_pattern=exercise_info["number_pattern"],
-            question=asked,
-        )
+    fb = _feedback_from_snapshot(snapshot)
 
     stats = _compute_weather_stats(session)
     oob_stats = stats_panel(stats, session.get("weather_history", []), oob=True)
@@ -1268,21 +1268,18 @@ def _make_number_routes(
                 session.get(f"{prefix}_incorrect_count", 0) + 1
             )
 
-        diff_u, diff_c = highlight_diff(
-            user_answer.strip(), correct.strip(), is_correct
-        )
-        entry = {
-            "question": session[f"{prefix}_current_question"],
-            "answer": user_answer.strip(),
-            "correct": is_correct,
-            "true_answer": correct.strip(),
-        }
-        _append_history_entry(session, f"{prefix}_history", entry)
-
         exercise_info = {
             "exercise_type": ex_type,
             "number_pattern": session.get(f"{prefix}_number_pattern"),
         }
+        snapshot = _build_answer_snapshot(
+            session[f"{prefix}_current_question"],
+            user_answer,
+            correct,
+            is_correct,
+            exercise_info=exercise_info,
+        )
+        _append_snapshot_history(session, f"{prefix}_history", snapshot)
         engine_inst.update(session, prefix, exercise_info, is_correct)
 
         _new_number_question(session, engine_inst, prefix)
@@ -1290,21 +1287,7 @@ def _make_number_routes(
         if session.get("auth"):
             save_progress(session["auth"], session)
 
-        asked = entry["question"]
-        if is_correct:
-            fb = feedback_correct(
-                user_answer.strip(), exercise_type=ex_type, question=asked
-            )
-        else:
-            fb = feedback_incorrect(
-                user_answer.strip(),
-                correct.strip(),
-                diff_u,
-                diff_c,
-                exercise_type=ex_type,
-                number_pattern=exercise_info["number_pattern"],
-                question=asked,
-            )
+        fb = _feedback_from_snapshot(snapshot)
 
         stats = _compute_number_stats(session, prefix, engine_inst)
         oob_stats = stats_panel(stats, session.get(f"{prefix}_history", []), oob=True)
@@ -1673,17 +1656,16 @@ def post_practice_all_answer(session, user_answer: str = "") -> Any:
 
     _bump(session["mix_modules"], answered_module, is_correct)
 
-    # History
-    diff_u, diff_c = highlight_diff(
-        user_answer.strip(), correct_answer.strip(), is_correct
+    snapshot = _build_answer_snapshot(
+        session["mix_current_question"],
+        user_answer,
+        correct_answer,
+        is_correct,
+        exercise_info=exercise_info,
+        row=row,
+        hour=answered_hour,
     )
-    entry = {
-        "question": session["mix_current_question"],
-        "answer": user_answer.strip(),
-        "correct": is_correct,
-        "true_answer": correct_answer.strip(),
-    }
-    _append_history_entry(session, "mix_history", entry)
+    _append_snapshot_history(session, "mix_history", snapshot)
 
     # Pick next question
     _new_mix_question(session)
@@ -1692,34 +1674,7 @@ def post_practice_all_answer(session, user_answer: str = "") -> Any:
         save_progress(session["auth"], session)
 
     # Feedback
-    asked = entry["question"]
-    ex_type = exercise_info.get("exercise_type", "")
-    if is_correct:
-        fb = feedback_correct(
-            user_answer.strip(),
-            exercise_type=ex_type,
-            grammatical_case=exercise_info.get("grammatical_case"),
-            question=asked,
-        )
-    else:
-        fb_kwargs: dict[str, Any] = {
-            "exercise_type": ex_type,
-            "number_pattern": exercise_info.get("number_pattern"),
-            "question": asked,
-        }
-        if exercise_info.get("grammatical_case"):
-            fb_kwargs["grammatical_case"] = exercise_info["grammatical_case"]
-        if row:
-            fb_kwargs["row"] = row
-        if answered_module == "time":
-            fb_kwargs["hour"] = answered_hour
-        fb = feedback_incorrect(
-            user_answer.strip(),
-            correct_answer.strip(),
-            diff_u,
-            diff_c,
-            **fb_kwargs,
-        )
+    fb = _feedback_from_snapshot(snapshot)
 
     new_mod = session["mix_current_module"]
     new_label = _MIX_MODULES[new_mod]["label"]
