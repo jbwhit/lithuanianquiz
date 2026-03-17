@@ -588,11 +588,30 @@ _TYPE_LABELS: dict[str, str] = {
     "produce": "Produce (say the number)",
     "recognize": "Recognize (identify the number)",
 }
-_GRAMMAR_HINTS: dict[str, str] = {
-    "nominative": "Nominative: used when stating a price (Kokia kaina?).",
-    "accusative": "Accusative: used when saying what something costs (Kiek kainuoja?).",
-    "genitive": "Genitive: used with pusė/ketvirtis (half past/quarter past).",
-}
+
+
+def _grammar_hint_text(
+    exercise_type: str | None,
+    grammatical_case: str | None,
+) -> str | None:
+    """Return a context-appropriate one-line grammar hint."""
+    if grammatical_case == "nominative":
+        # Only the currently supported nominative prompts get a one-line hint.
+        if exercise_type == "kokia":
+            return "Nominative: used when stating a price (Kokia kaina?)."
+        if exercise_type in {"whole_hour", "quarter_to"}:
+            return (
+                "Nominative: used for whole hours and be ketvirčio "
+                "(quarter to) expressions."
+            )
+    elif grammatical_case == "accusative" and exercise_type == "kiek":
+        return "Accusative: used when saying what something costs (Kiek kainuoja?)."
+    elif grammatical_case == "genitive" and exercise_type in {
+        "half_past",
+        "quarter_past",
+    }:
+        return "Genitive: used with pusė/ketvirtis (half past/quarter past)."
+    return None
 
 
 def _grammar_hint_collapsible(hint_content: list[Any]) -> Details:
@@ -788,7 +807,7 @@ def feedback_incorrect(
 ) -> Div:
     """Red inline alert with diff highlighting and grammar context."""
     ctx = _exercise_context_text(exercise_type, grammatical_case)
-    hint = _GRAMMAR_HINTS.get(grammatical_case or "")
+    hint = _grammar_hint_text(exercise_type, grammatical_case)
 
     # Build grammar breakdown (price or time)
     grammar_lines = None
