@@ -596,6 +596,7 @@ def _grammar_hint_text(
 ) -> str | None:
     """Return a context-appropriate one-line grammar hint."""
     if grammatical_case == "nominative":
+        # Only the currently supported nominative prompts get a one-line hint.
         if exercise_type == "kokia":
             return "Nominative: used when stating a price (Kokia kaina?)."
         if exercise_type in {"whole_hour", "quarter_to"}:
@@ -603,7 +604,7 @@ def _grammar_hint_text(
                 "Nominative: used for whole hours and be ketvirčio "
                 "(quarter to) expressions."
             )
-    elif grammatical_case == "accusative":
+    elif grammatical_case == "accusative" and exercise_type == "kiek":
         return "Accusative: used when saying what something costs (Kiek kainuoja?)."
     elif grammatical_case == "genitive" and exercise_type in {
         "half_past",

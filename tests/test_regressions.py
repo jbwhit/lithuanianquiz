@@ -431,3 +431,34 @@ def test_append_history_entry_resets_non_list_history() -> None:
 
     assert isinstance(session["history"], list)
     assert len(session["history"]) == 1
+
+
+def test_feedback_from_snapshot_always_passes_grammatical_case(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    def _fake_feedback_incorrect(*_args, **kwargs):
+        captured.update(kwargs)
+        return "feedback"
+
+    monkeypatch.setattr(main, "feedback_incorrect", _fake_feedback_incorrect)
+
+    main._feedback_from_snapshot(
+        {
+            "question": "Q?",
+            "answer": "blogai",
+            "correct": False,
+            "true_answer": "teisingai",
+            "diff_user": "blogai",
+            "diff_correct": "teisingai",
+            "exercise_info": {
+                "exercise_type": "produce",
+                "number_pattern": "single",
+                "grammatical_case": None,
+            },
+            "row": None,
+            "hour": None,
+        }
+    )
+
+    assert "grammatical_case" in captured
+    assert captured["grammatical_case"] is None

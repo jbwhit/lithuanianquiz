@@ -221,11 +221,10 @@ def _feedback_from_snapshot(snapshot: dict[str, Any]) -> Any:
 
     fb_kwargs: dict[str, Any] = {
         "exercise_type": exercise_info.get("exercise_type"),
+        "grammatical_case": exercise_info.get("grammatical_case"),
         "number_pattern": exercise_info.get("number_pattern"),
         "question": snapshot["question"],
     }
-    if exercise_info.get("grammatical_case"):
-        fb_kwargs["grammatical_case"] = exercise_info["grammatical_case"]
     if snapshot.get("row") is not None:
         fb_kwargs["row"] = snapshot["row"]
     if snapshot.get("hour") is not None:
