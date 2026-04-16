@@ -104,7 +104,7 @@ class TestLanguageToggle:
         html = _render(page_shell("X", lang="lt"))
         assert 'href="/set-language?lang=en"' in html
         assert 'href="/set-language?lang=lt"' in html
-        assert "Lietuviu" in html
+        assert "Lietuviškai" in html
 
     def test_feedback_incorrect_lithuanian_copy(self) -> None:
         html = _render(

@@ -46,7 +46,7 @@ def page_shell(
         DivLAligned(
             Span("🇱🇹", cls="text-2xl mr-2"),
             H3(
-                _txt(lang, "Lithuanian", "Lietuviu"),
+                _txt(lang, "Lithuanian", "Lietuviskai"),
                 cls=(TextT.xl, TextT.bold, "text-primary"),
             ),
             P(_txt(lang, "Practice", "Praktika"), cls=TextT.muted),
@@ -84,7 +84,7 @@ def page_shell(
         ),
         Span("|", cls="text-base-content/50"),
         A(
-            "Lietuviu",
+            "Lietuviskai",
             href="/set-language?lang=lt",
             cls="uk-btn uk-btn-ghost"
             + (" uk-active font-bold" if lang == "lt" else ""),
@@ -170,7 +170,7 @@ def login_page_content(login_url: str, lang: str = "en") -> Container:
                             _txt(
                                 lang,
                                 "Lithuanian Price Quiz",
-                                "Lietuviu Kainu Viktorina",
+                                "Kainos lietuviskai - testas",
                             ),
                             cls=(TextT.xl, TextT.bold),
                         ),
@@ -178,7 +178,7 @@ def login_page_content(login_url: str, lang: str = "en") -> Container:
                             _txt(
                                 lang,
                                 "Practice expressing prices in Lithuanian",
-                                "Praktikuokite kainu israiskas lietuviu kalba",
+                                "Kainos lietuviskai - praktika",
                             ),
                             cls=TextPresets.muted_lg,
                         ),
@@ -196,7 +196,7 @@ def login_page_content(login_url: str, lang: str = "en") -> Container:
                             _txt(
                                 lang,
                                 "Free and private. We only store your quiz progress, nothing else.",
-                                "Nemokama ir privatu. Saugome tik jusu viktorinos pazanga.",
+                                "Nemokama ir privatu. Saugome tik testu duomenis jusu privaciam naudojimui.",
                             ),
                             cls="text-base-content/50 text-xs mt-4 max-w-xs text-center",
                         ),
@@ -255,14 +255,14 @@ def landing_page_content(lang: str = "en") -> Container:
         DivCentered(
             Span("🇱🇹", cls="text-6xl mb-4"),
             H1(
-                _txt(lang, "Lithuanian Practice", "Lietuviu Praktika"),
+                _txt(lang, "Lithuanian Practice", "Lietuviu kalbos praktika"),
                 cls=(TextT.xl, TextT.bold),
             ),
             P(
                 _txt(
                     lang,
                     "Master Lithuanian through adaptive exercises",
-                    "Mokykites lietuviu kalbos per adaptyvias uzduotis",
+                    "Mokykites kalbeti lietuviskai per adaptyvias uzduotis",
                 ),
                 cls=TextPresets.muted_lg,
             ),
@@ -275,7 +275,7 @@ def landing_page_content(lang: str = "en") -> Container:
                 _txt(
                     lang,
                     "Learn the basic Lithuanian number words.",
-                    "Mokykites pagrindiniu lietuvisku skaiciu zodziu.",
+                    "Mokykites kalbeti apie skaicius.",
                 ),
                 "/numbers-20",
                 "border-t-success",
@@ -298,7 +298,7 @@ def landing_page_content(lang: str = "en") -> Container:
                 _txt(
                     lang,
                     "Practice expressing ages with dative pronouns (Man, Tau, Jam, Jai).",
-                    "Praktikuokite amziu israiskas su naudininko ivardziais (Man, Tau, Jam, Jai).",
+                    "Mokykites kalbeti apie amziu parinkdami tinkama ivardi ir linksni.",
                 ),
                 "/age",
                 "border-t-warning",
@@ -331,7 +331,7 @@ def landing_page_content(lang: str = "en") -> Container:
                 _txt(
                     lang,
                     "Practice telling time: whole hours, half past, quarter past, and quarter to.",
-                    "Praktikuokite laiko pasakyma: pilnos valandos, puse, ketvirtis po ir be ketvircio.",
+                    "Mokykites kalbeti apie laika: pilnos valandos, puse, penkiolika minuciu po ir be penkiolikos minuciu.",
                 ),
                 "/time",
                 "border-t-secondary",
@@ -1519,7 +1519,7 @@ def stats_page_content(
     if age_stats is not None:
         sections.append(
             H3(
-                _txt(lang, "Age Exercises", "Amziaus Uzduotys"),
+                _txt(lang, "Age Exercises", "Uzduotys apie amziu"),
                 cls=(TextT.lg, "mt-10 mb-0"),
             )
         )
@@ -1539,7 +1539,7 @@ def stats_page_content(
     if weather_stats is not None:
         sections.append(
             H3(
-                _txt(lang, "Weather Exercises", "Oro Uzduotys"),
+                _txt(lang, "Weather Exercises", "Uzduotys apie ora"),
                 cls=(TextT.lg, "mt-10 mb-0"),
             )
         )
@@ -1558,7 +1558,7 @@ def stats_page_content(
     # Price stats
     sections.append(
         H3(
-            _txt(lang, "Price Exercises", "Kainu Uzduotys"),
+            _txt(lang, "Price Exercises", "Uzduotys apie kainas"),
             cls=(TextT.lg, "mt-10 mb-0"),
         )
     )
@@ -1578,7 +1578,7 @@ def stats_page_content(
     if time_stats is not None:
         sections.append(
             H3(
-                _txt(lang, "Time Exercises", "Laiko Uzduotys"),
+                _txt(lang, "Time Exercises", "Uzduotys apie laika"),
                 cls=(TextT.lg, "mt-10 mb-0"),
             )
         )
@@ -1613,7 +1613,7 @@ def about_page_content(lang: str = "en") -> Container:
             _txt(
                 lang,
                 "Practice Lithuanian number expressions with adaptive exercises!",
-                "Praktikuokite lietuviskas skaiciu israiskas su adaptyviomis uzduotimis!",
+                "Mokykites kalbeti apie skaicius su adaptyviomis uzduotimis!",
             ),
             cls=TextPresets.muted_lg,
         ),
@@ -1621,11 +1621,11 @@ def about_page_content(lang: str = "en") -> Container:
             _txt(
                 lang,
                 "This app helps you practice Lithuanian numbers, prices, and times through interactive exercises. An adaptive learning system uses Thompson sampling to target your weak areas.",
-                "Si programa padeda praktikuoti lietuviskus skaicius, kainas ir laika per interaktyvias uzduotis. Adaptyvi mokymosi sistema naudoja Thompson atranka silpnoms vietoms stiprinti.",
+                "Si programa skirta mokytis kalbeti apie skaicius, kainas ir laika naudojant interaktyvias uzduotis. Adaptyvi mokymosi sistema naudoja Thompson atranka silpnoms vietoms stiprinti.",
             ),
             cls="mt-4",
         ),
-        H3(_txt(lang, "Number Exercises", "Skaiciu Uzduotys"), cls=(TextT.lg, "mt-6")),
+        H3(_txt(lang, "Number Exercises", "Uzduotys apie skaicius"), cls=(TextT.lg, "mt-6")),
         P(
             _txt(
                 lang,
@@ -1673,7 +1673,7 @@ def about_page_content(lang: str = "en") -> Container:
             ),
             cls="mt-2",
         ),
-        H3(_txt(lang, "Age Exercises", "Amziaus Uzduotys"), cls=(TextT.lg, "mt-6")),
+        H3(_txt(lang, "Age Exercises", "Uzduotys apie amziu"), cls=(TextT.lg, "mt-6")),
         P(
             _txt(
                 lang,
@@ -1701,7 +1701,7 @@ def about_page_content(lang: str = "en") -> Container:
             ),
             cls="list-disc ml-6 mt-2 space-y-2",
         ),
-        H3(_txt(lang, "Weather Exercises", "Oro Uzduotys"), cls=(TextT.lg, "mt-6")),
+        H3(_txt(lang, "Weather Exercises", "Uzduotys apie ora"), cls=(TextT.lg, "mt-6")),
         P(
             _txt(
                 lang,
@@ -1739,7 +1739,7 @@ def about_page_content(lang: str = "en") -> Container:
             _txt(lang, " before the number word.", " pries skaiciaus zodi."),
             cls="mt-2",
         ),
-        H3(_txt(lang, "Price Exercises", "Kainu Uzduotys"), cls=(TextT.lg, "mt-6")),
+        H3(_txt(lang, "Price Exercises", "Uzduotys apie kainas"), cls=(TextT.lg, "mt-6")),
         P(_txt(lang, "Two exercise types:", "Du uzduociu tipai:"), cls="mt-2"),
         Ul(
             Li(
@@ -1760,7 +1760,7 @@ def about_page_content(lang: str = "en") -> Container:
             ),
             cls="list-disc ml-6 mt-2 space-y-2",
         ),
-        H3(_txt(lang, "Time Exercises", "Laiko Uzduotys"), cls=(TextT.lg, "mt-6")),
+        H3(_txt(lang, "Time Exercises", "Uzduotys apie laika"), cls=(TextT.lg, "mt-6")),
         P(_txt(lang, "Four exercise types:", "Keturi uzduociu tipai:"), cls="mt-2"),
         Ul(
             Li(
@@ -1809,7 +1809,7 @@ def about_page_content(lang: str = "en") -> Container:
             _txt(
                 lang,
                 "Practice regularly to improve your Lithuanian language skills!",
-                "Praktikuokites reguliariai ir gerinkite lietuviu kalbos igudzius!",
+                "Gerinkite lietuviu kalbos igudzius per reguliaria praktika!",
             ),
             cls="mt-6",
         ),

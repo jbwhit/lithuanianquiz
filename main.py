@@ -465,14 +465,14 @@ def get_prices(session) -> Any:
 
     main_content = Container(
         H2(
-            _t(session, "Lithuanian Price Practice", "Lietuvisku Kainu Praktika"),
+            _t(session, "Lithuanian Price Practice", "Kalbejimo apie kainas praktika"),
             cls=(TextT.xl, "mb-2"),
         ),
         P(
             _t(
                 session,
                 "Practice expressing prices in Lithuanian. Type the full answer including the euro word.",
-                "Praktikuokite kainu israiskas lietuviskai. Irasykite pilna atsakyma su zodziu euras.",
+                "Mokykites kalbeti apie kainas. Irasykite pilna atsakyma su zodziu euras.",
             ),
             cls="text-base-content/70 text-sm mb-1",
         ),
@@ -688,14 +688,14 @@ def get_time(session) -> Any:
 
     main_content = Container(
         H2(
-            _t(session, "Lithuanian Time Practice", "Lietuvisko Laiko Praktika"),
+            _t(session, "Lithuanian Time Practice", "Kalbejimo apie laika praktika"),
             cls=(TextT.xl, "mb-2"),
         ),
         P(
             _t(
                 session,
                 "Practice expressing time in Lithuanian. Type the full answer.",
-                "Praktikuokite laiko israiskas lietuviskai. Irasykite pilna atsakyma.",
+                "Mokykites kalbeti apie laika. Irasykite pilna atsakyma.",
             ),
             cls="text-base-content/70 text-sm mb-1",
         ),
@@ -705,9 +705,9 @@ def get_time(session) -> Any:
             ", ",
             Strong(_t(session, "half past", "puse")),
             ", ",
-            Strong(_t(session, "quarter past", "ketvirtis po")),
+            Strong(_t(session, "quarter past", "penkiolika minuciu po")),
             ", and ",
-            Strong(_t(session, "quarter to", "be ketvircio")),
+            Strong(_t(session, "quarter to", "be penkiolikos minuciu")),
             ".",
             cls="text-base-content/60 text-xs mb-6",
         ),
@@ -959,14 +959,14 @@ def get_age(session) -> Any:
 
     main_content = Container(
         H2(
-            _t(session, "Lithuanian Age Practice", "Lietuvisko Amziaus Praktika"),
+            _t(session, "Lithuanian Age Practice", "Kalbejimo apie amziu praktika"),
             cls=(TextT.xl, "mb-2"),
         ),
         P(
             _t(
                 session,
                 "Practice expressing ages in Lithuanian with dative pronouns.",
-                "Praktikuokite amziaus israiskas lietuviskai su naudininko ivardziais.",
+                "Mokykites kalbeti apie amziu parinkdami tinkama ivardi ir linksni.",
             ),
             cls="text-base-content/70 text-sm mb-1",
         ),
@@ -1159,14 +1159,14 @@ def get_weather(session) -> Any:
 
     main_content = Container(
         H2(
-            _t(session, "Lithuanian Weather Practice", "Lietuvisko Oro Praktika"),
+            _t(session, "Lithuanian Weather Practice", "Kalbejimas apie ora"),
             cls=(TextT.xl, "mb-2"),
         ),
         P(
             _t(
                 session,
                 "Practice expressing temperatures in Lithuanian.",
-                "Praktikuokite temperaturos israiskas lietuviskai.",
+                "Kalbejimo apie temperatura praktika.",
             ),
             cls="text-base-content/70 text-sm mb-1",
         ),
@@ -1344,16 +1344,16 @@ def _make_number_routes(
         subtitle_text = subtitle
         if module_name == "numbers-20":
             title_text = _t(
-                session, "Lithuanian Numbers 1-20", "Lietuviski Skaiciai 1-20"
+                session, "Lithuanian Numbers 1-20", "Skaiciai 1-20"
             )
             subtitle_text = _t(
                 session,
                 "Learn the basic Lithuanian number words.",
-                "Mokykites pagrindiniu lietuvisku skaiciaus zodziu.",
+                "Mokykites kalbeti apie skaicius.",
             )
         elif module_name == "numbers-99":
             title_text = _t(
-                session, "Lithuanian Numbers 1-99", "Lietuviski Skaiciai 1-99"
+                session, "Lithuanian Numbers 1-99", "Skaiciai 1-99"
             )
             subtitle_text = _t(
                 session,

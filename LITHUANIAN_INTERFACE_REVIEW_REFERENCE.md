@@ -1,9 +1,10 @@
 # Lithuanian Interface Review Reference
 
 This file is a single-place reference for Lithuanian interface copy added/updated by the Full Lithuanian Interface feature.
+Updated per native speaker review (jbagd, 2026-04-15).
 
 ## Navigation and Header
-- Lietuvių
+- Lietuviškai
 - Praktika
 - Moduliai
 - Skaičiai 1-20
@@ -18,15 +19,15 @@ This file is a single-place reference for Lithuanian interface copy added/update
 - Atsiliepimai
 - Atsijungti
 - Prisijungti
-- English | Lietuvių
+- English | Lietuviškai
 
 ## Login and Landing
-- Lietuvių kainų viktorina
-- Praktikuokite kainų išraiškas lietuvių kalba
+- Kainos lietuviškai - testas
+- Kainos lietuviškai - praktika
 - Prisijungti su Google
-- Nemokama ir privatu. Saugome tik jūsų viktorinos pažangą.
-- Lietuvių praktika
-- Mokykitės lietuvių kalbos per adaptyvias užduotis
+- Nemokama ir privatu. Saugome tik testų duomenis jūsų privačiam naudojimui.
+- Lietuvių kalbos praktika
+- Mokykitės kalbėti lietuviškai per adaptyvias užduotis
 - Pradėkite praktiką
 - Pradėkite čia
 - Nemokama. Sekimas nevykdomas už dabartinės naršyklės sesijos ribų.
@@ -52,27 +53,27 @@ This file is a single-place reference for Lithuanian interface copy added/update
 - Įrašykite atsakymą lietuviškai...
 
 ## Module Titles and Descriptions
-- Lietuviškų kainų praktika
-- Praktikuokite kainų išraiškas lietuviškai. Įrašykite pilną atsakymą su žodžiu euras.
+- Kalbėjimo apie kainas praktika
+- Mokykitės kalbėti apie kainas. Įrašykite pilną atsakymą su žodžiu euras.
 - Du užduočių tipai:
 - Kokia kaina? (vardininkas) ir Kiek kainuoja? (galininkas).
 
-- Lietuviško laiko praktika
-- Praktikuokite laiko išraiškas lietuviškai. Įrašykite pilną atsakymą.
-- Keturi užduočių tipai: pilnos valandos, pusė, ketvirtis po, be ketvirčio.
+- Kalbėjimo apie laiką praktika
+- Mokykitės kalbėti apie laiką. Įrašykite pilną atsakymą.
+- Keturi užduočių tipai: pilnos valandos, pusė, penkiolika minučių po, be penkiolikos minučių.
 
-- Lietuviško amžiaus praktika
-- Praktikuokite amžiaus išraiškas lietuviškai su naudininko įvardžiais.
-- Kurimas (pasakykite amžių lietuviškai) ir atpažinimas (atpažinkite amžių iš lietuviškos frazės).
+- Kalbėjimo apie amžių praktika
+- Mokykitės kalbėti apie amžių parinkdami tinkamą įvardį ir linksnį.
+- Kūrimas (pasakykite amžių lietuviškai) ir atpažinimas (atpažinkite amžių iš lietuviškos frazės).
 
-- Lietuviško oro praktika
-- Praktikuokite temperatūros išraiškas lietuviškai.
-- Kurimas (pasakykite temperatūrą lietuviškai) ir atpažinimas (atpažinkite temperatūrą iš lietuviškos frazės).
+- Kalbėjimas apie orą
+- Kalbėjimo apie temperatūrą praktika.
+- Kūrimas (pasakykite temperatūrą lietuviškai) ir atpažinimas (atpažinkite temperatūrą iš lietuviškos frazės).
 
-- Lietuviški skaičiai 1-20
-- Mokykitės pagrindinių lietuviškų skaičiaus žodžių.
+- Skaičiai 1-20
+- Mokykitės kalbėti apie skaičius.
 
-- Lietuviški skaičiai 1-99
+- Skaičiai 1-99
 - Visi skaičiai, įskaitant dešimtis ir sudėtinius.
 
 - Bendra praktika
@@ -87,7 +88,7 @@ This file is a single-place reference for Lithuanian interface copy added/update
 ## Feedback and Grammar UI
 - Teisingai!
 - Jūsų atsakymas:
-- Neteikslu
+- Netikslu
 - Teisingas atsakymas:
 - Gramatikos paaiškinimas
 - Vardininkas
@@ -117,15 +118,15 @@ This file is a single-place reference for Lithuanian interface copy added/update
 
 ## About Page
 - Apie šią programą
-- Praktikuokite lietuviškas skaičių išraiškas su adaptyviomis užduotimis!
-- Ši programa padeda praktikuoti lietuviškus skaičius, kainas ir laiką per interaktyvias užduotis.
-- Skaičių užduotys
+- Mokykitės kalbėti apie skaičius su adaptyviomis užduotimis!
+- Ši programa skirta mokytis kalbėti apie skaičius, kainas ir laiką naudojant interaktyvias užduotis.
+- Užduotys apie skaičius
 - Du moduliai skaičių žodynui plėsti:
-- Amžiaus užduotys
-- Oro užduotys
-- Kainų užduotys
-- Laiko užduotys
+- Užduotys apie amžių
+- Užduotys apie orą
+- Užduotys apie kainas
+- Užduotys apie laiką
 - Neigiamos temperatūros (iki -20) prideda minus prieš skaičiaus žodį.
-- Praktikuokitės reguliariai ir gerinkite lietuvių kalbos įgūdžius!
+- Gerinkite lietuvių kalbos įgūdžius per reguliarią praktiką!
 - Sukūrė
 - Atgal į praktiką
