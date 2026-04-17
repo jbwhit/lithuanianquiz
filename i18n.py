@@ -90,6 +90,10 @@ _LT_FIXUPS: tuple[tuple[str, str], ...] = (
     ("apie temperatura ", "apie temperatūrą "),
     ("reguliaria praktika!", "reguliarią praktiką!"),
     ("tinkama ivardi ir linksni", "tinkamą įvardį ir linksnį"),
+    ("uzduotys", "užduotys"),
+    ("desimciu dalis", "dešimčių dalis"),
+    ("vienetu skaitmuo", "vienetų skaitmuo"),
+    ("moteriska gimine", "moteriška giminė"),
 )
 
 

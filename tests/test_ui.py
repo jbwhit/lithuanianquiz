@@ -1,7 +1,13 @@
 """Tests for ui.py — quiz area and HTMX swap behaviour."""
 
 from fasthtml.common import to_xml
-from ui import feedback_incorrect, page_shell, quiz_area, stats_panel
+from ui import (
+    examples_section,
+    feedback_incorrect,
+    page_shell,
+    quiz_area,
+    stats_panel,
+)
 
 
 def _render(component: object) -> str:
@@ -123,6 +129,107 @@ class TestDiacriticModeToggle:
         assert "Lankstus" in html
         assert 'uk-active font-bold">Grieztas<' in html
         assert 'uk-active font-bold">Lankstus<' not in html
+
+    def test_examples_section_no_english_leaks_in_lt(self) -> None:
+        html = _render(examples_section(lang="lt"))
+        assert "Nominative — stating the price directly" not in html
+        assert "Vardininkas" in html
+
+    def test_stats_panel_no_english_leaks_in_lt(self) -> None:
+        stats = {
+            "total": 1,
+            "correct": 1,
+            "incorrect": 0,
+            "accuracy": 100.0,
+            "current_streak": 1,
+            "weak_areas": {},
+        }
+        history = [
+            {
+                "question": "Kokia kaina? (€5)",
+                "answer": "penki eurai.",
+                "correct": True,
+                "true_answer": "penki eurai.",
+            }
+        ]
+        html = _render(stats_panel(stats, history, lang="lt"))
+        assert "Recent Exercises" not in html
+        assert "užduotys" in html.lower()
+
+    def test_feedback_incorrect_price_grammar_hint_is_localized(self) -> None:
+        row = {
+            "number": 25,
+            "kokia_kaina": "dvidešimt",
+            "kokia_kaina_compound": "penki",
+            "kiek_kainuoja": "dvidešimt",
+            "kiek_kainuoja_compound": "penkis",
+            "euro_nom": "eurai",
+            "euro_acc": "eurus",
+        }
+        html = _render(
+            feedback_incorrect(
+                "blogai",
+                "gerai",
+                "blogai",
+                "gerai",
+                exercise_type="kiek",
+                grammatical_case="accusative",
+                number_pattern="compound",
+                row=row,
+                lang="lt",
+            )
+        )
+        # English grammar tokens must not appear in LT mode.
+        for english_token in (
+            "tens part",
+            "ones digit",
+            "same in both cases",
+            "euro,",
+            "accusative",
+            "nominative",
+        ):
+            assert english_token not in html, (
+                f"English grammar leak in LT mode: {english_token!r}"
+            )
+
+    def test_feedback_incorrect_time_grammar_hint_is_localized(self) -> None:
+        html = _render(
+            feedback_incorrect(
+                "blogai",
+                "gerai",
+                "blogai",
+                "gerai",
+                exercise_type="quarter_past",
+                grammatical_case="genitive",
+                hour=2,
+                lang="lt",
+            )
+        )
+        for english_token in (
+            "quarter past",
+            "next hour is",
+            "genitive of",
+            "nominative of",
+        ):
+            assert english_token not in html, (
+                f"English grammar leak in LT mode: {english_token!r}"
+            )
+
+    def test_feedback_incorrect_time_grammar_hint_english_mode(self) -> None:
+        html = _render(
+            feedback_incorrect(
+                "blogai",
+                "gerai",
+                "blogai",
+                "gerai",
+                exercise_type="quarter_past",
+                grammatical_case="genitive",
+                hour=2,
+                lang="en",
+            )
+        )
+        assert "quarter past" in html
+        assert "next hour is" in html
 
     def test_page_shell_marks_tolerant_mode_active(self) -> None:
         html = _render(

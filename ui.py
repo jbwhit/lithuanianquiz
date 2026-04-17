@@ -407,7 +407,11 @@ def examples_section(lang: str = "en") -> Details:
             _example(
                 "Kokia kaina? (€5)",
                 "penki eurai.",
-                "Nominative — stating the price directly",
+                _txt(
+                    lang,
+                    "Nominative — stating the price directly",
+                    "Vardininkas - tiesiogiai nurodoma kaina",
+                ),
             ),
             _example(
                 "Kiek kainuoja knyga? (€21)",
@@ -784,10 +788,18 @@ def _word_line(word: str, explanation: str) -> P:
     )
 
 
+_CASE_NAME_LABELS = {
+    "nominative": {"en": "nominative", "lt": "vardininkas"},
+    "accusative": {"en": "accusative", "lt": "galininkas"},
+}
+_CASE_NAME_NOM_ABBREV = {"en": "nom", "lt": "vard."}
+
+
 def _price_grammar_hint(
     row: dict[str, Any],
     exercise_type: str | None,
     number_pattern: str | None,
+    lang: str = "en",
 ) -> list[Any] | None:
     """Build word-by-word grammar breakdown for a price answer."""
     if not exercise_type or not row:
@@ -797,22 +809,30 @@ def _price_grammar_hint(
     n = row["number"]
 
     if exercise_type == "kokia":
-        case_name = "nominative"
+        case_key = "nominative"
         num_word = row["kokia_kaina"]
         compound = row.get("kokia_kaina_compound")
         euro = row["euro_nom"]
     else:
-        case_name = "accusative"
+        case_key = "accusative"
         num_word = row["kiek_kainuoja"]
         compound = row.get("kiek_kainuoja_compound")
         euro = row["euro_acc"]
+
+    case_name = _CASE_NAME_LABELS[case_key][lang]
+    nom_abbr = _CASE_NAME_NOM_ABBREV[lang]
+
+    same_both = _txt(lang, "same in both cases", "tas pats abiem linksniais")
+    tens_label = _txt(lang, "tens part", "desimciu dalis")
+    ones_label = _txt(lang, "ones digit", "vienetu skaitmuo")
+    euro_word = _txt(lang, "euro", "euras")
 
     # Number word(s)
     if number_pattern == "compound" and compound:
         lines.append(
             _word_line(
                 num_word,
-                f"tens part ({n // 10 * 10}) — same in both cases",
+                f"{tens_label} ({n // 10 * 10}) — {same_both}",
             )
         )
         nom_ones = row.get("kokia_kaina_compound", compound)
@@ -820,23 +840,22 @@ def _price_grammar_hint(
             lines.append(
                 _word_line(
                     compound,
-                    f"ones digit ({n % 10}), {case_name} (nom: {nom_ones})",
+                    f"{ones_label} ({n % 10}), {case_name} ({nom_abbr}: {nom_ones})",
                 )
             )
         else:
-            lines.append(_word_line(compound, f"ones digit ({n % 10}), {case_name}"))
+            lines.append(_word_line(compound, f"{ones_label} ({n % 10}), {case_name}"))
     else:
         if exercise_type == "kiek":
             nom_form = row["kokia_kaina"]
             if nom_form != num_word:
-                lines.append(
-                    _word_line(
-                        num_word,
-                        f"{case_name} of {n} (nom: {nom_form})",
-                    )
-                )
+                if lang == "lt":
+                    explanation = f"{n} {case_name} ({nom_abbr}: {nom_form})"
+                else:
+                    explanation = f"{case_name} of {n} ({nom_abbr}: {nom_form})"
+                lines.append(_word_line(num_word, explanation))
             else:
-                lines.append(_word_line(num_word, f"{n} — same in both cases"))
+                lines.append(_word_line(num_word, f"{n} — {same_both}"))
         else:
             lines.append(_word_line(num_word, f"{n}, {case_name}"))
 
@@ -844,11 +863,13 @@ def _price_grammar_hint(
     if exercise_type == "kiek":
         nom_euro = row["euro_nom"]
         if nom_euro != euro:
-            lines.append(_word_line(euro, f"euro, {case_name} (nom: {nom_euro})"))
+            lines.append(
+                _word_line(euro, f"{euro_word}, {case_name} ({nom_abbr}: {nom_euro})")
+            )
         else:
-            lines.append(_word_line(euro, "euro — same in both cases"))
+            lines.append(_word_line(euro, f"{euro_word} — {same_both}"))
     else:
-        lines.append(_word_line(euro, f"euro, {case_name}"))
+        lines.append(_word_line(euro, f"{euro_word}, {case_name}"))
 
     return lines
 
@@ -856,6 +877,7 @@ def _price_grammar_hint(
 def _time_grammar_hint(
     exercise_type: str | None,
     hour: int | None,
+    lang: str = "en",
 ) -> list[Any] | None:
     """Build word-by-word grammar breakdown for a time answer."""
     if not exercise_type or hour is None:
@@ -864,39 +886,65 @@ def _time_grammar_hint(
     lines: list[Any] = []
     nh = _next_hour(hour)
 
+    nom_abbr = _CASE_NAME_NOM_ABBREV[lang]
+    hour_word_note = _txt(
+        lang, "hour (always nominative)", "valanda (visada vardininkas)"
+    )
+
+    def _nom_fem_for(n: int) -> str:
+        return _txt(
+            lang,
+            f"ordinal for {n}, nominative feminine",
+            f"{n} kelintinis, moteriska gimine, vardininkas",
+        )
+
+    def _genitive_of(n: int, nom: str) -> str:
+        return _txt(
+            lang,
+            f"genitive of {n} (nom: {nom})",
+            f"{n} kilmininkas ({nom_abbr}: {nom})",
+        )
+
+    def _nominative_of(n: int) -> str:
+        return _txt(lang, f"nominative of {n}", f"{n} vardininkas")
+
+    def _next_hour_note(kind_en: str, kind_lt: str) -> str:
+        prefix = _txt(lang, kind_en, kind_lt)
+        tail = _txt(
+            lang,
+            f"next hour is {nh} ({hour}→{nh})",
+            f"kita valanda - {nh} ({hour}→{nh})",
+        )
+        return f"{prefix} — {tail}"
+
     if exercise_type == "whole_hour":
         nom = ORDINALS_NOM[hour]
-        lines.append(
-            _word_line(
-                nom.capitalize(),
-                f"ordinal for {hour}, nominative feminine",
-            )
-        )
-        lines.append(_word_line("valanda", "hour (always nominative)"))
+        lines.append(_word_line(nom.capitalize(), _nom_fem_for(hour)))
+        lines.append(_word_line("valanda", hour_word_note))
 
     elif exercise_type == "half_past":
         gen = ORDINALS_GEN[nh]
         nom = ORDINALS_NOM[nh]
-        lines.append(_word_line("Pusė", f"half — next hour is {nh} ({hour}→{nh})"))
-        lines.append(_word_line(gen, f"genitive of {nh} (nom: {nom})"))
+        lines.append(_word_line("Pusė", _next_hour_note("half", "puse")))
+        lines.append(_word_line(gen, _genitive_of(nh, nom)))
 
     elif exercise_type == "quarter_past":
         gen = ORDINALS_GEN[nh]
         nom = ORDINALS_NOM[nh]
         lines.append(
-            _word_line("Ketvirtis", f"quarter past — next hour is {nh} ({hour}→{nh})")
+            _word_line("Ketvirtis", _next_hour_note("quarter past", "ketvirtis po"))
         )
-        lines.append(_word_line(gen, f"genitive of {nh} (nom: {nom})"))
+        lines.append(_word_line(gen, _genitive_of(nh, nom)))
 
     elif exercise_type == "quarter_to":
         nom = ORDINALS_NOM[nh]
         lines.append(
             _word_line(
                 "Be ketvirčio",
-                f"quarter to — next hour is {nh} ({hour}→{nh})",
+                _next_hour_note("quarter to", "be ketvircio"),
             )
         )
-        lines.append(_word_line(nom, f"nominative of {nh}"))
+        lines.append(_word_line(nom, _nominative_of(nh)))
 
     return lines
 
@@ -968,9 +1016,9 @@ def feedback_incorrect(
     # Build grammar breakdown (price or time)
     grammar_lines = None
     if row is not None:
-        grammar_lines = _price_grammar_hint(row, exercise_type, number_pattern)
+        grammar_lines = _price_grammar_hint(row, exercise_type, number_pattern, lang)
     elif hour is not None:
-        grammar_lines = _time_grammar_hint(exercise_type, hour)
+        grammar_lines = _time_grammar_hint(exercise_type, hour, lang)
 
     return Div(
         DivLAligned(
@@ -1195,7 +1243,10 @@ def _history_card(history: list[dict[str, Any]], lang: str = "en") -> Card:
     return Card(
         CardHeader(
             DivFullySpaced(
-                H3("Recent Exercises", cls=TextT.lg),
+                H3(
+                    _txt(lang, "Recent Exercises", "Pastarosios uzduotys"),
+                    cls=TextT.lg,
+                ),
                 A(
                     _txt(lang, "View All", "Ziureti Viska"),
                     href="/stats",
@@ -1625,7 +1676,10 @@ def about_page_content(lang: str = "en") -> Container:
             ),
             cls="mt-4",
         ),
-        H3(_txt(lang, "Number Exercises", "Uzduotys apie skaicius"), cls=(TextT.lg, "mt-6")),
+        H3(
+            _txt(lang, "Number Exercises", "Uzduotys apie skaicius"),
+            cls=(TextT.lg, "mt-6"),
+        ),
         P(
             _txt(
                 lang,
@@ -1701,7 +1755,9 @@ def about_page_content(lang: str = "en") -> Container:
             ),
             cls="list-disc ml-6 mt-2 space-y-2",
         ),
-        H3(_txt(lang, "Weather Exercises", "Uzduotys apie ora"), cls=(TextT.lg, "mt-6")),
+        H3(
+            _txt(lang, "Weather Exercises", "Uzduotys apie ora"), cls=(TextT.lg, "mt-6")
+        ),
         P(
             _txt(
                 lang,
@@ -1739,7 +1795,10 @@ def about_page_content(lang: str = "en") -> Container:
             _txt(lang, " before the number word.", " pries skaiciaus zodi."),
             cls="mt-2",
         ),
-        H3(_txt(lang, "Price Exercises", "Uzduotys apie kainas"), cls=(TextT.lg, "mt-6")),
+        H3(
+            _txt(lang, "Price Exercises", "Uzduotys apie kainas"),
+            cls=(TextT.lg, "mt-6"),
+        ),
         P(_txt(lang, "Two exercise types:", "Du uzduociu tipai:"), cls="mt-2"),
         Ul(
             Li(

@@ -215,6 +215,73 @@ def _new_question(session: dict[str, Any]) -> None:
     )
 
 
+_MIX_Q_KEY_BY_MODULE = {
+    "prices": "current_question",
+    "time": "time_current_question",
+    "n20": "n20_current_question",
+    "n99": "n99_current_question",
+    "age": "age_current_question",
+    "weather": "weather_current_question",
+}
+
+
+def _refresh_cached_questions(session: dict[str, Any]) -> None:
+    """Re-render cached *_current_question values in the current UI language.
+
+    Preserves the in-progress exercise (row, type, etc.) but rewrites the
+    prompt so a /set-language toggle updates what the user sees immediately.
+    """
+    from age_engine import PRONOUNS as _AGE_PRONOUNS
+
+    lang = _ui_lang(session)
+
+    if "current_question" in session and session.get("exercise_type"):
+        session["current_question"] = engine.format_question(
+            session["exercise_type"],
+            session.get("price", ""),
+            session.get("item"),
+        )
+
+    if "time_current_question" in session and session.get("time_display"):
+        session["time_current_question"] = time_engine.format_question(
+            session["time_display"]
+        )
+
+    for prefix, eng in (("n20", number_engine_20), ("n99", number_engine_99)):
+        qk = f"{prefix}_current_question"
+        rid = session.get(f"{prefix}_row_id")
+        ex_type = session.get(f"{prefix}_exercise_type")
+        if qk in session and rid is not None and ex_type:
+            row = next((r for r in eng.rows if r["number"] == rid), None)
+            if row is not None:
+                session[qk] = eng.format_question(ex_type, row, lang=lang)
+
+    if "age_current_question" in session and session.get("age_row_id"):
+        row = next((r for r in age_rows if r["number"] == session["age_row_id"]), None)
+        dative = session.get("age_pronoun")
+        ex_type = session.get("age_exercise_type")
+        pronoun = next((p for p in _AGE_PRONOUNS if p["dative"] == dative), None)
+        if row is not None and pronoun is not None and ex_type:
+            session["age_current_question"] = age_engine.format_question(
+                ex_type, row, pronoun, lang=lang
+            )
+
+    if "weather_current_question" in session and session.get("weather_row_id"):
+        row = next(
+            (r for r in weather_rows if r["number"] == session["weather_row_id"]),
+            None,
+        )
+        ex_type = session.get("weather_exercise_type")
+        if row is not None and ex_type:
+            session["weather_current_question"] = weather_engine.format_question(
+                ex_type, row, bool(session.get("weather_negative")), lang=lang
+            )
+
+    mix_mod = session.get("mix_current_module")
+    if mix_mod in _MIX_Q_KEY_BY_MODULE and _MIX_Q_KEY_BY_MODULE[mix_mod] in session:
+        session["mix_current_question"] = session[_MIX_Q_KEY_BY_MODULE[mix_mod]]
+
+
 def _compute_module_stats(
     session: dict[str, Any],
     correct_key: str,
@@ -392,6 +459,7 @@ def get_login(req, session) -> Any:
 @rt("/set-language")
 def get_set_language(req, session, lang: str = "en") -> RedirectResponse:
     session[UI_LANGUAGE_KEY] = normalize_ui_lang(lang)
+    _refresh_cached_questions(session)
     if session.get("auth"):
         save_progress(session["auth"], session)
     referer = req.headers.get("referer", "/")
@@ -1343,18 +1411,14 @@ def _make_number_routes(
         title_text = title
         subtitle_text = subtitle
         if module_name == "numbers-20":
-            title_text = _t(
-                session, "Lithuanian Numbers 1-20", "Skaiciai 1-20"
-            )
+            title_text = _t(session, "Lithuanian Numbers 1-20", "Skaiciai 1-20")
             subtitle_text = _t(
                 session,
                 "Learn the basic Lithuanian number words.",
                 "Mokykites kalbeti apie skaicius.",
             )
         elif module_name == "numbers-99":
-            title_text = _t(
-                session, "Lithuanian Numbers 1-99", "Skaiciai 1-99"
-            )
+            title_text = _t(session, "Lithuanian Numbers 1-99", "Skaiciai 1-99")
             subtitle_text = _t(
                 session,
                 "All numbers including decades and compounds.",
