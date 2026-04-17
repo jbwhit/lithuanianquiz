@@ -165,8 +165,11 @@ class TestAdaptive:
         engine.init_tracking(session, "age")
         engine.init_tracking(session, "age")
         assert "age_performance" in session
-        assert len(session["age_performance"]["exercise_types"]) == 2
-        assert len(session["age_performance"]["pronouns"]) == 4
+        # Arms are created lazily via bump; init_tracking only ensures
+        # the skeleton exists.
+        assert session["age_performance"]["exercise_types"] == {}
+        assert session["age_performance"]["pronouns"] == {}
+        assert session["age_performance"]["number_patterns"] == {}
 
     def test_update_increments(self, engine: AgeEngine) -> None:
         session: dict = {}
@@ -201,8 +204,8 @@ class TestAdaptive:
         # exercise_types and number_patterns seeded from n99
         assert perf["exercise_types"]["produce"]["correct"] == 5
         assert perf["number_patterns"]["teens"]["incorrect"] == 5
-        # pronouns initialized fresh
-        assert perf["pronouns"]["Jam"]["correct"] == 0
+        # pronouns are lazily created; init_tracking leaves them empty.
+        assert perf["pronouns"] == {}
         assert perf["total_exercises"] == 14
 
     def test_seed_is_deep_copy(self, engine: AgeEngine) -> None:
@@ -248,38 +251,46 @@ class TestAdaptive:
         assert "Pronouns" in weak
 
 
-class TestAgeInitTrackingPreSeeds:
-    def test_fresh_session_has_all_arm_families(self) -> None:
-        from age_engine import PRONOUN_DATIVES, AgeEngine
+class TestAgeInitTrackingCompact:
+    def test_fresh_session_has_empty_arm_dicts(self) -> None:
+        from age_engine import AgeEngine
 
         session: dict = {}
         engine = AgeEngine(rows=[{"number": n, "years": "metai"} for n in range(2, 21)])
         engine.init_tracking(session, "age")
         perf = session["age_performance"]
 
-        assert set(perf["exercise_types"].keys()) == {"produce", "recognize"}
-        assert set(perf["number_patterns"].keys()) == {
-            "single_digit",
-            "teens",
-            "decade",
-            "compound",
-        }
-        assert set(perf["pronouns"].keys()) == set(PRONOUN_DATIVES)
+        # Arms are created lazily via bump to keep session cookies small.
+        assert perf["exercise_types"] == {}
+        assert perf["number_patterns"] == {}
+        assert perf["pronouns"] == {}
 
-    def test_legacy_session_gets_topped_up(self) -> None:
-        from age_engine import PRONOUN_DATIVES, AgeEngine
+    def test_legacy_session_with_cold_start_arms_gets_stripped(self) -> None:
+        """Earlier versions of this branch eagerly pre-seeded every arm
+        family with cold-start values. Those persist into cookies.
+        init_tracking must strip untouched arms to reclaim the space."""
+        from age_engine import AgeEngine
 
         session = {
             "age_performance": {
-                "exercise_types": {"produce": {"correct": 2.0, "incorrect": 1.0}},
-                "number_patterns": {},
-                "pronouns": {},
-                "total_exercises": 3,
+                "exercise_types": {
+                    "produce": {"correct": 0.0, "incorrect": 1.0},  # cold-start
+                    "recognize": {"correct": 2.0, "incorrect": 0.5},  # touched
+                },
+                "number_patterns": {
+                    "single_digit": {"correct": 0.0, "incorrect": 1.0},
+                    "teens": {"correct": 3.0, "incorrect": 1.0},
+                },
+                "pronouns": {
+                    "Man": {"correct": 0.0, "incorrect": 1.0},
+                    "Jam": {"correct": 0.0, "incorrect": 1.0},
+                },
+                "total_exercises": 5,
             }
         }
         engine = AgeEngine(rows=[{"number": n, "years": "metai"} for n in range(2, 21)])
         engine.init_tracking(session, "age")
         perf = session["age_performance"]
-        assert perf["exercise_types"]["produce"]["correct"] == pytest.approx(2.0)
-        assert len(perf["number_patterns"]) == 4
-        assert set(perf["pronouns"].keys()) == set(PRONOUN_DATIVES)
+        assert set(perf["exercise_types"].keys()) == {"recognize"}
+        assert set(perf["number_patterns"].keys()) == {"teens"}
+        assert perf["pronouns"] == {}

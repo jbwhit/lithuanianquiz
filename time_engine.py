@@ -68,8 +68,13 @@ class TimeEngine:
         self.adaptation_threshold = adaptation_threshold
 
     def init_tracking(self, session: dict[str, Any]) -> None:
-        """Idempotently pre-seed every time-module arm family."""
-        from thompson import _ensure_seeded
+        """Ensure the time-performance skeleton exists and is compact.
+
+        Arms are created lazily via `bump`; the sampler treats missing
+        keys as cold-start. Any eagerly-seeded arms from an older version
+        are stripped to keep cookie-backed session state small.
+        """
+        from thompson import strip_cold_start
 
         perf = session.setdefault(
             "time_performance",
@@ -84,10 +89,9 @@ class TimeEngine:
         perf.setdefault("hour_patterns", {})
         perf.setdefault("grammatical_cases", {})
         perf.setdefault("total_exercises", 0)
-
-        _ensure_seeded(perf["exercise_types"], list(TIME_TYPES))
-        _ensure_seeded(perf["hour_patterns"], _HOUR_PATTERNS)
-        _ensure_seeded(perf["grammatical_cases"], _TIME_CASES)
+        strip_cold_start(perf["exercise_types"])
+        strip_cold_start(perf["hour_patterns"])
+        strip_cold_start(perf["grammatical_cases"])
 
     def update(
         self,
@@ -150,10 +154,10 @@ class TimeEngine:
         if perf["total_exercises"] < self.adaptation_threshold:
             time_type = random.choice(TIME_TYPES)
         else:
-            time_type = _sample_weakest(perf["exercise_types"])
+            time_type = _sample_weakest(perf["exercise_types"], list(TIME_TYPES))
 
-        # Adaptively pick hour (always pre-seeded, never empty)
-        weak_hour_key = _sample_weakest(perf["hour_patterns"])
+        # Weakest hour over the full 1-12 taxonomy.
+        weak_hour_key = _sample_weakest(perf["hour_patterns"], _HOUR_PATTERNS)
         hour = int(weak_hour_key.split("_")[1])
 
         minute = _TIME_TYPE_MINUTES[time_type]

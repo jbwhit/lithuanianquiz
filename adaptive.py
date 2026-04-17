@@ -22,13 +22,14 @@ class AdaptiveLearning:
     # ------------------------------------------------------------------
 
     def init_tracking(self, session: dict[str, Any]) -> None:
-        """Idempotently ensure every arm family is pre-seeded.
+        """Ensure the performance skeleton exists and is compact.
 
-        Runs on every request. Fresh sessions get a complete set of cold-start
-        arms; sessions loaded from the DB in the old lazy-arm layout get topped
-        up with any arms that used to be created lazily.
+        Arms are not eagerly seeded — `sample_weakest` treats missing keys
+        as cold-start via its `full_keys` argument, so persisted state can
+        stay small (important for cookie-backed sessions). Any arms that
+        a previous version of this code pre-seeded are stripped here.
         """
-        from thompson import _ensure_seeded
+        from thompson import strip_cold_start
 
         perf = session.setdefault(
             "performance",
@@ -43,12 +44,13 @@ class AdaptiveLearning:
         perf.setdefault("number_patterns", {})
         perf.setdefault("grammatical_cases", {})
         perf.setdefault("total_exercises", 0)
-        # Drop the dead combined_arms table if loaded from a legacy session.
+        # Drop the dead combined_arms table from legacy sessions.
         perf.pop("combined_arms", None)
-
-        _ensure_seeded(perf["exercise_types"], list(EXERCISE_TYPES))
-        _ensure_seeded(perf["number_patterns"], _NUMBER_PATTERNS)
-        _ensure_seeded(perf["grammatical_cases"], _PRICE_CASES)
+        # Reclaim cookie space from any eagerly-pre-seeded arms persisted
+        # by an earlier version of this branch.
+        strip_cold_start(perf["exercise_types"])
+        strip_cold_start(perf["number_patterns"])
+        strip_cold_start(perf["grammatical_cases"])
 
     # ------------------------------------------------------------------
     # Update after answer
@@ -116,11 +118,11 @@ class AdaptiveLearning:
     ) -> dict[str, Any]:
         perf = session["performance"]
 
-        # 1. Weakest exercise type
-        ex_type = _sample_weakest(perf["exercise_types"])
+        # 1. Weakest exercise type over the full taxonomy.
+        ex_type = _sample_weakest(perf["exercise_types"], list(EXERCISE_TYPES))
 
-        # 2. Weakest number pattern (always pre-seeded, never empty)
-        np_ = _sample_weakest(perf["number_patterns"])
+        # 2. Weakest number pattern over the full taxonomy.
+        np_ = _sample_weakest(perf["number_patterns"], _NUMBER_PATTERNS)
 
         # 3. Find a row matching the pattern
         matching = [r for r in engine.rows if number_pattern(r["number"]) == np_]

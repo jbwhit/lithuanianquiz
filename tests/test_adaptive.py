@@ -133,60 +133,54 @@ class TestAdaptiveLearning:
         assert counts["kiek"] > counts["kokia"]
 
 
-class TestInitTrackingPreSeeds:
-    def test_fresh_session_has_all_arm_families_seeded(self) -> None:
+class TestInitTrackingCompact:
+    def test_fresh_session_has_empty_arm_dicts(self) -> None:
+        """Arms are created lazily via bump; the sampler treats missing
+        keys as cold-start. Keeping init_tracking compact keeps the
+        session cookie small."""
         from adaptive import AdaptiveLearning
 
         session: dict = {}
         AdaptiveLearning().init_tracking(session)
         perf = session["performance"]
 
-        assert set(perf["exercise_types"].keys()) == {"kokia", "kiek"}
-        assert set(perf["number_patterns"].keys()) == {
-            "single_digit",
-            "teens",
-            "decade",
-            "compound",
-        }
-        assert set(perf["grammatical_cases"].keys()) == {
-            "nominative",
-            "accusative",
-        }
-        # No combined_arms in the new scheme.
+        assert perf["exercise_types"] == {}
+        assert perf["number_patterns"] == {}
+        assert perf["grammatical_cases"] == {}
         assert "combined_arms" not in perf
 
-    def test_legacy_session_gets_missing_families_topped_up(self) -> None:
+    def test_legacy_session_with_cold_start_arms_gets_stripped(self) -> None:
         from adaptive import AdaptiveLearning
 
-        # Simulate a session loaded from the DB with the old lazy-arm layout.
         session = {
             "performance": {
                 "exercise_types": {
-                    "kokia": {"correct": 3.0, "incorrect": 1.0},
-                    "kiek": {"correct": 2.0, "incorrect": 2.0},
+                    "kokia": {"correct": 3.0, "incorrect": 1.0},  # touched
+                    "kiek": {"correct": 0.0, "incorrect": 1.0},  # cold-start
                 },
-                "number_patterns": {},
-                "grammatical_cases": {},
+                "number_patterns": {
+                    "single_digit": {"correct": 0.0, "incorrect": 1.0},
+                    "teens": {"correct": 5.0, "incorrect": 0.5},
+                    "decade": {"correct": 0.0, "incorrect": 1.0},
+                    "compound": {"correct": 0.0, "incorrect": 1.0},
+                },
+                "grammatical_cases": {
+                    "nominative": {"correct": 0.0, "incorrect": 1.0},
+                    "accusative": {"correct": 0.0, "incorrect": 1.0},
+                },
                 "total_exercises": 7,
             }
         }
         AdaptiveLearning().init_tracking(session)
         perf = session["performance"]
-
-        # Existing arm stats preserved.
+        # Touched arms preserved.
         assert perf["exercise_types"]["kokia"]["correct"] == pytest.approx(3.0)
+        assert perf["number_patterns"]["teens"]["correct"] == pytest.approx(5.0)
         assert perf["total_exercises"] == 7
-        # Missing families filled in.
-        assert set(perf["number_patterns"].keys()) == {
-            "single_digit",
-            "teens",
-            "decade",
-            "compound",
-        }
-        assert set(perf["grammatical_cases"].keys()) == {
-            "nominative",
-            "accusative",
-        }
+        # Cold-start arms stripped.
+        assert "kiek" not in perf["exercise_types"]
+        assert set(perf["number_patterns"].keys()) == {"teens"}
+        assert perf["grammatical_cases"] == {}
 
     def test_legacy_session_with_combined_arms_drops_it(self) -> None:
         from adaptive import AdaptiveLearning

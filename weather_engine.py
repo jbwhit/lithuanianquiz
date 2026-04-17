@@ -53,8 +53,13 @@ class WeatherEngine:
         prefix: str = "weather",
         seed_prefix: str | None = None,
     ) -> None:
-        """Idempotently pre-seed every weather-module arm family."""
-        from thompson import _ensure_seeded
+        """Ensure the weather perf skeleton exists and is compact.
+
+        Arms are created lazily via `bump`; the sampler handles missing
+        keys via its cold-start default. The seed_prefix branch still
+        copies priors from a sibling module when the target is absent.
+        """
+        from thompson import strip_cold_start
 
         perf_key = f"{prefix}_performance"
         if perf_key not in session:
@@ -79,12 +84,10 @@ class WeatherEngine:
         perf.setdefault("number_patterns", {})
         perf.setdefault("sign", {})
         perf.setdefault("total_exercises", 0)
-
-        _ensure_seeded(perf["exercise_types"], list(EXERCISE_TYPES))
-        _ensure_seeded(
-            perf["number_patterns"], ["single_digit", "teens", "decade", "compound"]
-        )
-        _ensure_seeded(perf["sign"], list(SIGN_TYPES))
+        # Reclaim cookie space from eagerly-pre-seeded legacy sessions.
+        strip_cold_start(perf["exercise_types"])
+        strip_cold_start(perf["number_patterns"])
+        strip_cold_start(perf["sign"])
 
     def generate(
         self, session: dict[str, Any], prefix: str = "weather"
@@ -99,17 +102,20 @@ class WeatherEngine:
         if warmup:
             exercise_type = random.choice(EXERCISE_TYPES)
         else:
-            exercise_type = _sample_weakest(perf["exercise_types"])
+            exercise_type = _sample_weakest(
+                perf["exercise_types"], list(EXERCISE_TYPES)
+            )
 
-        # Arm dict is always pre-seeded; matching may still be empty when
-        # the sampled pattern has no rows in this engine's range. Fall
-        # back to uniform row choice.
-        weak_pattern = _sample_weakest(perf["number_patterns"])
+        # Weakest number pattern over the full 4-pattern taxonomy.
+        weak_pattern = _sample_weakest(
+            perf["number_patterns"],
+            ["single_digit", "teens", "decade", "compound"],
+        )
         matching = [r for r in self.rows if number_pattern(r["number"]) == weak_pattern]
         row = random.choice(matching) if matching else random.choice(self.rows)
 
-        # Sign dict is always pre-seeded.
-        weak_sign = _sample_weakest(perf["sign"])
+        # Weakest sign over the full taxonomy.
+        weak_sign = _sample_weakest(perf["sign"], list(SIGN_TYPES))
         negative = weak_sign == "negative"
 
         # If negative, constrain to numbers 1-20

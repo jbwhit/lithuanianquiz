@@ -26,9 +26,7 @@ class NumberEngine:
         # Patterns reachable from this engine's row set. The 1-20 engine,
         # for example, cannot serve "compound" (21+), so we must not seed
         # that arm or TS will converge on an untrainable pattern.
-        self._reachable_patterns = sorted(
-            {number_pattern(r["number"]) for r in rows}
-        )
+        self._reachable_patterns = sorted({number_pattern(r["number"]) for r in rows})
 
     def init_tracking(
         self,
@@ -36,13 +34,13 @@ class NumberEngine:
         prefix: str,
         seed_prefix: str | None = None,
     ) -> None:
-        """Idempotently pre-seed every number-module arm family.
+        """Ensure the perf skeleton exists and is compact.
 
         If seed_prefix is given and the target perf dict doesn't exist yet,
-        copy priors from that module first, then ensure all arm families are
-        complete.
+        copy priors from that module first. Arms are created lazily via
+        `bump`; the sampler handles missing keys via its cold-start default.
         """
-        from thompson import _ensure_seeded
+        from thompson import strip_cold_start
 
         perf_key = f"{prefix}_performance"
         if perf_key not in session:
@@ -60,17 +58,17 @@ class NumberEngine:
         perf.setdefault("number_patterns", {})
         perf.setdefault("total_exercises", 0)
 
-        # Drop any persisted number patterns that aren't reachable here.
-        # Covers both seed_prefix copies (e.g. n99 → n20 carrying "compound")
-        # and legacy sessions saved before this guard existed.
+        # Drop any persisted number patterns that aren't reachable here
+        # (e.g. "compound" in the 1-20 engine, or carried over from n99).
         perf["number_patterns"] = {
             k: v
             for k, v in perf["number_patterns"].items()
             if k in self._reachable_patterns
         }
-
-        _ensure_seeded(perf["exercise_types"], list(EXERCISE_TYPES))
-        _ensure_seeded(perf["number_patterns"], self._reachable_patterns)
+        # Strip any cold-start arms left over from an eagerly-seeded
+        # version of this code.
+        strip_cold_start(perf["exercise_types"])
+        strip_cold_start(perf["number_patterns"])
 
     def generate(self, session: dict[str, Any], prefix: str) -> dict[str, Any]:
         """Return an exercise dict using adaptive selection."""
@@ -80,11 +78,15 @@ class NumberEngine:
         if perf["total_exercises"] < self.adaptation_threshold:
             exercise_type = random.choice(EXERCISE_TYPES)
         else:
-            exercise_type = _sample_weakest(perf["exercise_types"])
+            exercise_type = _sample_weakest(
+                perf["exercise_types"], list(EXERCISE_TYPES)
+            )
 
-        # Only reachable patterns are seeded (see __init__), so matching is
-        # always non-empty. The else arm is defense-in-depth.
-        weak_pattern = _sample_weakest(perf["number_patterns"])
+        # Weakest reachable pattern; matching is non-empty by construction
+        # (only reachable patterns are in _reachable_patterns).
+        weak_pattern = _sample_weakest(
+            perf["number_patterns"], self._reachable_patterns
+        )
         matching = [r for r in self.rows if number_pattern(r["number"]) == weak_pattern]
         row = random.choice(matching) if matching else random.choice(self.rows)
 

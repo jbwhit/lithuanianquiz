@@ -78,6 +78,34 @@ def test_load_progress_defaults_diacritic_mode_to_strict(monkeypatch) -> None:
     assert loaded_session["diacritic_tolerant"] is False
 
 
+def test_session_cookie_stays_under_budget_after_module_tour() -> None:
+    """Regression for the eager-pre-seed bloat. Browsing every module
+    must keep the session cookie below the conservative 4 KB browser
+    budget so session state is never silently dropped or truncated."""
+    from starlette.testclient import TestClient
+
+    max_seen = 0
+    with TestClient(main.app) as client:
+        for path in (
+            "/numbers-20",
+            "/numbers-99",
+            "/age",
+            "/weather",
+            "/time",
+            "/prices",
+        ):
+            resp = client.get(path)
+            assert resp.status_code == 200
+            size = len(resp.headers.get("set-cookie", ""))
+            max_seen = max(max_seen, size)
+    # Budget is conservative: real browsers tolerate up to ~4093 bytes
+    # per cookie, but proxies / CDN edge caches can be stricter.
+    assert max_seen < 4000, (
+        f"Session cookie grew to {max_seen} bytes after a full module tour; "
+        "eager arm pre-seeding may have been reintroduced."
+    )
+
+
 def test_load_progress_strips_legacy_combined_arms(monkeypatch) -> None:
     """Legacy performance payloads carried a write-only `combined_arms`
     key. It must be stripped on load so a user who only touches non-price
@@ -113,9 +141,7 @@ def test_load_progress_strips_legacy_combined_arms(monkeypatch) -> None:
 
     assert "combined_arms" not in loaded_session["performance"]
     # Other fields survive.
-    assert (
-        loaded_session["performance"]["exercise_types"]["kokia"]["correct"] == 2
-    )
+    assert loaded_session["performance"]["exercise_types"]["kokia"]["correct"] == 2
 
 
 def test_load_progress_skips_missing_mix_modules(monkeypatch) -> None:

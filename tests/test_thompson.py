@@ -83,22 +83,55 @@ class TestSampleWeakest:
         assert ab == ba
 
 
-class TestEnsureSeeded:
-    def test_adds_missing_keys_with_cold_start_seed(self) -> None:
-        from thompson import _ensure_seeded
+class TestSampleWeakestVirtual:
+    def test_full_keys_covers_unseen_arms_without_mutating_tracked(self) -> None:
+        """Passing `full_keys` must let the sampler consider arms that
+        aren't in `tracked` (using the cold-start seed), while leaving
+        `tracked` untouched."""
+        np.random.seed(0)
+        tracked: dict[str, dict[str, float]] = {}
+        # Any single call must return a key from full_keys even though
+        # tracked is empty — the sampler treats missing keys as cold-start.
+        result = sample_weakest(tracked, ["a", "b", "c"])
+        assert result in {"a", "b", "c"}
+        assert tracked == {}  # unchanged
+
+    def test_full_keys_heavily_favors_observed_weakness(self) -> None:
+        """A strongly-observed arm should still be overridden by an
+        unseen (cold-start) arm, because cold-start posterior mean 1/3
+        is weaker than an arm with many correct observations."""
+        np.random.seed(0)
+        tracked = {"strong": {"correct": 20.0, "incorrect": 0.5}}
+        full_keys = ["strong", "fresh"]
+        picks = [sample_weakest(tracked, full_keys) for _ in range(200)]
+        # "fresh" (cold-start, mean 1/3) should dominate "strong" (mean ~0.97).
+        assert picks.count("fresh") > picks.count("strong") * 5
+
+    def test_missing_full_keys_falls_back_to_tracked(self) -> None:
+        tracked = {"only": {"correct": 1.0, "incorrect": 1.0}}
+        result = sample_weakest(tracked)
+        assert result == "only"
+
+
+class TestStripColdStart:
+    def test_removes_only_exact_cold_start_arms(self) -> None:
+        from thompson import strip_cold_start
+
+        arms = {
+            "untouched": {"correct": 0.0, "incorrect": 1.0},
+            "touched": {"correct": 1.0, "incorrect": 0.98},
+            "also_untouched": {"correct": 0.0, "incorrect": 1.0},
+        }
+        strip_cold_start(arms)
+        assert set(arms.keys()) == {"touched"}
+
+    def test_never_strips_a_bumped_arm(self) -> None:
+        """Post-γ-decay bump, no arm can land exactly at (0.0, 1.0)."""
+        from thompson import strip_cold_start
 
         arms: dict[str, dict[str, float]] = {}
-        _ensure_seeded(arms, ["a", "b", "c"])
-        assert set(arms.keys()) == {"a", "b", "c"}
-        for stats in arms.values():
-            assert stats["correct"] == pytest.approx(0.0)
-            assert stats["incorrect"] == pytest.approx(1.0)
-
-    def test_leaves_existing_arms_untouched(self) -> None:
-        from thompson import _ensure_seeded
-
-        arms = {"a": {"correct": 5.0, "incorrect": 2.0}}
-        _ensure_seeded(arms, ["a", "b"])
-        assert arms["a"] == {"correct": 5.0, "incorrect": 2.0}
-        assert arms["b"]["correct"] == pytest.approx(0.0)
-        assert arms["b"]["incorrect"] == pytest.approx(1.0)
+        for is_correct in (True, False):
+            key = "c" if is_correct else "i"
+            bump(arms, key, is_correct)
+        strip_cold_start(arms)
+        assert set(arms.keys()) == {"c", "i"}  # both survive

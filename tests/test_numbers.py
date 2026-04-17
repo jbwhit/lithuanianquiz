@@ -98,7 +98,9 @@ class TestAdaptive:
         engine.init_tracking(session, "n99")
         engine.init_tracking(session, "n99")
         assert "n99_performance" in session
-        assert len(session["n99_performance"]["exercise_types"]) == 2
+        # Arms are lazily created via bump; init leaves dicts empty.
+        assert session["n99_performance"]["exercise_types"] == {}
+        assert session["n99_performance"]["number_patterns"] == {}
 
     def test_update_increments(self, engine: NumberEngine) -> None:
         session: dict = {}
@@ -164,50 +166,51 @@ class TestAdaptive:
         assert "Exercise Types" in weak
 
 
-class TestNumberInitTrackingPreSeeds:
-    def test_fresh_n20_session_only_seeds_reachable_patterns(self) -> None:
-        """n20 has no compound rows, so compound must not be pre-seeded."""
+class TestNumberInitTrackingCompact:
+    def test_fresh_n20_session_starts_empty(self) -> None:
         from number_engine import NumberEngine
 
         session: dict = {}
         engine = NumberEngine(rows=[{"number": n} for n in range(1, 21)], max_number=20)
         engine.init_tracking(session, "n20")
         perf = session["n20_performance"]
+        assert perf["exercise_types"] == {}
+        assert perf["number_patterns"] == {}
 
-        assert set(perf["exercise_types"].keys()) == {"produce", "recognize"}
-        assert set(perf["number_patterns"].keys()) == {
-            "single_digit",
-            "teens",
-            "decade",
-        }
-        assert "compound" not in perf["number_patterns"]
-
-    def test_fresh_n99_session_seeds_all_four_patterns(self) -> None:
+    def test_n20_reachable_patterns_computed_from_rows(self) -> None:
+        """The engine exposes which patterns are actually servable; the
+        1-20 row set has no compound rows so compound must be absent."""
         from number_engine import NumberEngine
 
-        session: dict = {}
-        engine = NumberEngine(rows=[{"number": n} for n in range(1, 100)], max_number=99)
-        engine.init_tracking(session, "n99")
-        assert set(session["n99_performance"]["number_patterns"].keys()) == {
+        engine = NumberEngine(rows=[{"number": n} for n in range(1, 21)], max_number=20)
+        assert set(engine._reachable_patterns) == {"single_digit", "teens", "decade"}
+        assert "compound" not in engine._reachable_patterns
+
+    def test_n99_reachable_patterns_include_all_four(self) -> None:
+        from number_engine import NumberEngine
+
+        engine = NumberEngine(
+            rows=[{"number": n} for n in range(1, 100)], max_number=99
+        )
+        assert set(engine._reachable_patterns) == {
             "single_digit",
             "teens",
             "decade",
             "compound",
         }
 
-    def test_legacy_n20_session_with_compound_strips_it(self) -> None:
-        """Legacy sessions persisted with the earlier pre-seed (before the
-        reachability filter) carried an untrainable "compound" arm. That
-        arm must be stripped on init so TS cannot converge on it."""
+    def test_legacy_n20_session_strips_unreachable_compound(self) -> None:
+        """Legacy sessions persisted with the earlier eager-seed version
+        carried an untrainable "compound" arm. It must be stripped so TS
+        cannot converge on it."""
         from number_engine import NumberEngine
 
         session = {
             "n20_performance": {
-                "exercise_types": {
-                    "produce": {"correct": 1.0, "incorrect": 1.0},
-                },
+                "exercise_types": {"produce": {"correct": 1.0, "incorrect": 1.0}},
                 "number_patterns": {
                     "compound": {"correct": 0.0, "incorrect": 1.0},
+                    "teens": {"correct": 2.0, "incorrect": 1.0},
                 },
                 "total_exercises": 3,
             }
@@ -216,11 +219,8 @@ class TestNumberInitTrackingPreSeeds:
         engine.init_tracking(session, "n20")
         perf = session["n20_performance"]
         assert "compound" not in perf["number_patterns"]
-        assert set(perf["number_patterns"].keys()) == {
-            "single_digit",
-            "teens",
-            "decade",
-        }
+        # Reachable + touched arm survives.
+        assert perf["number_patterns"]["teens"]["correct"] == pytest.approx(2.0)
 
     def test_seed_prefix_from_n99_drops_unreachable_patterns(self) -> None:
         """n20 seeded from n99's priors must drop n99's compound stats."""
