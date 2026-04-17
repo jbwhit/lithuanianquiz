@@ -78,6 +78,46 @@ def test_load_progress_defaults_diacritic_mode_to_strict(monkeypatch) -> None:
     assert loaded_session["diacritic_tolerant"] is False
 
 
+def test_load_progress_strips_legacy_combined_arms(monkeypatch) -> None:
+    """Legacy performance payloads carried a write-only `combined_arms`
+    key. It must be stripped on load so a user who only touches non-price
+    modules doesn't persist it forward forever."""
+    db = _SQLiteDB()
+    monkeypatch.setattr(auth, "_db", db)
+
+    data = json.dumps(
+        {
+            "performance": {
+                "exercise_types": {
+                    "kokia": {"correct": 2, "incorrect": 1},
+                },
+                "number_patterns": {},
+                "grammatical_cases": {},
+                "combined_arms": {
+                    "kokia_teens_nominative": {"correct": 1, "incorrect": 0},
+                },
+                "total_exercises": 3,
+            },
+        }
+    )
+    db.execute(
+        """
+        INSERT INTO user_progress (google_id, data, updated_at)
+        VALUES (?, ?, ?)
+        """,
+        ["user-ca", data, "2026-03-02T00:00:00+00:00"],
+    )
+
+    loaded_session: dict = {}
+    auth.load_progress("user-ca", loaded_session)
+
+    assert "combined_arms" not in loaded_session["performance"]
+    # Other fields survive.
+    assert (
+        loaded_session["performance"]["exercise_types"]["kokia"]["correct"] == 2
+    )
+
+
 def test_load_progress_skips_missing_mix_modules(monkeypatch) -> None:
     db = _SQLiteDB()
     monkeypatch.setattr(auth, "_db", db)

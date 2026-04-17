@@ -55,9 +55,17 @@ def _capped_history(value: Any) -> list[Any]:
 
 
 def _get_perf_dict(data: dict[str, Any], key: str) -> dict[str, Any]:
-    """Return a validated performance dictionary from a payload key."""
+    """Return a validated performance dictionary from a payload key.
+
+    Also strips the legacy `combined_arms` key so pre-refactor sessions
+    don't persist it forward. (`combined_arms` was a write-only table in
+    the adaptive engine, removed alongside the pre-seed refactor.)
+    """
     value = data.get(key)
-    return value if isinstance(value, dict) else {}
+    if not isinstance(value, dict):
+        return {}
+    value.pop("combined_arms", None)
+    return value
 
 
 def _get_bool(data: dict[str, Any], key: str, default: bool = False) -> bool:

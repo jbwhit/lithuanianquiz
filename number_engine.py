@@ -23,6 +23,12 @@ class NumberEngine:
         self.rows = rows
         self.max_number = max_number
         self.adaptation_threshold = adaptation_threshold
+        # Patterns reachable from this engine's row set. The 1-20 engine,
+        # for example, cannot serve "compound" (21+), so we must not seed
+        # that arm or TS will converge on an untrainable pattern.
+        self._reachable_patterns = sorted(
+            {number_pattern(r["number"]) for r in rows}
+        )
 
     def init_tracking(
         self,
@@ -54,10 +60,17 @@ class NumberEngine:
         perf.setdefault("number_patterns", {})
         perf.setdefault("total_exercises", 0)
 
+        # Drop any persisted number patterns that aren't reachable here.
+        # Covers both seed_prefix copies (e.g. n99 → n20 carrying "compound")
+        # and legacy sessions saved before this guard existed.
+        perf["number_patterns"] = {
+            k: v
+            for k, v in perf["number_patterns"].items()
+            if k in self._reachable_patterns
+        }
+
         _ensure_seeded(perf["exercise_types"], list(EXERCISE_TYPES))
-        _ensure_seeded(
-            perf["number_patterns"], ["single_digit", "teens", "decade", "compound"]
-        )
+        _ensure_seeded(perf["number_patterns"], self._reachable_patterns)
 
     def generate(self, session: dict[str, Any], prefix: str) -> dict[str, Any]:
         """Return an exercise dict using adaptive selection."""
@@ -69,9 +82,8 @@ class NumberEngine:
         else:
             exercise_type = _sample_weakest(perf["exercise_types"])
 
-        # Arm dict is always pre-seeded; matching may still be empty when
-        # the sampled pattern has no rows in this engine's range (e.g.
-        # "compound" in the 1-20 engine). Fall back to uniform row choice.
+        # Only reachable patterns are seeded (see __init__), so matching is
+        # always non-empty. The else arm is defense-in-depth.
         weak_pattern = _sample_weakest(perf["number_patterns"])
         matching = [r for r in self.rows if number_pattern(r["number"]) == weak_pattern]
         row = random.choice(matching) if matching else random.choice(self.rows)
