@@ -532,7 +532,7 @@ def get_login(req, session) -> Any:
 
 
 @rt("/set-language")
-def get_set_language(req, session, lang: str = "en") -> RedirectResponse:
+def get_set_language(req, session, lang: str = "en") -> Any:
     session[UI_LANGUAGE_KEY] = normalize_ui_lang(lang)
     _refresh_cached_questions(session)
     if session.get("auth"):

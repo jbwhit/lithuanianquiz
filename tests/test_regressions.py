@@ -438,6 +438,25 @@ def test_set_language_sanitizes_bad_input() -> None:
     assert response.headers["location"] == "/"
 
 
+def test_set_language_route_returns_303_over_http() -> None:
+    """Regression: annotating `get_set_language -> RedirectResponse` caused
+    FastHTML to stringify the response, yielding HTTP 200 with a `Location`
+    header containing the object repr instead of redirecting."""
+    from starlette.testclient import TestClient
+
+    with TestClient(main.app, follow_redirects=False) as client:
+        resp = client.get(
+            "/set-language?lang=lt",
+            headers={"referer": "https://lithuanian-practice.com/age"},
+        )
+
+    assert resp.status_code == 303, (
+        f"Expected 303, got {resp.status_code}. Location header was: "
+        f"{resp.headers.get('location')!r}"
+    )
+    assert resp.headers["location"] == "/age"
+
+
 def test_set_diacritic_mode_route_updates_session_and_redirects() -> None:
     session: dict = {}
     response = main.get_set_diacritic_mode(
