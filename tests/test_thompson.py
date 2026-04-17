@@ -73,3 +73,24 @@ class TestSampleWeakest:
         # With the same RNG seed and equal posteriors, the chosen arm should
         # be determined by sample values, not by which key is listed first.
         assert ab == ba
+
+
+class TestEnsureSeeded:
+    def test_adds_missing_keys_with_cold_start_seed(self) -> None:
+        from thompson import _ensure_seeded
+
+        arms: dict[str, dict[str, float]] = {}
+        _ensure_seeded(arms, ["a", "b", "c"])
+        assert set(arms.keys()) == {"a", "b", "c"}
+        for stats in arms.values():
+            assert stats["correct"] == pytest.approx(0.0)
+            assert stats["incorrect"] == pytest.approx(1.0)
+
+    def test_leaves_existing_arms_untouched(self) -> None:
+        from thompson import _ensure_seeded
+
+        arms = {"a": {"correct": 5.0, "incorrect": 2.0}}
+        _ensure_seeded(arms, ["a", "b"])
+        assert arms["a"] == {"correct": 5.0, "incorrect": 2.0}
+        assert arms["b"]["correct"] == pytest.approx(0.0)
+        assert arms["b"]["incorrect"] == pytest.approx(1.0)

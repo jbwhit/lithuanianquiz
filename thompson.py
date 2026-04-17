@@ -16,6 +16,21 @@ _SEED_CORRECT: float = 0.0
 _SEED_INCORRECT: float = 1.0
 
 
+def _ensure_seeded(category: dict[str, dict[str, float]], keys: list[str]) -> None:
+    """Ensure every key is present with the cold-start seed.
+
+    Idempotent: arms that already exist are left untouched. Used by per-engine
+    init_tracking to guarantee full arm coverage on fresh sessions and to
+    top up legacy sessions loaded from the DB.
+    """
+    for key in keys:
+        if key not in category:
+            category[key] = {
+                "correct": _SEED_CORRECT,
+                "incorrect": _SEED_INCORRECT,
+            }
+
+
 def bump(
     category: dict[str, dict[str, float]],
     key: str,
