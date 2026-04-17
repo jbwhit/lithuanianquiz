@@ -124,6 +124,14 @@ class TestFormatQuestion:
             == "How do you say -5\u00b0C?"
         )
 
+    def test_produce_lithuanian(
+        self, engine: WeatherEngine, sample_rows: list[dict]
+    ) -> None:
+        assert (
+            engine.format_question("produce", sample_rows[3], negative=False, lang="lt")
+            == "Kaip pasakyti 25\u00b0C?"
+        )
+
     def test_recognize(self, engine: WeatherEngine, sample_rows: list[dict]) -> None:
         assert (
             engine.format_question("recognize", sample_rows[1], negative=True)

@@ -166,10 +166,16 @@ class AgeEngine:
         return str(row["number"])
 
     def format_question(
-        self, exercise_type: str, row: dict[str, Any], pronoun: dict[str, str]
+        self,
+        exercise_type: str,
+        row: dict[str, Any],
+        pronoun: dict[str, str],
+        lang: str = "en",
     ) -> str:
         """Format the question text for display."""
         if exercise_type == "produce":
+            if lang == "lt":
+                return f"{pronoun['dative']} yra {row['number']} metų."
             return f"{pronoun['english']} {row['number']} years old."
         # recognize: show the Lithuanian phrase
         return f"{pronoun['dative']} {_age_number_word(row)} {row['years']}."

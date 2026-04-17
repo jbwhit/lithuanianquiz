@@ -41,6 +41,7 @@ def test_save_and_load_progress_persists_mix_fields(monkeypatch) -> None:
             "time": {"correct": 3, "incorrect": 1},
             "prices": {"correct": 1, "incorrect": 2},
         },
+        "ui_lang": "lt",
         "diacritic_tolerant": True,
     }
     auth.save_progress("user-1", saved_session)
@@ -55,6 +56,7 @@ def test_save_and_load_progress_persists_mix_fields(monkeypatch) -> None:
         "time": {"correct": 3, "incorrect": 1},
         "prices": {"correct": 1, "incorrect": 2},
     }
+    assert loaded_session["ui_lang"] == "lt"
     assert loaded_session["diacritic_tolerant"] is True
 
 
@@ -74,26 +76,6 @@ def test_load_progress_defaults_diacritic_mode_to_strict(monkeypatch) -> None:
     loaded_session: dict = {}
     auth.load_progress("user-0", loaded_session)
     assert loaded_session["diacritic_tolerant"] is False
-
-
-def test_set_diacritic_mode_route_updates_session_and_redirects() -> None:
-    session: dict = {}
-    resp = main.get_set_diacritic_mode(session, enabled="1", next_path="/practice-all")
-
-    assert session["diacritic_tolerant"] is True
-    assert resp.status_code == 303
-    assert resp.headers.get("location") == "/practice-all"
-
-
-def test_set_diacritic_mode_rejects_non_local_redirects() -> None:
-    session: dict = {"diacritic_tolerant": True}
-    resp = main.get_set_diacritic_mode(
-        session, enabled="0", next_path="https://evil.example"
-    )
-
-    assert session["diacritic_tolerant"] is False
-    assert resp.status_code == 303
-    assert resp.headers.get("location") == "/"
 
 
 def test_load_progress_skips_missing_mix_modules(monkeypatch) -> None:
@@ -431,6 +413,124 @@ def test_append_history_entry_resets_non_list_history() -> None:
 
     assert isinstance(session["history"], list)
     assert len(session["history"]) == 1
+
+
+def test_set_language_updates_session_and_redirects_to_referrer() -> None:
+    class _Req:
+        headers = {"referer": "https://example.com/time?from=header"}
+
+    session: dict = {}
+    response = main.get_set_language(_Req(), session, lang="lt")
+
+    assert session["ui_lang"] == "lt"
+    assert response.status_code == 303
+    assert response.headers["location"] == "/time?from=header"
+
+
+def test_set_language_sanitizes_bad_input() -> None:
+    class _Req:
+        headers = {"referer": "javascript:alert(1)"}
+
+    session: dict = {}
+    response = main.get_set_language(_Req(), session, lang="fr")
+
+    assert session["ui_lang"] == "en"
+    assert response.headers["location"] == "/"
+
+
+def test_set_diacritic_mode_route_updates_session_and_redirects() -> None:
+    session: dict = {}
+    response = main.get_set_diacritic_mode(
+        session, enabled="1", next_path="/practice-all"
+    )
+
+    assert session["diacritic_tolerant"] is True
+    assert response.status_code == 303
+    assert response.headers.get("location") == "/practice-all"
+
+
+def test_set_diacritic_mode_rejects_non_local_redirects() -> None:
+    session: dict = {"diacritic_tolerant": True}
+    response = main.get_set_diacritic_mode(
+        session, enabled="0", next_path="https://evil.example"
+    )
+
+    assert session["diacritic_tolerant"] is False
+    assert response.status_code == 303
+    assert response.headers.get("location") == "/"
+
+
+def test_set_language_rewrites_age_question_mid_session() -> None:
+    """Regression: toggling /set-language should update the cached
+    age_current_question immediately, not leave English text until reset."""
+
+    class _Req:
+        headers = {"referer": "/age"}
+
+    session: dict = {}
+    main._ensure_age_session(session)
+    first_q = session["age_current_question"]
+    assert first_q  # sanity
+
+    # Capture exercise identity so we can check the prompt changed but the
+    # underlying exercise is preserved.
+    row_id = session["age_row_id"]
+    ex_type = session["age_exercise_type"]
+
+    main.get_set_language(_Req(), session, lang="lt")
+
+    assert session["age_row_id"] == row_id
+    assert session["age_exercise_type"] == ex_type
+    new_q = session["age_current_question"]
+    if ex_type == "produce":
+        # English "... years old." vs Lithuanian "... metų."
+        assert "years old" not in new_q
+        assert "metų" in new_q
+
+
+def test_set_language_refreshes_number_and_weather_questions() -> None:
+    class _Req:
+        headers = {"referer": "/numbers-99"}
+
+    session: dict = {}
+    main._ensure_number_session(session, main.number_engine_99, "n99")
+    main._ensure_weather_session(session)
+
+    n_before = session["n99_current_question"]
+    w_before = session["weather_current_question"]
+
+    main.get_set_language(_Req(), session, lang="lt")
+
+    # Produce-style prompts render as "How do you say X?" in EN, "Kaip
+    # pasakyti X?" in LT. At least one of n99/weather is "produce"-shaped;
+    # accept either changing, but assert neither retained English "How do
+    # you say" once the cache refresh has run.
+    n_after = session["n99_current_question"]
+    w_after = session["weather_current_question"]
+    assert "How do you say" not in n_after
+    assert "How do you say" not in w_after
+    assert (
+        (n_after != n_before)
+        or (w_after != w_before)
+        or ("How do you say" not in n_before and "How do you say" not in w_before)
+    )
+
+
+def test_set_language_mirrors_mix_current_question() -> None:
+    """After a language toggle, mix_current_question must track the
+    refreshed sub-module prompt instead of the stale text."""
+
+    class _Req:
+        headers = {"referer": "/practice-all"}
+
+    session: dict = {}
+    main._ensure_mix_session(session)
+    mix_mod = session["mix_current_module"]
+    sub_key = main._MIX_Q_KEY_BY_MODULE[mix_mod]
+
+    main.get_set_language(_Req(), session, lang="lt")
+
+    assert session["mix_current_question"] == session[sub_key]
 
 
 def test_feedback_from_snapshot_always_passes_grammatical_case(monkeypatch) -> None:
