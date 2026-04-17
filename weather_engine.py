@@ -40,13 +40,11 @@ class WeatherEngine:
     def __init__(
         self,
         rows: list[dict[str, Any]],
-        exploration_rate: float = 0.2,
         adaptation_threshold: int = 10,
     ) -> None:
         self.rows = rows
         # Negative temperatures only for numbers 1-20
         self.negative_rows = [r for r in rows if r["number"] <= 20]
-        self.exploration_rate = exploration_rate
         self.adaptation_threshold = adaptation_threshold
 
     def init_tracking(

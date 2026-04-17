@@ -64,10 +64,7 @@ def time_pattern(hour: int) -> str:
 class TimeEngine:
     """Generates time exercises and checks answers with adaptive selection."""
 
-    def __init__(
-        self, exploration_rate: float = 0.2, adaptation_threshold: int = 10
-    ) -> None:
-        self.exploration_rate = exploration_rate
+    def __init__(self, adaptation_threshold: int = 10) -> None:
         self.adaptation_threshold = adaptation_threshold
 
     def init_tracking(self, session: dict[str, Any]) -> None:

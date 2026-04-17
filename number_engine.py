@@ -18,12 +18,10 @@ class NumberEngine:
         self,
         rows: list[dict[str, Any]],
         max_number: int,
-        exploration_rate: float = 0.2,
         adaptation_threshold: int = 10,
     ) -> None:
         self.rows = rows
         self.max_number = max_number
-        self.exploration_rate = exploration_rate
         self.adaptation_threshold = adaptation_threshold
 
     def init_tracking(

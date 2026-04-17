@@ -77,7 +77,7 @@ ROWS = [
 class TestAdaptiveLearning:
     @pytest.fixture()
     def al(self) -> AdaptiveLearning:
-        return AdaptiveLearning(exploration_rate=0.2)
+        return AdaptiveLearning()
 
     def test_init_tracking_idempotent(self, al: AdaptiveLearning) -> None:
         session: dict = {}
@@ -110,7 +110,7 @@ class TestAdaptiveLearning:
 
     def test_thompson_convergence(self) -> None:
         """After biased history, Thompson sampling should target weak area."""
-        al = AdaptiveLearning(exploration_rate=0.0)
+        al = AdaptiveLearning()
         engine = ExerciseEngine(ROWS)
         session: dict = {}
         al.init_tracking(session)
@@ -215,9 +215,8 @@ class TestAdaptiveNoSteadyStateGate:
         is always invoked."""
         from adaptive import AdaptiveLearning
 
-        engine = AdaptiveLearning(
-            exploration_rate=0.9
-        )  # large rate — would explore under old code
+        engine = AdaptiveLearning()
+        # After warmup, always use Thompson Sampling (no random gate)
         session: dict = {}
         engine.init_tracking(session)
         session["performance"]["total_exercises"] = 999  # past warmup

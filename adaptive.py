@@ -14,8 +14,7 @@ _PRICE_CASES = ["nominative", "accusative"]
 class AdaptiveLearning:
     """Thompson Sampling–based exercise selector."""
 
-    def __init__(self, exploration_rate: float = 0.2) -> None:
-        self.exploration_rate = exploration_rate
+    def __init__(self) -> None:
         self.adaptation_threshold = 10
 
     # ------------------------------------------------------------------
