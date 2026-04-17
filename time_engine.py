@@ -150,21 +150,14 @@ class TimeEngine:
         self.init_tracking(session)
         perf = session["time_performance"]
 
-        if (
-            random.random() < self.exploration_rate
-            or perf["total_exercises"] < self.adaptation_threshold
-        ):
+        if perf["total_exercises"] < self.adaptation_threshold:
             time_type = random.choice(TIME_TYPES)
         else:
             time_type = _sample_weakest(perf["exercise_types"])
 
-        # Adaptively pick hour if we have data
-        if perf["hour_patterns"] and random.random() > self.exploration_rate:
-            weak_hour_key = _sample_weakest(perf["hour_patterns"])
-            # Extract hour number from "hour_N"
-            hour = int(weak_hour_key.split("_")[1])
-        else:
-            hour = random.randint(1, 12)
+        # Adaptively pick hour (always pre-seeded, never empty)
+        weak_hour_key = _sample_weakest(perf["hour_patterns"])
+        hour = int(weak_hour_key.split("_")[1])
 
         minute = _TIME_TYPE_MINUTES[time_type]
         return {

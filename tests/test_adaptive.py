@@ -207,3 +207,45 @@ class TestInitTrackingPreSeeds:
         }
         AdaptiveLearning().init_tracking(session)
         assert "combined_arms" not in session["performance"]
+
+
+class TestAdaptiveNoSteadyStateGate:
+    def test_post_warmup_always_takes_thompson_path(self, monkeypatch) -> None:
+        """After warmup, random() is not consulted for a gate — _thompson_sample
+        is always invoked."""
+        from adaptive import AdaptiveLearning
+
+        engine = AdaptiveLearning(
+            exploration_rate=0.9
+        )  # large rate — would explore under old code
+        session: dict = {}
+        engine.init_tracking(session)
+        session["performance"]["total_exercises"] = 999  # past warmup
+
+        called = {"ts": 0, "rand": 0}
+
+        def fake_ts(*_a, **_kw):
+            called["ts"] += 1
+            return {
+                "exercise_type": "kokia",
+                "price": "€1",
+                "item": None,
+                "row": {"number": 1},
+                "grammatical_case": "nominative",
+                "number_pattern": "single_digit",
+            }
+
+        def fake_rand(*_a, **_kw):
+            called["rand"] += 1
+            return {}
+
+        monkeypatch.setattr(engine, "_thompson_sample", fake_ts)
+        monkeypatch.setattr(engine, "_random_exercise", fake_rand)
+
+        class _FakeEngine:
+            rows = [{"number": 1}]
+
+        for _ in range(50):
+            engine.select_exercise(session, engine=_FakeEngine())
+        assert called["ts"] == 50
+        assert called["rand"] == 0

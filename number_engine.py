@@ -66,23 +66,15 @@ class NumberEngine:
         self.init_tracking(session, prefix)
         perf = session[f"{prefix}_performance"]
 
-        if (
-            random.random() < self.exploration_rate
-            or perf["total_exercises"] < self.adaptation_threshold
-        ):
+        if perf["total_exercises"] < self.adaptation_threshold:
             exercise_type = random.choice(EXERCISE_TYPES)
         else:
             exercise_type = _sample_weakest(perf["exercise_types"])
 
-        # Adaptively pick number pattern if we have data
-        if perf["number_patterns"] and random.random() > self.exploration_rate:
-            weak_pattern = _sample_weakest(perf["number_patterns"])
-            matching = [
-                r for r in self.rows if number_pattern(r["number"]) == weak_pattern
-            ]
-            row = random.choice(matching) if matching else random.choice(self.rows)
-        else:
-            row = random.choice(self.rows)
+        # Adaptively pick number pattern (always pre-seeded, never empty)
+        weak_pattern = _sample_weakest(perf["number_patterns"])
+        matching = [r for r in self.rows if number_pattern(r["number"]) == weak_pattern]
+        row = random.choice(matching) if matching else random.choice(self.rows)
 
         return {
             "exercise_type": exercise_type,

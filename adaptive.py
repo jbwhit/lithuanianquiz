@@ -91,10 +91,7 @@ class AdaptiveLearning:
         self.init_tracking(session)
         perf = session["performance"]
 
-        if (
-            random.random() < self.exploration_rate
-            or perf["total_exercises"] < self.adaptation_threshold
-        ):
+        if perf["total_exercises"] < self.adaptation_threshold:
             return self._random_exercise(engine)
 
         return self._thompson_sample(session, engine)

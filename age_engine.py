@@ -123,33 +123,22 @@ class AgeEngine:
         self.init_tracking(session, prefix)
         perf = session[f"{prefix}_performance"]
 
-        exploring = (
-            random.random() < self.exploration_rate
-            or perf["total_exercises"] < self.adaptation_threshold
-        )
+        warmup = perf["total_exercises"] < self.adaptation_threshold
 
         # Pick exercise type
-        if exploring:
+        if warmup:
             exercise_type = random.choice(EXERCISE_TYPES)
         else:
             exercise_type = _sample_weakest(perf["exercise_types"])
 
-        # Pick row (number) adaptively
-        if perf["number_patterns"] and not exploring:
-            weak_pattern = _sample_weakest(perf["number_patterns"])
-            matching = [
-                r for r in self.rows if number_pattern(r["number"]) == weak_pattern
-            ]
-            row = random.choice(matching) if matching else random.choice(self.rows)
-        else:
-            row = random.choice(self.rows)
+        # Pick row (number) adaptively (always pre-seeded, never empty)
+        weak_pattern = _sample_weakest(perf["number_patterns"])
+        matching = [r for r in self.rows if number_pattern(r["number"]) == weak_pattern]
+        row = random.choice(matching) if matching else random.choice(self.rows)
 
-        # Pick pronoun adaptively
-        if not exploring:
-            weak_pronoun = _sample_weakest(perf["pronouns"])
-            pronoun = _pronoun_by_dative(weak_pronoun)
-        else:
-            pronoun = random.choice(PRONOUNS)
+        # Pick pronoun adaptively (always pre-seeded, never empty)
+        weak_pronoun = _sample_weakest(perf["pronouns"])
+        pronoun = _pronoun_by_dative(weak_pronoun)
 
         return {
             "exercise_type": exercise_type,

@@ -95,33 +95,22 @@ class WeatherEngine:
         self.init_tracking(session, prefix)
         perf = session[f"{prefix}_performance"]
 
-        exploring = (
-            random.random() < self.exploration_rate
-            or perf["total_exercises"] < self.adaptation_threshold
-        )
+        warmup = perf["total_exercises"] < self.adaptation_threshold
 
         # Pick exercise type
-        if exploring:
+        if warmup:
             exercise_type = random.choice(EXERCISE_TYPES)
         else:
             exercise_type = _sample_weakest(perf["exercise_types"])
 
-        # Pick row (number) adaptively
-        if perf["number_patterns"] and not exploring:
-            weak_pattern = _sample_weakest(perf["number_patterns"])
-            matching = [
-                r for r in self.rows if number_pattern(r["number"]) == weak_pattern
-            ]
-            row = random.choice(matching) if matching else random.choice(self.rows)
-        else:
-            row = random.choice(self.rows)
+        # Pick row (number) adaptively (always pre-seeded, never empty)
+        weak_pattern = _sample_weakest(perf["number_patterns"])
+        matching = [r for r in self.rows if number_pattern(r["number"]) == weak_pattern]
+        row = random.choice(matching) if matching else random.choice(self.rows)
 
-        # Pick sign adaptively
-        if not exploring:
-            weak_sign = _sample_weakest(perf["sign"])
-            negative = weak_sign == "negative"
-        else:
-            negative = random.choice([True, False])
+        # Pick sign adaptively (always pre-seeded, never empty)
+        weak_sign = _sample_weakest(perf["sign"])
+        negative = weak_sign == "negative"
 
         # If negative, constrain to numbers 1-20
         if negative and row["number"] > 20:
