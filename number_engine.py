@@ -57,7 +57,9 @@ class NumberEngine:
         perf.setdefault("total_exercises", 0)
 
         _ensure_seeded(perf["exercise_types"], list(EXERCISE_TYPES))
-        _ensure_seeded(perf["number_patterns"], ["single_digit", "teens", "decade", "compound"])
+        _ensure_seeded(
+            perf["number_patterns"], ["single_digit", "teens", "decade", "compound"]
+        )
 
     def generate(self, session: dict[str, Any], prefix: str) -> dict[str, Any]:
         """Return an exercise dict using adaptive selection."""

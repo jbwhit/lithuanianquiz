@@ -113,7 +113,9 @@ class AgeEngine:
         perf.setdefault("total_exercises", 0)
 
         _ensure_seeded(perf["exercise_types"], list(EXERCISE_TYPES))
-        _ensure_seeded(perf["number_patterns"], ["single_digit", "teens", "decade", "compound"])
+        _ensure_seeded(
+            perf["number_patterns"], ["single_digit", "teens", "decade", "compound"]
+        )
         _ensure_seeded(perf["pronouns"], list(PRONOUN_DATIVES))
 
     def generate(self, session: dict[str, Any], prefix: str = "age") -> dict[str, Any]:

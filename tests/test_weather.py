@@ -330,7 +330,10 @@ class TestWeatherInitTrackingPreSeeds:
 
         assert set(perf["exercise_types"].keys()) == {"produce", "recognize"}
         assert set(perf["number_patterns"].keys()) == {
-            "single_digit", "teens", "decade", "compound",
+            "single_digit",
+            "teens",
+            "decade",
+            "compound",
         }
         assert set(perf["sign"].keys()) == set(SIGN_TYPES)
 

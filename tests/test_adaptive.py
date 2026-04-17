@@ -143,10 +143,14 @@ class TestInitTrackingPreSeeds:
 
         assert set(perf["exercise_types"].keys()) == {"kokia", "kiek"}
         assert set(perf["number_patterns"].keys()) == {
-            "single_digit", "teens", "decade", "compound",
+            "single_digit",
+            "teens",
+            "decade",
+            "compound",
         }
         assert set(perf["grammatical_cases"].keys()) == {
-            "nominative", "accusative",
+            "nominative",
+            "accusative",
         }
         # No combined_arms in the new scheme.
         assert "combined_arms" not in perf
@@ -174,10 +178,14 @@ class TestInitTrackingPreSeeds:
         assert perf["total_exercises"] == 7
         # Missing families filled in.
         assert set(perf["number_patterns"].keys()) == {
-            "single_digit", "teens", "decade", "compound",
+            "single_digit",
+            "teens",
+            "decade",
+            "compound",
         }
         assert set(perf["grammatical_cases"].keys()) == {
-            "nominative", "accusative",
+            "nominative",
+            "accusative",
         }
 
     def test_legacy_session_with_combined_arms_drops_it(self) -> None:
@@ -191,7 +199,9 @@ class TestInitTrackingPreSeeds:
                 },
                 "number_patterns": {},
                 "grammatical_cases": {},
-                "combined_arms": {"kokia_teens_nominative": {"correct": 1.0, "incorrect": 0.0}},
+                "combined_arms": {
+                    "kokia_teens_nominative": {"correct": 1.0, "incorrect": 0.0}
+                },
                 "total_exercises": 2,
             }
         }

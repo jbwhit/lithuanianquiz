@@ -65,11 +65,19 @@ class TestSampleWeakest:
         """With identical posteriors, ties should break via the sampled values,
         not via dict iteration order."""
         np.random.seed(42)
-        ab = sample_weakest({"a": {"correct": 1.0, "incorrect": 1.0},
-                             "b": {"correct": 1.0, "incorrect": 1.0}})
+        ab = sample_weakest(
+            {
+                "a": {"correct": 1.0, "incorrect": 1.0},
+                "b": {"correct": 1.0, "incorrect": 1.0},
+            }
+        )
         np.random.seed(42)
-        ba = sample_weakest({"b": {"correct": 1.0, "incorrect": 1.0},
-                             "a": {"correct": 1.0, "incorrect": 1.0}})
+        ba = sample_weakest(
+            {
+                "b": {"correct": 1.0, "incorrect": 1.0},
+                "a": {"correct": 1.0, "incorrect": 1.0},
+            }
+        )
         # With the same RNG seed and equal posteriors, the chosen arm should
         # be determined by sample values, not by which key is listed first.
         assert ab == ba

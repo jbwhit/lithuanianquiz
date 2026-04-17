@@ -175,7 +175,10 @@ class TestNumberInitTrackingPreSeeds:
 
         assert set(perf["exercise_types"].keys()) == {"produce", "recognize"}
         assert set(perf["number_patterns"].keys()) == {
-            "single_digit", "teens", "decade", "compound",
+            "single_digit",
+            "teens",
+            "decade",
+            "compound",
         }
 
     def test_legacy_session_gets_topped_up(self) -> None:

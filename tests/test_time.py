@@ -247,11 +247,12 @@ class TestTimeInitTrackingPreSeeds:
         perf = session["time_performance"]
 
         assert set(perf["exercise_types"].keys()) == {
-            "whole_hour", "half_past", "quarter_past", "quarter_to",
+            "whole_hour",
+            "half_past",
+            "quarter_past",
+            "quarter_to",
         }
-        assert set(perf["hour_patterns"].keys()) == {
-            f"hour_{i}" for i in range(1, 13)
-        }
+        assert set(perf["hour_patterns"].keys()) == {f"hour_{i}" for i in range(1, 13)}
         assert set(perf["grammatical_cases"].keys()) == {"nominative", "genitive"}
 
     def test_legacy_session_gets_topped_up(self) -> None:
