@@ -667,7 +667,7 @@ def quiz_area(
     question: str,
     feedback: Any | None = None,
     post_url: str = "/answer",
-    label: str = "Practice",
+    label: str | None = None,
     lang: str = "en",
 ) -> Div:
     """Card with question + answer form, optional feedback alert above."""
@@ -699,11 +699,12 @@ def quiz_area(
         hx_swap="outerHTML",
     )
 
+    label_text = label if label is not None else _txt(lang, "Practice", "Praktika")
     card = Card(
         CardHeader(
             DivFullySpaced(
                 H3(_txt(lang, "Current Exercise", "Dabartine Uzduotis"), cls=TextT.lg),
-                Label(label, cls=LabelT.primary),
+                Label(label_text, cls=LabelT.primary),
             )
         ),
         CardBody(
@@ -1109,13 +1110,67 @@ def _accuracy_bar(accuracy: float, lang: str = "en") -> Div:
     )
 
 
-def _weak_area_item(area: dict[str, Any]) -> Li:
+_ARM_LABELS_LT: dict[str, str] = {
+    # exercise_types
+    "produce": "Kūrimas",
+    "recognize": "Atpažinimas",
+    "kokia": "Kokia kaina?",
+    "kiek": "Kiek kainuoja?",
+    "whole_hour": "Pilna valanda",
+    "half_past": "Pusė",
+    "quarter_past": "Ketvirtis po",
+    "quarter_to": "Be ketvirčio",
+    # number_patterns
+    "single_digit": "Vienaženkliai",
+    "teens": "Paaugliai (10-19)",
+    "round_ten": "Apvali dešimtis",
+    "compound": "Sudėtiniai",
+    # grammatical_cases
+    "nominative": "Vardininkas",
+    "accusative": "Galininkas",
+    "genitive": "Kilmininkas",
+    # sign
+    "positive": "Teigiamas",
+    "negative": "Neigiamas",
+}
+
+_CATEGORY_LABELS_LT: dict[str, str] = {
+    "Exercise Types": "Užduočių tipai",
+    "Number Patterns": "Skaičių modeliai",
+    "Grammatical Cases": "Linksniai",
+    "Hour Patterns": "Valandų modeliai",
+    "Pronouns": "Įvardžiai",
+    "Sign": "Ženklas",
+    "Sign (+/-)": "Ženklas (+/-)",
+}
+
+
+def _fmt_arm_name(raw: str, lang: str) -> str:
+    """Display a weak-area/performance arm name, localized when lang='lt'."""
+    if _is_lt(lang) and raw in _ARM_LABELS_LT:
+        return _ARM_LABELS_LT[raw]
+    # Hour patterns like "hour_3" — keep number, localize word.
+    if raw.startswith("hour_"):
+        n = raw.removeprefix("hour_")
+        if _is_lt(lang):
+            return f"{n} valanda"
+        return f"Hour {n}"
+    return raw.replace("_", " ").title()
+
+
+def _fmt_category(raw: str, lang: str) -> str:
+    if _is_lt(lang):
+        return _CATEGORY_LABELS_LT.get(raw, raw)
+    return raw
+
+
+def _weak_area_item(area: dict[str, Any], lang: str = "en") -> Li:
     rate = area["success_rate"] * 100
     color = "bg-error" if rate < 60 else "bg-warning" if rate < 80 else "bg-success"
     return Li(
         Div(
             P(
-                area["name"].replace("_", " ").title(),
+                _fmt_arm_name(area["name"], lang),
                 cls=TextT.medium,
             ),
             Progress(value=int(rate), max=100, cls=f"h-2 rounded-full {color}"),
@@ -1141,23 +1196,15 @@ def _weak_areas_section(
         )
     else:
         sections = []
-        cat_labels = {
-            "Exercise Types": "Uzduociu Tipai",
-            "Number Patterns": "Skaiciu Modeliai",
-            "Grammatical Cases": "Linksniai",
-            "Hour Patterns": "Valandu Modeliai",
-            "Pronouns": "Ivardziai",
-            "Sign": "Zenklas",
-        }
         for cat, areas in weak_areas.items():
             sections.append(
                 Div(
                     H4(
-                        cat if not _is_lt(lang) else cat_labels.get(cat, cat),
+                        _fmt_category(cat, lang),
                         cls=(TextT.bold, "mb-2"),
                     ),
                     Ul(
-                        *[_weak_area_item(a) for a in areas],
+                        *[_weak_area_item(a, lang=lang) for a in areas],
                         cls="space-y-2",
                     ),
                     cls="mb-4",
@@ -1339,7 +1386,7 @@ def _perf_by_category(
         color = "bg-error" if rate < 60 else "bg-warning" if rate < 80 else "bg-success"
         items.append(
             Div(
-                P(key.replace("_", " ").title(), cls=TextT.medium),
+                P(_fmt_arm_name(key, lang), cls=TextT.medium),
                 Progress(
                     value=int(rate),
                     max=100,
@@ -1447,17 +1494,9 @@ def _module_stats_section(
         ]
     for key, cat_title in perf_categories:
         if perf.get(key):
-            perf_title = cat_title
-            if _is_lt(lang):
-                perf_title = {
-                    "Exercise Types": "Uzduociu Tipai",
-                    "Number Patterns": "Skaiciu Modeliai",
-                    "Grammatical Cases": "Linksniai",
-                    "Hour Patterns": "Valandu Modeliai",
-                    "Pronouns": "Ivardziai",
-                    "Sign (+/-)": "Zenklas (+/-)",
-                }.get(cat_title, cat_title)
-            perf_cards.append(_perf_by_category(perf[key], perf_title, lang=lang))
+            perf_cards.append(
+                _perf_by_category(perf[key], _fmt_category(cat_title, lang), lang=lang)
+            )
 
     detail_section = (
         Grid(*perf_cards, cols_md=1, cols_lg=2, cols_xl=3, gap=6)

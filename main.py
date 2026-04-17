@@ -553,7 +553,11 @@ def get_prices(session) -> Any:
             cls="text-base-content/60 text-xs mb-6",
         ),
         examples_section(lang=lang),
-        quiz_area(session["current_question"], lang=lang),
+        quiz_area(
+            session["current_question"],
+            label=_t(session, "Prices", "Kainos"),
+            lang=lang,
+        ),
         Div(stats_panel(stats, history, lang=lang), cls="mt-6"),
         Button(
             UkIcon("refresh-ccw", cls="mr-2"),
@@ -644,7 +648,12 @@ def post(session, user_answer: str = "") -> Any:
     oob_stats = stats_panel(stats, session.get("history", []), oob=True, lang=lang)
 
     return (
-        quiz_area(session["current_question"], feedback=fb, lang=lang),
+        quiz_area(
+            session["current_question"],
+            feedback=fb,
+            label=_t(session, "Prices", "Kainos"),
+            lang=lang,
+        ),
         oob_stats,
     )
 
@@ -678,7 +687,11 @@ def post_reset(session) -> Any:
     stats = _compute_stats(session)
     oob_stats = stats_panel(stats, [], oob=True, lang=lang)
     return (
-        quiz_area(session["current_question"], lang=lang),
+        quiz_area(
+            session["current_question"],
+            label=_t(session, "Prices", "Kainos"),
+            lang=lang,
+        ),
         oob_stats,
     )
 

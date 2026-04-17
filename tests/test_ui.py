@@ -215,6 +215,47 @@ class TestDiacriticModeToggle:
                 f"English grammar leak in LT mode: {english_token!r}"
             )
 
+    def test_quiz_area_default_label_is_localized(self) -> None:
+        html_en = _render(quiz_area("Klausimas?", lang="en"))
+        html_lt = _render(quiz_area("Klausimas?", lang="lt"))
+        assert "Practice" in html_en
+        assert "Praktika" in html_lt
+        assert ">Practice<" not in html_lt
+
+    def test_stats_panel_weak_areas_localized_in_lt(self) -> None:
+        stats = {
+            "total": 5,
+            "correct": 2,
+            "incorrect": 3,
+            "accuracy": 40.0,
+            "current_streak": 0,
+            "weak_areas": {
+                "Exercise Types": [{"name": "produce", "success_rate": 0.3}],
+                "Number Patterns": [{"name": "teens", "success_rate": 0.2}],
+                "Grammatical Cases": [{"name": "accusative", "success_rate": 0.4}],
+                "Hour Patterns": [{"name": "hour_3", "success_rate": 0.2}],
+                "Sign": [{"name": "negative", "success_rate": 0.1}],
+            },
+        }
+        html = _render(stats_panel(stats, [], lang="lt"))
+        # Category labels
+        for english_label in (
+            "Exercise Types",
+            "Number Patterns",
+            "Grammatical Cases",
+            "Hour Patterns",
+            ">Sign<",
+        ):
+            assert english_label not in html, (
+                f"English category leak in LT: {english_label!r}"
+            )
+        # Arm names
+        for english_arm in ("Produce", "Teens", "Accusative", "Hour 3", "Negative"):
+            assert english_arm not in html, f"English arm leak in LT: {english_arm!r}"
+        # Spot-check a localized label rendered
+        assert "Kūrimas" in html
+        assert "Galininkas" in html
+
     def test_feedback_incorrect_time_grammar_hint_english_mode(self) -> None:
         html = _render(
             feedback_incorrect(
