@@ -1123,7 +1123,7 @@ _ARM_LABELS_LT: dict[str, str] = {
     # number_patterns
     "single_digit": "Vienaženkliai",
     "teens": "Paaugliai (10-19)",
-    "round_ten": "Apvali dešimtis",
+    "decade": "Apvali dešimtis",
     "compound": "Sudėtiniai",
     # grammatical_cases
     "nominative": "Vardininkas",

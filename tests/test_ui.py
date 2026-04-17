@@ -1,6 +1,7 @@
 """Tests for ui.py — quiz area and HTMX swap behaviour."""
 
 from fasthtml.common import to_xml
+from quiz import number_pattern
 from ui import (
     examples_section,
     feedback_incorrect,
@@ -255,6 +256,32 @@ class TestDiacriticModeToggle:
         # Spot-check a localized label rendered
         assert "Kūrimas" in html
         assert "Galininkas" in html
+
+    def test_weak_area_arm_covers_number_pattern_keys(self) -> None:
+        """Every arm emitted by quiz.number_pattern() must localize in LT.
+
+        Regression: `number_pattern()` returns `"decade"`, but an earlier
+        map had `"round_ten"` so LT renders showed raw `Decade`.
+        """
+        arms = {number_pattern(n) for n in range(1, 100)}
+        assert arms == {"single_digit", "teens", "decade", "compound"}
+        stats = {
+            "total": 1,
+            "correct": 0,
+            "incorrect": 1,
+            "accuracy": 0.0,
+            "current_streak": 0,
+            "weak_areas": {
+                "Number Patterns": [
+                    {"name": arm, "success_rate": 0.2} for arm in sorted(arms)
+                ],
+            },
+        }
+        html = _render(stats_panel(stats, [], lang="lt"))
+        for english_arm in ("Decade", "Single Digit", "Teens", "Compound"):
+            assert english_arm not in html, f"English arm leak in LT: {english_arm!r}"
+        # Spot-check the specific one that previously leaked.
+        assert "Apvali dešimtis" in html
 
     def test_feedback_incorrect_time_grammar_hint_english_mode(self) -> None:
         html = _render(
