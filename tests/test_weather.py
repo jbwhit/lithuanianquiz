@@ -236,8 +236,9 @@ class TestAdaptive:
         engine.init_tracking(session, "weather")
         engine.init_tracking(session, "weather")
         assert "weather_performance" in session
-        assert len(session["weather_performance"]["exercise_types"]) == 2
-        assert len(session["weather_performance"]["sign"]) == 2
+        # Arms lazily created via bump; init leaves dicts empty.
+        assert session["weather_performance"]["exercise_types"] == {}
+        assert session["weather_performance"]["sign"] == {}
 
     def test_update_increments(self, engine: WeatherEngine) -> None:
         session: dict = {}
@@ -249,9 +250,9 @@ class TestAdaptive:
         }
         engine.update(session, "weather", info, True)
         perf = session["weather_performance"]
-        assert perf["exercise_types"]["produce"]["correct"] == 1
-        assert perf["number_patterns"]["single_digit"]["correct"] == 1
-        assert perf["sign"]["positive"]["correct"] == 1
+        assert perf["exercise_types"]["produce"]["correct"] == pytest.approx(1.0)
+        assert perf["number_patterns"]["single_digit"]["correct"] == pytest.approx(1.0)
+        assert perf["sign"]["positive"]["correct"] == pytest.approx(1.0)
         assert perf["total_exercises"] == 1
 
     def test_seed_from_n99(self, engine: WeatherEngine) -> None:
@@ -271,8 +272,8 @@ class TestAdaptive:
         perf = session["weather_performance"]
         assert perf["exercise_types"]["produce"]["correct"] == 5
         assert perf["number_patterns"]["teens"]["incorrect"] == 5
-        # sign initialized fresh
-        assert perf["sign"]["positive"]["correct"] == 0
+        # sign is lazily created; init_tracking leaves it empty.
+        assert perf["sign"] == {}
         assert perf["total_exercises"] == 14
 
     def test_seed_is_deep_copy(self, engine: WeatherEngine) -> None:
@@ -315,3 +316,41 @@ class TestAdaptive:
         weak = engine.get_weak_areas(session, "weather")
         assert "Exercise Types" in weak
         assert "Sign" in weak
+
+
+class TestWeatherInitTrackingCompact:
+    def test_fresh_session_has_empty_arm_dicts(self) -> None:
+        from weather_engine import WeatherEngine
+
+        session: dict = {}
+        engine = WeatherEngine(
+            rows=[{"number": n, "kokia_kaina": "x"} for n in range(1, 21)]
+        )
+        engine.init_tracking(session, "weather")
+        perf = session["weather_performance"]
+
+        assert perf["exercise_types"] == {}
+        assert perf["number_patterns"] == {}
+        assert perf["sign"] == {}
+
+    def test_legacy_session_gets_cold_start_arms_stripped(self) -> None:
+        from weather_engine import WeatherEngine
+
+        session = {
+            "weather_performance": {
+                "exercise_types": {"produce": {"correct": 2.0, "incorrect": 1.0}},
+                "number_patterns": {},
+                "sign": {},
+                "total_exercises": 3,
+            }
+        }
+        engine = WeatherEngine(
+            rows=[{"number": n, "kokia_kaina": "x"} for n in range(1, 21)]
+        )
+        engine.init_tracking(session, "weather")
+        perf = session["weather_performance"]
+        # Touched arm preserved.
+        assert perf["exercise_types"]["produce"]["correct"] == pytest.approx(2.0)
+        # Lazy families remain empty (nothing to strip or seed).
+        assert perf["number_patterns"] == {}
+        assert perf["sign"] == {}

@@ -18,13 +18,15 @@ class NumberEngine:
         self,
         rows: list[dict[str, Any]],
         max_number: int,
-        exploration_rate: float = 0.2,
         adaptation_threshold: int = 10,
     ) -> None:
         self.rows = rows
         self.max_number = max_number
-        self.exploration_rate = exploration_rate
         self.adaptation_threshold = adaptation_threshold
+        # Patterns reachable from this engine's row set. The 1-20 engine,
+        # for example, cannot serve "compound" (21+), so we must not seed
+        # that arm or TS will converge on an untrainable pattern.
+        self._reachable_patterns = sorted({number_pattern(r["number"]) for r in rows})
 
     def init_tracking(
         self,
@@ -32,48 +34,61 @@ class NumberEngine:
         prefix: str,
         seed_prefix: str | None = None,
     ) -> None:
-        """Idempotently set up number performance tracking in session.
+        """Ensure the perf skeleton exists and is compact.
 
-        If seed_prefix is given and that module has existing performance data,
-        copy its Thompson Sampling priors so the adaptive model starts informed.
+        If seed_prefix is given and the target perf dict doesn't exist yet,
+        copy priors from that module first. Arms are created lazily via
+        `bump`; the sampler handles missing keys via its cold-start default.
         """
+        from thompson import strip_cold_start
+
         perf_key = f"{prefix}_performance"
-        if perf_key in session:
-            return
-        seed_key = f"{seed_prefix}_performance" if seed_prefix else None
-        if seed_key and seed_key in session:
-            session[perf_key] = copy.deepcopy(session[seed_key])
-        else:
-            session[perf_key] = {
-                "exercise_types": {
-                    t: {"correct": 0, "incorrect": 1} for t in EXERCISE_TYPES
-                },
-                "number_patterns": {},
-                "total_exercises": 0,
-            }
+        if perf_key not in session:
+            seed_key = f"{seed_prefix}_performance" if seed_prefix else None
+            if seed_key and seed_key in session:
+                session[perf_key] = copy.deepcopy(session[seed_key])
+            else:
+                session[perf_key] = {
+                    "exercise_types": {},
+                    "number_patterns": {},
+                    "total_exercises": 0,
+                }
+        perf = session[perf_key]
+        perf.setdefault("exercise_types", {})
+        perf.setdefault("number_patterns", {})
+        perf.setdefault("total_exercises", 0)
+
+        # Drop any persisted number patterns that aren't reachable here
+        # (e.g. "compound" in the 1-20 engine, or carried over from n99).
+        perf["number_patterns"] = {
+            k: v
+            for k, v in perf["number_patterns"].items()
+            if k in self._reachable_patterns
+        }
+        # Strip any cold-start arms left over from an eagerly-seeded
+        # version of this code.
+        strip_cold_start(perf["exercise_types"])
+        strip_cold_start(perf["number_patterns"])
 
     def generate(self, session: dict[str, Any], prefix: str) -> dict[str, Any]:
         """Return an exercise dict using adaptive selection."""
         self.init_tracking(session, prefix)
         perf = session[f"{prefix}_performance"]
 
-        if (
-            random.random() < self.exploration_rate
-            or perf["total_exercises"] < self.adaptation_threshold
-        ):
+        if perf["total_exercises"] < self.adaptation_threshold:
             exercise_type = random.choice(EXERCISE_TYPES)
         else:
-            exercise_type = _sample_weakest(perf["exercise_types"])
+            exercise_type = _sample_weakest(
+                perf["exercise_types"], list(EXERCISE_TYPES)
+            )
 
-        # Adaptively pick number pattern if we have data
-        if perf["number_patterns"] and random.random() > self.exploration_rate:
-            weak_pattern = _sample_weakest(perf["number_patterns"])
-            matching = [
-                r for r in self.rows if number_pattern(r["number"]) == weak_pattern
-            ]
-            row = random.choice(matching) if matching else random.choice(self.rows)
-        else:
-            row = random.choice(self.rows)
+        # Weakest reachable pattern; matching is non-empty by construction
+        # (only reachable patterns are in _reachable_patterns).
+        weak_pattern = _sample_weakest(
+            perf["number_patterns"], self._reachable_patterns
+        )
+        matching = [r for r in self.rows if number_pattern(r["number"]) == weak_pattern]
+        row = random.choice(matching) if matching else random.choice(self.rows)
 
         return {
             "exercise_type": exercise_type,

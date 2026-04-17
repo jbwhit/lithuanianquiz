@@ -72,11 +72,9 @@ class AgeEngine:
     def __init__(
         self,
         rows: list[dict[str, Any]],
-        exploration_rate: float = 0.2,
         adaptation_threshold: int = 10,
     ) -> None:
         self.rows = rows
-        self.exploration_rate = exploration_rate
         self.adaptation_threshold = adaptation_threshold
 
     def init_tracking(
@@ -85,69 +83,69 @@ class AgeEngine:
         prefix: str = "age",
         seed_prefix: str | None = None,
     ) -> None:
-        """Idempotently set up age performance tracking in session.
+        """Ensure the age perf skeleton exists and is compact.
 
-        If seed_prefix is given and that module has existing performance data,
-        copy exercise_types and number_patterns priors from it.
+        Arms are created lazily via `bump`; the sampler handles missing
+        keys via its cold-start default. The seed_prefix branch still
+        copies priors from a sibling module when the target is absent.
         """
+        from thompson import strip_cold_start
+
         perf_key = f"{prefix}_performance"
-        if perf_key in session:
-            return
-        seed_key = f"{seed_prefix}_performance" if seed_prefix else None
-        if seed_key and seed_key in session:
-            source = session[seed_key]
-            session[perf_key] = {
-                "exercise_types": copy.deepcopy(source.get("exercise_types", {})),
-                "number_patterns": copy.deepcopy(source.get("number_patterns", {})),
-                "pronouns": {
-                    d: {"correct": 0, "incorrect": 1} for d in PRONOUN_DATIVES
-                },
-                "total_exercises": source.get("total_exercises", 0),
-            }
-        else:
-            session[perf_key] = {
-                "exercise_types": {
-                    t: {"correct": 0, "incorrect": 1} for t in EXERCISE_TYPES
-                },
-                "number_patterns": {},
-                "pronouns": {
-                    d: {"correct": 0, "incorrect": 1} for d in PRONOUN_DATIVES
-                },
-                "total_exercises": 0,
-            }
+        if perf_key not in session:
+            seed_key = f"{seed_prefix}_performance" if seed_prefix else None
+            if seed_key and seed_key in session:
+                source = session[seed_key]
+                session[perf_key] = {
+                    "exercise_types": copy.deepcopy(source.get("exercise_types", {})),
+                    "number_patterns": copy.deepcopy(source.get("number_patterns", {})),
+                    "pronouns": {},
+                    "total_exercises": source.get("total_exercises", 0),
+                }
+            else:
+                session[perf_key] = {
+                    "exercise_types": {},
+                    "number_patterns": {},
+                    "pronouns": {},
+                    "total_exercises": 0,
+                }
+        perf = session[perf_key]
+        perf.setdefault("exercise_types", {})
+        perf.setdefault("number_patterns", {})
+        perf.setdefault("pronouns", {})
+        perf.setdefault("total_exercises", 0)
+        # Reclaim cookie space from eagerly-pre-seeded legacy sessions.
+        strip_cold_start(perf["exercise_types"])
+        strip_cold_start(perf["number_patterns"])
+        strip_cold_start(perf["pronouns"])
 
     def generate(self, session: dict[str, Any], prefix: str = "age") -> dict[str, Any]:
         """Return an exercise dict using adaptive selection."""
         self.init_tracking(session, prefix)
         perf = session[f"{prefix}_performance"]
 
-        exploring = (
-            random.random() < self.exploration_rate
-            or perf["total_exercises"] < self.adaptation_threshold
-        )
+        warmup = perf["total_exercises"] < self.adaptation_threshold
 
         # Pick exercise type
-        if exploring:
+        if warmup:
             exercise_type = random.choice(EXERCISE_TYPES)
         else:
-            exercise_type = _sample_weakest(perf["exercise_types"])
+            exercise_type = _sample_weakest(
+                perf["exercise_types"], list(EXERCISE_TYPES)
+            )
 
-        # Pick row (number) adaptively
-        if perf["number_patterns"] and not exploring:
-            weak_pattern = _sample_weakest(perf["number_patterns"])
-            matching = [
-                r for r in self.rows if number_pattern(r["number"]) == weak_pattern
-            ]
-            row = random.choice(matching) if matching else random.choice(self.rows)
-        else:
-            row = random.choice(self.rows)
+        # Weakest number pattern over the full 4-pattern taxonomy. Matching
+        # rows may still be empty for a given pattern; fall back to uniform.
+        weak_pattern = _sample_weakest(
+            perf["number_patterns"],
+            ["single_digit", "teens", "decade", "compound"],
+        )
+        matching = [r for r in self.rows if number_pattern(r["number"]) == weak_pattern]
+        row = random.choice(matching) if matching else random.choice(self.rows)
 
-        # Pick pronoun adaptively
-        if not exploring:
-            weak_pronoun = _sample_weakest(perf["pronouns"])
-            pronoun = _pronoun_by_dative(weak_pronoun)
-        else:
-            pronoun = random.choice(PRONOUNS)
+        # Weakest pronoun over the full 4-pronoun taxonomy.
+        weak_pronoun = _sample_weakest(perf["pronouns"], list(PRONOUN_DATIVES))
+        pronoun = _pronoun_by_dative(weak_pronoun)
 
         return {
             "exercise_type": exercise_type,

@@ -44,7 +44,7 @@ _db = database("lithuanian_data.db")
 init_db_tables()
 ALL_ROWS: list[dict[str, Any]] = list(_db.t["numbers"].rows)
 
-adaptive = AdaptiveLearning(exploration_rate=0.2)
+adaptive = AdaptiveLearning()
 engine = ExerciseEngine(ALL_ROWS, adaptive)
 time_engine = TimeEngine()
 

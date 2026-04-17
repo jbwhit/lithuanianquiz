@@ -139,7 +139,9 @@ class TestTimeAdaptive:
         engine.init_tracking(session)
         engine.init_tracking(session)
         assert "time_performance" in session
-        assert len(session["time_performance"]["exercise_types"]) == 4
+        # Arms are created lazily on bump; init leaves the families empty.
+        assert session["time_performance"]["exercise_types"] == {}
+        assert session["time_performance"]["hour_patterns"] == {}
 
     def test_update_increments(self, engine: TimeEngine) -> None:
         session: dict = {}
@@ -151,8 +153,8 @@ class TestTimeAdaptive:
         }
         engine.update(session, info, True)
         perf = session["time_performance"]
-        assert perf["exercise_types"]["whole_hour"]["correct"] == 1
-        assert perf["hour_patterns"]["hour_3"]["correct"] == 1
+        assert perf["exercise_types"]["whole_hour"]["correct"] == pytest.approx(1.0)
+        assert perf["hour_patterns"]["hour_3"]["correct"] == pytest.approx(1.0)
         assert perf["total_exercises"] == 1
 
     def test_get_weak_areas_empty_without_perf(self, engine: TimeEngine) -> None:
@@ -236,3 +238,44 @@ class TestTimeEngineBasics:
                 assert ex["minute"] == 15
             elif ex["exercise_type"] == "quarter_to":
                 assert ex["minute"] == 45
+
+
+class TestTimeInitTrackingCompact:
+    def test_fresh_session_has_empty_arm_dicts(self) -> None:
+        from time_engine import TimeEngine
+
+        session: dict = {}
+        TimeEngine().init_tracking(session)
+        perf = session["time_performance"]
+
+        assert perf["exercise_types"] == {}
+        assert perf["hour_patterns"] == {}
+        assert perf["grammatical_cases"] == {}
+
+    def test_legacy_cold_start_arms_stripped(self) -> None:
+        """Earlier versions pre-seeded all 12 hour_patterns. In a cookie-
+        backed session that's significant bloat; strip on load."""
+        from time_engine import TimeEngine
+
+        session = {
+            "time_performance": {
+                "exercise_types": {
+                    "whole_hour": {"correct": 2.0, "incorrect": 1.0},  # touched
+                    "half_past": {"correct": 0.0, "incorrect": 1.0},  # cold
+                },
+                "hour_patterns": {
+                    f"hour_{i}": {"correct": 0.0, "incorrect": 1.0}
+                    for i in range(1, 13)
+                },
+                "grammatical_cases": {
+                    "nominative": {"correct": 0.0, "incorrect": 1.0},
+                    "genitive": {"correct": 0.0, "incorrect": 1.0},
+                },
+                "total_exercises": 5,
+            }
+        }
+        TimeEngine().init_tracking(session)
+        perf = session["time_performance"]
+        assert set(perf["exercise_types"].keys()) == {"whole_hour"}
+        assert perf["hour_patterns"] == {}
+        assert perf["grammatical_cases"] == {}

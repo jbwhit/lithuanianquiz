@@ -7,12 +7,14 @@ from quiz import EXERCISE_TYPES, ITEMS, number_pattern
 from thompson import bump as _bump
 from thompson import sample_weakest as _sample_weakest
 
+_NUMBER_PATTERNS = ["single_digit", "teens", "decade", "compound"]
+_PRICE_CASES = ["nominative", "accusative"]
+
 
 class AdaptiveLearning:
     """Thompson Sampling–based exercise selector."""
 
-    def __init__(self, exploration_rate: float = 0.2) -> None:
-        self.exploration_rate = exploration_rate
+    def __init__(self) -> None:
         self.adaptation_threshold = 10
 
     # ------------------------------------------------------------------
@@ -20,18 +22,35 @@ class AdaptiveLearning:
     # ------------------------------------------------------------------
 
     def init_tracking(self, session: dict[str, Any]) -> None:
-        """Idempotently set up performance tracking in session."""
-        if "performance" in session:
-            return
-        session["performance"] = {
-            "exercise_types": {
-                t: {"correct": 0, "incorrect": 1} for t in EXERCISE_TYPES
+        """Ensure the performance skeleton exists and is compact.
+
+        Arms are not eagerly seeded — `sample_weakest` treats missing keys
+        as cold-start via its `full_keys` argument, so persisted state can
+        stay small (important for cookie-backed sessions). Any arms that
+        a previous version of this code pre-seeded are stripped here.
+        """
+        from thompson import strip_cold_start
+
+        perf = session.setdefault(
+            "performance",
+            {
+                "exercise_types": {},
+                "number_patterns": {},
+                "grammatical_cases": {},
+                "total_exercises": 0,
             },
-            "number_patterns": {},
-            "grammatical_cases": {},
-            "combined_arms": {},
-            "total_exercises": 0,
-        }
+        )
+        perf.setdefault("exercise_types", {})
+        perf.setdefault("number_patterns", {})
+        perf.setdefault("grammatical_cases", {})
+        perf.setdefault("total_exercises", 0)
+        # Drop the dead combined_arms table from legacy sessions.
+        perf.pop("combined_arms", None)
+        # Reclaim cookie space from any eagerly-pre-seeded arms persisted
+        # by an earlier version of this branch.
+        strip_cold_start(perf["exercise_types"])
+        strip_cold_start(perf["number_patterns"])
+        strip_cold_start(perf["grammatical_cases"])
 
     # ------------------------------------------------------------------
     # Update after answer
@@ -61,10 +80,6 @@ class AdaptiveLearning:
         if gc:
             _bump(perf["grammatical_cases"], gc, is_correct)
 
-        if np_ and gc:
-            combined = f"{exercise_info['exercise_type']}_{np_}_{gc}"
-            _bump(perf["combined_arms"], combined, is_correct)
-
     # ------------------------------------------------------------------
     # Exercise selection
     # ------------------------------------------------------------------
@@ -77,10 +92,7 @@ class AdaptiveLearning:
         self.init_tracking(session)
         perf = session["performance"]
 
-        if (
-            random.random() < self.exploration_rate
-            or perf["total_exercises"] < self.adaptation_threshold
-        ):
+        if perf["total_exercises"] < self.adaptation_threshold:
             return self._random_exercise(engine)
 
         return self._thompson_sample(session, engine)
@@ -106,14 +118,11 @@ class AdaptiveLearning:
     ) -> dict[str, Any]:
         perf = session["performance"]
 
-        # 1. Weakest exercise type
-        ex_type = _sample_weakest(perf["exercise_types"])
+        # 1. Weakest exercise type over the full taxonomy.
+        ex_type = _sample_weakest(perf["exercise_types"], list(EXERCISE_TYPES))
 
-        # 2. Weakest number pattern
-        if perf["number_patterns"]:
-            np_ = _sample_weakest(perf["number_patterns"])
-        else:
-            np_ = number_pattern(random.choice(engine.rows)["number"])
+        # 2. Weakest number pattern over the full taxonomy.
+        np_ = _sample_weakest(perf["number_patterns"], _NUMBER_PATTERNS)
 
         # 3. Find a row matching the pattern
         matching = [r for r in engine.rows if number_pattern(r["number"]) == np_]

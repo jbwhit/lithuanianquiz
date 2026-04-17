@@ -78,6 +78,223 @@ def test_load_progress_defaults_diacritic_mode_to_strict(monkeypatch) -> None:
     assert loaded_session["diacritic_tolerant"] is False
 
 
+def test_session_cookie_stays_under_budget_after_module_tour() -> None:
+    """Regression for the eager-pre-seed bloat. Browsing every module
+    must keep the session cookie below the conservative 4 KB browser
+    budget so session state is never silently dropped or truncated."""
+    from starlette.testclient import TestClient
+
+    max_seen = 0
+    with TestClient(main.app) as client:
+        for path in (
+            "/numbers-20",
+            "/numbers-99",
+            "/age",
+            "/weather",
+            "/time",
+            "/prices",
+        ):
+            resp = client.get(path)
+            assert resp.status_code == 200
+            size = len(resp.headers.get("set-cookie", ""))
+            max_seen = max(max_seen, size)
+    # Budget is conservative: real browsers tolerate up to ~4093 bytes
+    # per cookie, but proxies / CDN edge caches can be stricter.
+    assert max_seen < 4000, (
+        f"Session cookie grew to {max_seen} bytes after a full module tour; "
+        "eager arm pre-seeding may have been reintroduced."
+    )
+
+
+def test_load_progress_strips_cold_start_arms_from_legacy_payload(
+    monkeypatch,
+) -> None:
+    """A legacy DB row from an earlier eagerly-seeded version carries every
+    arm family at the cold-start seed. load_progress must strip those before
+    they go into the cookie-backed session; otherwise a login immediately
+    pushes the cookie over the 4 KB browser budget."""
+    db = _SQLiteDB()
+    monkeypatch.setattr(auth, "_db", db)
+
+    cold = {"correct": 0.0, "incorrect": 1.0}
+    legacy_payload = {
+        "performance": {
+            "exercise_types": {"kokia": cold, "kiek": cold},
+            "number_patterns": {
+                "single_digit": cold,
+                "teens": cold,
+                "decade": cold,
+                "compound": cold,
+            },
+            "grammatical_cases": {"nominative": cold, "accusative": cold},
+            "total_exercises": 0,
+        },
+        "time_performance": {
+            "exercise_types": {
+                "whole_hour": cold,
+                "half_past": cold,
+                "quarter_past": cold,
+                "quarter_to": cold,
+            },
+            "hour_patterns": {f"hour_{i}": cold for i in range(1, 13)},
+            "grammatical_cases": {"nominative": cold, "genitive": cold},
+            "total_exercises": 0,
+        },
+        "n20_performance": {
+            "exercise_types": {"produce": cold, "recognize": cold},
+            "number_patterns": {
+                "single_digit": cold,
+                "teens": cold,
+                "decade": cold,
+            },
+            "total_exercises": 0,
+        },
+        "n99_performance": {
+            "exercise_types": {"produce": cold, "recognize": cold},
+            "number_patterns": {
+                "single_digit": cold,
+                "teens": cold,
+                "decade": cold,
+                "compound": cold,
+            },
+            "total_exercises": 0,
+        },
+        "age_performance": {
+            "exercise_types": {"produce": cold, "recognize": cold},
+            "number_patterns": {
+                "single_digit": cold,
+                "teens": cold,
+                "decade": cold,
+                "compound": cold,
+            },
+            "pronouns": {"Man": cold, "Tau": cold, "Jam": cold, "Jai": cold},
+            "total_exercises": 0,
+        },
+        "weather_performance": {
+            "exercise_types": {"produce": cold, "recognize": cold},
+            "number_patterns": {
+                "single_digit": cold,
+                "teens": cold,
+                "decade": cold,
+                "compound": cold,
+            },
+            "sign": {"positive": cold, "negative": cold},
+            "total_exercises": 0,
+        },
+    }
+    db.execute(
+        """
+        INSERT INTO user_progress (google_id, data, updated_at)
+        VALUES (?, ?, ?)
+        """,
+        ["legacy-user", json.dumps(legacy_payload), "2026-03-02T00:00:00+00:00"],
+    )
+
+    loaded_session: dict = {}
+    auth.load_progress("legacy-user", loaded_session)
+
+    # Every arm family came in entirely at cold-start; all should be stripped.
+    for perf_key in (
+        "performance",
+        "time_performance",
+        "n20_performance",
+        "n99_performance",
+        "age_performance",
+        "weather_performance",
+    ):
+        perf = loaded_session[perf_key]
+        for family_key, family in perf.items():
+            if family_key == "total_exercises":
+                continue
+            assert family == {}, (
+                f"{perf_key}.{family_key} still has cold-start arms: {family!r}"
+            )
+
+    # The serialized session (what Starlette will base64+sign into the
+    # cookie) must stay well under the 4 KB browser budget. Real cookie
+    # size ≈ 1.4·len(json) + ~150 byte signature, so a 2 KB JSON cap leaves
+    # ample headroom.
+    serialized = json.dumps(loaded_session)
+    assert len(serialized) < 2000, (
+        f"Loaded session JSON is {len(serialized)} bytes — "
+        "legacy cold-start arms are still leaking into the session."
+    )
+
+
+def test_load_progress_preserves_touched_arms_on_cold_start_strip(
+    monkeypatch,
+) -> None:
+    """The strip must be surgical — touched arms (non-cold-start) survive
+    even in a payload that also contains cold-start arms."""
+    db = _SQLiteDB()
+    monkeypatch.setattr(auth, "_db", db)
+
+    payload = {
+        "performance": {
+            "exercise_types": {
+                "kokia": {"correct": 5.0, "incorrect": 1.0},  # touched
+                "kiek": {"correct": 0.0, "incorrect": 1.0},  # cold-start
+            },
+            "number_patterns": {},
+            "grammatical_cases": {},
+            "total_exercises": 6,
+        },
+    }
+    db.execute(
+        """
+        INSERT INTO user_progress (google_id, data, updated_at)
+        VALUES (?, ?, ?)
+        """,
+        ["mixed-user", json.dumps(payload), "2026-03-02T00:00:00+00:00"],
+    )
+
+    loaded: dict = {}
+    auth.load_progress("mixed-user", loaded)
+
+    et = loaded["performance"]["exercise_types"]
+    assert "kokia" in et
+    assert et["kokia"]["correct"] == 5.0
+    assert "kiek" not in et, "cold-start arm should have been stripped"
+
+
+def test_load_progress_strips_legacy_combined_arms(monkeypatch) -> None:
+    """Legacy performance payloads carried a write-only `combined_arms`
+    key. It must be stripped on load so a user who only touches non-price
+    modules doesn't persist it forward forever."""
+    db = _SQLiteDB()
+    monkeypatch.setattr(auth, "_db", db)
+
+    data = json.dumps(
+        {
+            "performance": {
+                "exercise_types": {
+                    "kokia": {"correct": 2, "incorrect": 1},
+                },
+                "number_patterns": {},
+                "grammatical_cases": {},
+                "combined_arms": {
+                    "kokia_teens_nominative": {"correct": 1, "incorrect": 0},
+                },
+                "total_exercises": 3,
+            },
+        }
+    )
+    db.execute(
+        """
+        INSERT INTO user_progress (google_id, data, updated_at)
+        VALUES (?, ?, ?)
+        """,
+        ["user-ca", data, "2026-03-02T00:00:00+00:00"],
+    )
+
+    loaded_session: dict = {}
+    auth.load_progress("user-ca", loaded_session)
+
+    assert "combined_arms" not in loaded_session["performance"]
+    # Other fields survive.
+    assert loaded_session["performance"]["exercise_types"]["kokia"]["correct"] == 2
+
+
 def test_load_progress_skips_missing_mix_modules(monkeypatch) -> None:
     db = _SQLiteDB()
     monkeypatch.setattr(auth, "_db", db)

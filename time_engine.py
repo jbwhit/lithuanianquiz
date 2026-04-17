@@ -8,6 +8,8 @@ from thompson import bump as _bump
 from thompson import sample_weakest as _sample_weakest
 
 TIME_TYPES: list[str] = ["whole_hour", "half_past", "quarter_past", "quarter_to"]
+_HOUR_PATTERNS = [f"hour_{i}" for i in range(1, 13)]
+_TIME_CASES = ["nominative", "genitive"]
 
 # Feminine ordinal forms for hours 1-12
 ORDINALS_NOM: dict[int, str] = {
@@ -62,22 +64,34 @@ def time_pattern(hour: int) -> str:
 class TimeEngine:
     """Generates time exercises and checks answers with adaptive selection."""
 
-    def __init__(
-        self, exploration_rate: float = 0.2, adaptation_threshold: int = 10
-    ) -> None:
-        self.exploration_rate = exploration_rate
+    def __init__(self, adaptation_threshold: int = 10) -> None:
         self.adaptation_threshold = adaptation_threshold
 
     def init_tracking(self, session: dict[str, Any]) -> None:
-        """Idempotently set up time performance tracking in session."""
-        if "time_performance" in session:
-            return
-        session["time_performance"] = {
-            "exercise_types": {t: {"correct": 0, "incorrect": 1} for t in TIME_TYPES},
-            "hour_patterns": {},
-            "grammatical_cases": {},
-            "total_exercises": 0,
-        }
+        """Ensure the time-performance skeleton exists and is compact.
+
+        Arms are created lazily via `bump`; the sampler treats missing
+        keys as cold-start. Any eagerly-seeded arms from an older version
+        are stripped to keep cookie-backed session state small.
+        """
+        from thompson import strip_cold_start
+
+        perf = session.setdefault(
+            "time_performance",
+            {
+                "exercise_types": {},
+                "hour_patterns": {},
+                "grammatical_cases": {},
+                "total_exercises": 0,
+            },
+        )
+        perf.setdefault("exercise_types", {})
+        perf.setdefault("hour_patterns", {})
+        perf.setdefault("grammatical_cases", {})
+        perf.setdefault("total_exercises", 0)
+        strip_cold_start(perf["exercise_types"])
+        strip_cold_start(perf["hour_patterns"])
+        strip_cold_start(perf["grammatical_cases"])
 
     def update(
         self,
@@ -137,21 +151,14 @@ class TimeEngine:
         self.init_tracking(session)
         perf = session["time_performance"]
 
-        if (
-            random.random() < self.exploration_rate
-            or perf["total_exercises"] < self.adaptation_threshold
-        ):
+        if perf["total_exercises"] < self.adaptation_threshold:
             time_type = random.choice(TIME_TYPES)
         else:
-            time_type = _sample_weakest(perf["exercise_types"])
+            time_type = _sample_weakest(perf["exercise_types"], list(TIME_TYPES))
 
-        # Adaptively pick hour if we have data
-        if perf["hour_patterns"] and random.random() > self.exploration_rate:
-            weak_hour_key = _sample_weakest(perf["hour_patterns"])
-            # Extract hour number from "hour_N"
-            hour = int(weak_hour_key.split("_")[1])
-        else:
-            hour = random.randint(1, 12)
+        # Weakest hour over the full 1-12 taxonomy.
+        weak_hour_key = _sample_weakest(perf["hour_patterns"], _HOUR_PATTERNS)
+        hour = int(weak_hour_key.split("_")[1])
 
         minute = _TIME_TYPE_MINUTES[time_type]
         return {

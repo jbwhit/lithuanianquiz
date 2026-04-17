@@ -14,19 +14,30 @@ from quiz import ExerciseEngine
 
 class TestBump:
     def test_creates_arm_if_missing(self) -> None:
+        # New arms start at cold-start seed {correct: 0.0, incorrect: 1.0}.
+        # After bump(True): correct = 0.0*γ + 1 = 1.0, incorrect = 1.0*γ = 0.98.
+        from thompson import DECAY_GAMMA
+
         cat: dict = {}
         _bump(cat, "foo", True)
-        assert cat["foo"] == {"correct": 1, "incorrect": 1}
+        assert cat["foo"]["correct"] == pytest.approx(1.0)
+        assert cat["foo"]["incorrect"] == pytest.approx(1.0 * DECAY_GAMMA)
 
     def test_increments_correct(self) -> None:
+        # After bump(True): correct = 5*γ + 1, incorrect = 2*γ.
+        from thompson import DECAY_GAMMA
+
         cat = {"foo": {"correct": 5, "incorrect": 2}}
         _bump(cat, "foo", True)
-        assert cat["foo"]["correct"] == 6
+        assert cat["foo"]["correct"] == pytest.approx(5 * DECAY_GAMMA + 1)
 
     def test_increments_incorrect(self) -> None:
+        # After bump(False): correct = 5*γ, incorrect = 2*γ + 1.
+        from thompson import DECAY_GAMMA
+
         cat = {"foo": {"correct": 5, "incorrect": 2}}
         _bump(cat, "foo", False)
-        assert cat["foo"]["incorrect"] == 3
+        assert cat["foo"]["incorrect"] == pytest.approx(2 * DECAY_GAMMA + 1)
 
 
 # ------------------------------------------------------------------
@@ -66,7 +77,7 @@ ROWS = [
 class TestAdaptiveLearning:
     @pytest.fixture()
     def al(self) -> AdaptiveLearning:
-        return AdaptiveLearning(exploration_rate=0.2)
+        return AdaptiveLearning()
 
     def test_init_tracking_idempotent(self, al: AdaptiveLearning) -> None:
         session: dict = {}
@@ -85,7 +96,7 @@ class TestAdaptiveLearning:
         }
         al.update(session, info, True)
         et = session["performance"]["exercise_types"]["kokia"]
-        assert et["correct"] == 1
+        assert et["correct"] == pytest.approx(1.0)
 
     def test_select_exercise_returns_dict(self, al: AdaptiveLearning) -> None:
         engine = ExerciseEngine(ROWS)
@@ -99,7 +110,7 @@ class TestAdaptiveLearning:
 
     def test_thompson_convergence(self) -> None:
         """After biased history, Thompson sampling should target weak area."""
-        al = AdaptiveLearning(exploration_rate=0.0)
+        al = AdaptiveLearning()
         engine = ExerciseEngine(ROWS)
         session: dict = {}
         al.init_tracking(session)
@@ -120,3 +131,114 @@ class TestAdaptiveLearning:
             al.select_exercise(session, engine)["exercise_type"] for _ in range(500)
         )
         assert counts["kiek"] > counts["kokia"]
+
+
+class TestInitTrackingCompact:
+    def test_fresh_session_has_empty_arm_dicts(self) -> None:
+        """Arms are created lazily via bump; the sampler treats missing
+        keys as cold-start. Keeping init_tracking compact keeps the
+        session cookie small."""
+        from adaptive import AdaptiveLearning
+
+        session: dict = {}
+        AdaptiveLearning().init_tracking(session)
+        perf = session["performance"]
+
+        assert perf["exercise_types"] == {}
+        assert perf["number_patterns"] == {}
+        assert perf["grammatical_cases"] == {}
+        assert "combined_arms" not in perf
+
+    def test_legacy_session_with_cold_start_arms_gets_stripped(self) -> None:
+        from adaptive import AdaptiveLearning
+
+        session = {
+            "performance": {
+                "exercise_types": {
+                    "kokia": {"correct": 3.0, "incorrect": 1.0},  # touched
+                    "kiek": {"correct": 0.0, "incorrect": 1.0},  # cold-start
+                },
+                "number_patterns": {
+                    "single_digit": {"correct": 0.0, "incorrect": 1.0},
+                    "teens": {"correct": 5.0, "incorrect": 0.5},
+                    "decade": {"correct": 0.0, "incorrect": 1.0},
+                    "compound": {"correct": 0.0, "incorrect": 1.0},
+                },
+                "grammatical_cases": {
+                    "nominative": {"correct": 0.0, "incorrect": 1.0},
+                    "accusative": {"correct": 0.0, "incorrect": 1.0},
+                },
+                "total_exercises": 7,
+            }
+        }
+        AdaptiveLearning().init_tracking(session)
+        perf = session["performance"]
+        # Touched arms preserved.
+        assert perf["exercise_types"]["kokia"]["correct"] == pytest.approx(3.0)
+        assert perf["number_patterns"]["teens"]["correct"] == pytest.approx(5.0)
+        assert perf["total_exercises"] == 7
+        # Cold-start arms stripped.
+        assert "kiek" not in perf["exercise_types"]
+        assert set(perf["number_patterns"].keys()) == {"teens"}
+        assert perf["grammatical_cases"] == {}
+
+    def test_legacy_session_with_combined_arms_drops_it(self) -> None:
+        from adaptive import AdaptiveLearning
+
+        session = {
+            "performance": {
+                "exercise_types": {
+                    "kokia": {"correct": 1.0, "incorrect": 1.0},
+                    "kiek": {"correct": 1.0, "incorrect": 1.0},
+                },
+                "number_patterns": {},
+                "grammatical_cases": {},
+                "combined_arms": {
+                    "kokia_teens_nominative": {"correct": 1.0, "incorrect": 0.0}
+                },
+                "total_exercises": 2,
+            }
+        }
+        AdaptiveLearning().init_tracking(session)
+        assert "combined_arms" not in session["performance"]
+
+
+class TestAdaptiveNoSteadyStateGate:
+    def test_post_warmup_always_takes_thompson_path(self, monkeypatch) -> None:
+        """After warmup, random() is not consulted for a gate — _thompson_sample
+        is always invoked."""
+        from adaptive import AdaptiveLearning
+
+        engine = AdaptiveLearning()
+        # After warmup, always use Thompson Sampling (no random gate)
+        session: dict = {}
+        engine.init_tracking(session)
+        session["performance"]["total_exercises"] = 999  # past warmup
+
+        called = {"ts": 0, "rand": 0}
+
+        def fake_ts(*_a, **_kw):
+            called["ts"] += 1
+            return {
+                "exercise_type": "kokia",
+                "price": "€1",
+                "item": None,
+                "row": {"number": 1},
+                "grammatical_case": "nominative",
+                "number_pattern": "single_digit",
+            }
+
+        def fake_rand(*_a, **_kw):
+            called["rand"] += 1
+            return {}
+
+        monkeypatch.setattr(engine, "_thompson_sample", fake_ts)
+        monkeypatch.setattr(engine, "_random_exercise", fake_rand)
+
+        class _FakeEngine:
+            rows = [{"number": 1}]
+
+        for _ in range(50):
+            engine.select_exercise(session, engine=_FakeEngine())
+        assert called["ts"] == 50
+        assert called["rand"] == 0
