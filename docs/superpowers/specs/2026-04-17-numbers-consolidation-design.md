@@ -77,7 +77,7 @@ Additional columns beyond these may exist in the table; populate with sensible d
 
 **Session prefix rename** — everywhere `n20_*` or `n99_*` appears in `main.py` (ensure/new_q helpers, cached-question refresh map, mix module map, price session key tuples used for reset), collapse to `numbers_*`.
 
-**`NumberEngine` API:** no change. `max_number` parameter stays (used in display helpers). `_reachable_patterns` automatically covers `{single_digit, teens, decade, compound}` from the 0-99 row-set.
+**`NumberEngine` API:** `_reachable_patterns` automatically covers `{single_digit, teens, decade, compound}` from the 0-99 row-set. Section 4 removes the only current use of `max_number` (it branched `number_examples_section`). **Decision:** drop the `max_number` parameter from `NumberEngine.__init__` in this refactor. The constructor becomes `NumberEngine(rows, adaptation_threshold=10)`. Every existing test and call site that passes `max_number=...` must be updated.
 
 ### 4. UI updates (`ui.py`)
 
@@ -104,6 +104,28 @@ No new translation strings required; the existing `("Numbers", "Skaičiai")` pai
 
 **`save_progress` (lines 227-235):**
 - Replace the 8 `n20_*` / `n99_*` entries with 4 `numbers_*` entries. The next save per user rewrites their DB row without the legacy fields.
+
+**Also strip legacy keys from anonymous cookie sessions (`main.py`):**
+
+Anonymous users (no OAuth) never go through `auth.load_progress`, so their cookie keeps any `n20_*` / `n99_*` / legacy-`mix_modules` keys forever unless we proactively strip them. Add a shared helper near the other session helpers:
+
+```python
+_LEGACY_NUMBER_PREFIXES = ("n20_", "n99_")
+
+def _strip_legacy_number_keys(session: dict[str, Any]) -> None:
+    for key in list(session):
+        if key.startswith(_LEGACY_NUMBER_PREFIXES):
+            del session[key]
+    mix_modules = session.get("mix_modules")
+    if isinstance(mix_modules, dict) and (
+        "n20" in mix_modules or "n99" in mix_modules
+    ):
+        session.pop("mix_modules", None)
+```
+
+Call it at the top of `_ensure_session`, `_ensure_time_session`, `_ensure_age_session`, `_ensure_weather_session`, `_ensure_number_session`, and `_ensure_mix_session`. First call per request cleans the session; becomes a no-op thereafter. Cost: one `startswith` loop over session keys per request, negligible.
+
+This keeps logged-in and anonymous users on the same reset behavior and avoids stale cookie bloat from abandoned legacy keys.
 
 **No DB pruning script.** Legacy keys in the serialized JSON are harmless; they go away naturally on first save-after-upgrade per user.
 
@@ -133,7 +155,8 @@ No new translation strings required; the existing `("Numbers", "Skaičiai")` pai
 - `test_load_progress_discards_legacy_n20_n99_fields` — insert a DB row with `n20_correct_count=5`, `n99_performance={...}`, etc. After `load_progress`, session has no keys starting with `n20_` or `n99_`.
 - `test_load_progress_resets_mix_modules_with_legacy_keys` — DB row with `mix_modules={"n20": {...}, "age": {...}}` → loaded session has no `mix_modules` key.
 - `test_legacy_numbers_routes_redirect` — TestClient GET on `/numbers-20` returns `301` with `location: /numbers`; same for `/numbers-99`.
-- `test_weather_engine_serves_zero_row` — WeatherEngine with a row-set containing `number=0` successfully generates exercises including that row.
+- `test_weather_engine_correct_answer_for_zero_row` — deterministic unit-seam test. Construct a minimal `WeatherEngine(rows=[{"number": 0, "kokia_kaina": "nulis", ...}])` and call `engine.correct_answer(row=<zero_row>, negative=False, exercise_type="produce")` directly. Assert the output contains `"nulis"` and the genitive-plural degree form (`"laipsnių"`). No RNG, no `generate()`, no adaptive sampling involved.
+- `test_weather_engine_excludes_negative_zero` — after adding the R3 guard, assert `generate` never returns `{row.number: 0, negative: True}`: either by inspecting the code path directly, or by forcing the sampler (via seed + priors) into states where `negative=True` is most likely and verifying row 0 is avoided in those cases.
 
 **Not touched:** `tests/test_thompson.py`, `tests/test_time.py`, `tests/test_age.py` (beyond seed_prefix rename), `tests/test_quiz.py`, `tests/test_ui.py` — no API changes reach them.
 
