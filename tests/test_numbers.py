@@ -164,6 +164,39 @@ class TestAdaptive:
         assert "Exercise Types" in weak
 
 
+class TestNumberInitTrackingPreSeeds:
+    def test_fresh_session_has_all_arm_families(self) -> None:
+        from number_engine import NumberEngine
+
+        session: dict = {}
+        engine = NumberEngine(rows=[{"number": n} for n in range(1, 21)], max_number=20)
+        engine.init_tracking(session, "n20")
+        perf = session["n20_performance"]
+
+        assert set(perf["exercise_types"].keys()) == {"produce", "recognize"}
+        assert set(perf["number_patterns"].keys()) == {
+            "single_digit", "teens", "decade", "compound",
+        }
+
+    def test_legacy_session_gets_topped_up(self) -> None:
+        from number_engine import NumberEngine
+
+        session = {
+            "n20_performance": {
+                "exercise_types": {
+                    "produce": {"correct": 1.0, "incorrect": 1.0},
+                },
+                "number_patterns": {},
+                "total_exercises": 3,
+            }
+        }
+        engine = NumberEngine(rows=[{"number": n} for n in range(1, 21)], max_number=20)
+        engine.init_tracking(session, "n20")
+        perf = session["n20_performance"]
+        assert perf["exercise_types"]["produce"]["correct"] == pytest.approx(1.0)
+        assert len(perf["number_patterns"]) == 4
+
+
 class TestLocalizedPrompt:
     def test_produce_prompt_lithuanian(
         self, engine: NumberEngine, sample_rows: list[dict]
