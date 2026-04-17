@@ -14,19 +14,30 @@ from quiz import ExerciseEngine
 
 class TestBump:
     def test_creates_arm_if_missing(self) -> None:
+        # New arms start at cold-start seed {correct: 0.0, incorrect: 1.0}.
+        # After bump(True): correct = 0.0*γ + 1 = 1.0, incorrect = 1.0*γ = 0.98.
+        from thompson import DECAY_GAMMA
+
         cat: dict = {}
         _bump(cat, "foo", True)
-        assert cat["foo"] == {"correct": 1, "incorrect": 1}
+        assert cat["foo"]["correct"] == pytest.approx(1.0)
+        assert cat["foo"]["incorrect"] == pytest.approx(1.0 * DECAY_GAMMA)
 
     def test_increments_correct(self) -> None:
+        # After bump(True): correct = 5*γ + 1, incorrect = 2*γ.
+        from thompson import DECAY_GAMMA
+
         cat = {"foo": {"correct": 5, "incorrect": 2}}
         _bump(cat, "foo", True)
-        assert cat["foo"]["correct"] == 6
+        assert cat["foo"]["correct"] == pytest.approx(5 * DECAY_GAMMA + 1)
 
     def test_increments_incorrect(self) -> None:
+        # After bump(False): correct = 5*γ, incorrect = 2*γ + 1.
+        from thompson import DECAY_GAMMA
+
         cat = {"foo": {"correct": 5, "incorrect": 2}}
         _bump(cat, "foo", False)
-        assert cat["foo"]["incorrect"] == 3
+        assert cat["foo"]["incorrect"] == pytest.approx(2 * DECAY_GAMMA + 1)
 
 
 # ------------------------------------------------------------------
@@ -120,3 +131,69 @@ class TestAdaptiveLearning:
             al.select_exercise(session, engine)["exercise_type"] for _ in range(500)
         )
         assert counts["kiek"] > counts["kokia"]
+
+
+class TestInitTrackingPreSeeds:
+    def test_fresh_session_has_all_arm_families_seeded(self) -> None:
+        from adaptive import AdaptiveLearning
+
+        session: dict = {}
+        AdaptiveLearning().init_tracking(session)
+        perf = session["performance"]
+
+        assert set(perf["exercise_types"].keys()) == {"kokia", "kiek"}
+        assert set(perf["number_patterns"].keys()) == {
+            "single_digit", "teens", "decade", "compound",
+        }
+        assert set(perf["grammatical_cases"].keys()) == {
+            "nominative", "accusative",
+        }
+        # No combined_arms in the new scheme.
+        assert "combined_arms" not in perf
+
+    def test_legacy_session_gets_missing_families_topped_up(self) -> None:
+        from adaptive import AdaptiveLearning
+
+        # Simulate a session loaded from the DB with the old lazy-arm layout.
+        session = {
+            "performance": {
+                "exercise_types": {
+                    "kokia": {"correct": 3.0, "incorrect": 1.0},
+                    "kiek": {"correct": 2.0, "incorrect": 2.0},
+                },
+                "number_patterns": {},
+                "grammatical_cases": {},
+                "total_exercises": 7,
+            }
+        }
+        AdaptiveLearning().init_tracking(session)
+        perf = session["performance"]
+
+        # Existing arm stats preserved.
+        assert perf["exercise_types"]["kokia"]["correct"] == pytest.approx(3.0)
+        assert perf["total_exercises"] == 7
+        # Missing families filled in.
+        assert set(perf["number_patterns"].keys()) == {
+            "single_digit", "teens", "decade", "compound",
+        }
+        assert set(perf["grammatical_cases"].keys()) == {
+            "nominative", "accusative",
+        }
+
+    def test_legacy_session_with_combined_arms_drops_it(self) -> None:
+        from adaptive import AdaptiveLearning
+
+        session = {
+            "performance": {
+                "exercise_types": {
+                    "kokia": {"correct": 1.0, "incorrect": 1.0},
+                    "kiek": {"correct": 1.0, "incorrect": 1.0},
+                },
+                "number_patterns": {},
+                "grammatical_cases": {},
+                "combined_arms": {"kokia_teens_nominative": {"correct": 1.0, "incorrect": 0.0}},
+                "total_exercises": 2,
+            }
+        }
+        AdaptiveLearning().init_tracking(session)
+        assert "combined_arms" not in session["performance"]

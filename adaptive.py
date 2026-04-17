@@ -7,6 +7,9 @@ from quiz import EXERCISE_TYPES, ITEMS, number_pattern
 from thompson import bump as _bump
 from thompson import sample_weakest as _sample_weakest
 
+_NUMBER_PATTERNS = ["single_digit", "teens", "decade", "compound"]
+_PRICE_CASES = ["nominative", "accusative"]
+
 
 class AdaptiveLearning:
     """Thompson Sampling–based exercise selector."""
@@ -20,18 +23,33 @@ class AdaptiveLearning:
     # ------------------------------------------------------------------
 
     def init_tracking(self, session: dict[str, Any]) -> None:
-        """Idempotently set up performance tracking in session."""
-        if "performance" in session:
-            return
-        session["performance"] = {
-            "exercise_types": {
-                t: {"correct": 0, "incorrect": 1} for t in EXERCISE_TYPES
+        """Idempotently ensure every arm family is pre-seeded.
+
+        Runs on every request. Fresh sessions get a complete set of cold-start
+        arms; sessions loaded from the DB in the old lazy-arm layout get topped
+        up with any arms that used to be created lazily.
+        """
+        from thompson import _ensure_seeded
+
+        perf = session.setdefault(
+            "performance",
+            {
+                "exercise_types": {},
+                "number_patterns": {},
+                "grammatical_cases": {},
+                "total_exercises": 0,
             },
-            "number_patterns": {},
-            "grammatical_cases": {},
-            "combined_arms": {},
-            "total_exercises": 0,
-        }
+        )
+        perf.setdefault("exercise_types", {})
+        perf.setdefault("number_patterns", {})
+        perf.setdefault("grammatical_cases", {})
+        perf.setdefault("total_exercises", 0)
+        # Drop the dead combined_arms table if loaded from a legacy session.
+        perf.pop("combined_arms", None)
+
+        _ensure_seeded(perf["exercise_types"], list(EXERCISE_TYPES))
+        _ensure_seeded(perf["number_patterns"], _NUMBER_PATTERNS)
+        _ensure_seeded(perf["grammatical_cases"], _PRICE_CASES)
 
     # ------------------------------------------------------------------
     # Update after answer
@@ -60,10 +78,6 @@ class AdaptiveLearning:
         gc = exercise_info.get("grammatical_case")
         if gc:
             _bump(perf["grammatical_cases"], gc, is_correct)
-
-        if np_ and gc:
-            combined = f"{exercise_info['exercise_type']}_{np_}_{gc}"
-            _bump(perf["combined_arms"], combined, is_correct)
 
     # ------------------------------------------------------------------
     # Exercise selection
@@ -109,11 +123,8 @@ class AdaptiveLearning:
         # 1. Weakest exercise type
         ex_type = _sample_weakest(perf["exercise_types"])
 
-        # 2. Weakest number pattern
-        if perf["number_patterns"]:
-            np_ = _sample_weakest(perf["number_patterns"])
-        else:
-            np_ = number_pattern(random.choice(engine.rows)["number"])
+        # 2. Weakest number pattern (always pre-seeded, never empty)
+        np_ = _sample_weakest(perf["number_patterns"])
 
         # 3. Find a row matching the pattern
         matching = [r for r in engine.rows if number_pattern(r["number"]) == np_]
