@@ -248,7 +248,7 @@ def landing_page_content(lang: str = "en") -> Container:
                 ),
                 cls="mt-auto",
             ),
-            cls=f"shadow-lg border-t-4 {border_color} h-full flex flex-col module-card",
+            cls=f"shadow-lg border-t-4 {border_color} h-full flex flex-col module-card hover:shadow-xl hover:-translate-y-1 transition-all duration-200",
         )
 
     return Container(
@@ -750,20 +750,44 @@ _TYPE_LABELS: dict[str, dict[str, str]] = {
         "lt": "Atpazinimas (atpazink skaiciu)",
     },
 }
-_GRAMMAR_HINTS: dict[str, dict[str, str]] = {
-    "nominative": {
-        "en": "Nominative: used when stating a price (Kokia kaina?).",
-        "lt": "Vardininkas: vartojamas nurodant kaina (Kokia kaina?).",
-    },
-    "accusative": {
-        "en": "Accusative: used when saying what something costs (Kiek kainuoja?).",
-        "lt": "Galininkas: vartojamas sakant, kiek kas kainuoja (Kiek kainuoja?).",
-    },
-    "genitive": {
-        "en": "Genitive: used with puse/ketvirtis (half past/quarter past).",
-        "lt": "Kilmininkas: vartojamas su puse/ketvirtis.",
-    },
-}
+
+
+def _grammar_hint_text(
+    exercise_type: str | None,
+    grammatical_case: str | None,
+    lang: str = "en",
+) -> str | None:
+    """Return a context-appropriate one-line grammar hint."""
+    if grammatical_case == "nominative":
+        if exercise_type == "kokia":
+            return _txt(
+                lang,
+                "Nominative: used when stating a price (Kokia kaina?).",
+                "Vardininkas: vartojamas nurodant kaina (Kokia kaina?).",
+            )
+        if exercise_type in {"whole_hour", "quarter_to"}:
+            return _txt(
+                lang,
+                "Nominative: used for whole hours and be ketvirčio "
+                "(quarter to) expressions.",
+                "Vardininkas: vartojamas pilnoms valandoms ir be ketvirčio išraiškoms.",
+            )
+    elif grammatical_case == "accusative" and exercise_type == "kiek":
+        return _txt(
+            lang,
+            "Accusative: used when saying what something costs (Kiek kainuoja?).",
+            "Galininkas: vartojamas sakant, kiek kas kainuoja (Kiek kainuoja?).",
+        )
+    elif grammatical_case == "genitive" and exercise_type in {
+        "half_past",
+        "quarter_past",
+    }:
+        return _txt(
+            lang,
+            "Genitive: used with pusė/ketvirtis (half past/quarter past).",
+            "Kilmininkas: vartojamas su pusė/ketvirtis.",
+        )
+    return None
 
 
 def _grammar_hint_collapsible(hint_content: list[Any], lang: str) -> Details:
@@ -1012,7 +1036,7 @@ def feedback_incorrect(
 ) -> Div:
     """Red inline alert with diff highlighting and grammar context."""
     ctx = _exercise_context_text(exercise_type, grammatical_case, lang)
-    hint = _GRAMMAR_HINTS.get(grammatical_case or "", {}).get(lang)
+    hint = _grammar_hint_text(exercise_type, grammatical_case, lang)
 
     # Build grammar breakdown (price or time)
     grammar_lines = None

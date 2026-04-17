@@ -32,6 +32,7 @@ Adaptive Lithuanian practice app built with FastHTML + MonsterUI. Six modules: *
 - `.env.example` — Committed template with empty values
 - `HANDOFF.md` — Full project context doc for onboarding new sessions
 - `TIME_MODULE_SPEC.md` — Implementation spec for the time module
+- `scripts/pr-comment.sh` — Safe helper for posting multiline GitHub PR comments from stdin
 
 ### Architecture
 
@@ -56,6 +57,20 @@ Adaptive Lithuanian practice app built with FastHTML + MonsterUI. Six modules: *
 - `uv run ruff format .` — format
 - `uv run python main.py` — start dev server on localhost:5001
 
+### PR comments (robust)
+
+- Use `scripts/pr-comment.sh` for PR comments instead of inline `gh pr comment --body "..."`.
+- The helper reads markdown from stdin and posts with `--body-file /dev/stdin` so backticks/shell chars are not interpreted by zsh.
+
+```bash
+scripts/pr-comment.sh 6 <<'EOF'
+Addressed review comments.
+
+- Ran `uv run --extra dev ruff check .`
+- Ran `uv run --extra dev pytest`
+EOF
+```
+
 ### Deployment (Railway)
 
 - Project: `lithuanianquiz2`, Service: `lithuanian-practice`
@@ -64,12 +79,3 @@ Adaptive Lithuanian practice app built with FastHTML + MonsterUI. Six modules: *
 - Deploy: `railway up --detach` then poll `railway service status`
 - Env vars: `railway variables --set "KEY=value"` (triggers auto-redeploy)
 - Analytics: GoatCounter at https://jbwhit.goatcounter.com
-
-## Python Conventions
-
-- Use **uv** exclusively for package management (never pip/poetry/conda)
-- **ruff** for formatting (line length 88) and linting; **pytest** for tests
-- Type hints on all function signatures
-- `pathlib.Path` over `os.path`
-- `logging` module over `print`
-- Commit and push when a logical chunk of work is completed

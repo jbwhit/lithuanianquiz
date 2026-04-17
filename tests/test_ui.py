@@ -121,6 +121,49 @@ class TestLanguageToggle:
         assert "Teisingas atsakymas" in html
 
 
+class TestFeedbackHints:
+    def test_time_nominative_hint_is_time_specific(self) -> None:
+        html = _render(
+            feedback_incorrect(
+                "",
+                "Be ketvirčio devinta.",
+                "",
+                "Be ketvirčio devinta.",
+                exercise_type="quarter_to",
+                grammatical_case="nominative",
+                hour=8,
+            )
+        )
+        assert "stating a price" not in html
+        assert "whole hours and be ketvirčio" in html
+
+    def test_price_nominative_hint_stays_price_specific(self) -> None:
+        html = _render(
+            feedback_incorrect(
+                "",
+                "Trys eurai.",
+                "",
+                "Trys eurai.",
+                exercise_type="kokia",
+                grammatical_case="nominative",
+            )
+        )
+        assert "stating a price" in html
+
+    def test_non_price_accusative_hint_omits_price_specific_copy(self) -> None:
+        html = _render(
+            feedback_incorrect(
+                "",
+                "Atsakymas.",
+                "",
+                "Atsakymas.",
+                exercise_type="recognize",
+                grammatical_case="accusative",
+            )
+        )
+        assert "what something costs" not in html
+
+
 class TestDiacriticModeToggle:
     def test_page_shell_defaults_to_strict_mode(self) -> None:
         html = _render(page_shell("X", current_path="/prices", lang="lt"))

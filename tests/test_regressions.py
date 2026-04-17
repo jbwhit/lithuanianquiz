@@ -155,6 +155,134 @@ def test_practice_all_time_feedback_uses_answered_hour(monkeypatch) -> None:
     assert captured["hour"] == 1
 
 
+def test_post_time_answer_feedback_uses_answered_snapshot(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(main, "_ensure_time_session", lambda _s: None)
+    monkeypatch.setattr(
+        main.time_engine,
+        "correct_answer",
+        lambda *_a, **_k: "Ketvirtis septintos.",
+    )
+    monkeypatch.setattr(main.time_engine, "check", lambda *_a, **_k: False)
+    monkeypatch.setattr(main.time_engine, "update", lambda *_a, **_k: None)
+
+    def _fake_new_time_question(session: dict) -> None:
+        session["time_exercise_type"] = "quarter_to"
+        session["time_hour"] = 8
+        session["time_minute"] = 45
+        session["time_display"] = "8:45"
+        session["time_number_pattern"] = "hour_8"
+        session["time_grammatical_case"] = "nominative"
+        session["time_current_question"] = "Kiek valandų? (8:45)"
+
+    def _fake_feedback_incorrect(*_a, **kwargs):
+        captured["question"] = kwargs.get("question")
+        captured["hour"] = kwargs.get("hour")
+        captured["exercise_type"] = kwargs.get("exercise_type")
+        captured["grammatical_case"] = kwargs.get("grammatical_case")
+        return "feedback"
+
+    def _fake_quiz_area(question: str, **_kwargs):
+        captured["next_question"] = question
+        return "quiz"
+
+    monkeypatch.setattr(main, "_new_time_question", _fake_new_time_question)
+    monkeypatch.setattr(main, "feedback_incorrect", _fake_feedback_incorrect)
+    monkeypatch.setattr(main, "feedback_correct", lambda *_a, **_k: "ok")
+    monkeypatch.setattr(main, "stats_panel", lambda *_a, **_k: "stats")
+    monkeypatch.setattr(main, "quiz_area", _fake_quiz_area)
+
+    session = {
+        "time_current_question": "Kiek valandų? (6:15)",
+        "time_exercise_type": "quarter_past",
+        "time_hour": 6,
+        "time_minute": 15,
+        "time_number_pattern": "hour_6",
+        "time_grammatical_case": "genitive",
+        "time_history": [],
+        "time_correct_count": 0,
+        "time_incorrect_count": 0,
+    }
+
+    main.post_time_answer(session, user_answer="")
+
+    assert captured["question"] == "Kiek valandų? (6:15)"
+    assert captured["hour"] == 6
+    assert captured["exercise_type"] == "quarter_past"
+    assert captured["grammatical_case"] == "genitive"
+    assert captured["next_question"] == "Kiek valandų? (8:45)"
+    assert session["time_history"] == [
+        {
+            "question": "Kiek valandų? (6:15)",
+            "answer": "",
+            "correct": False,
+            "true_answer": "Ketvirtis septintos.",
+        }
+    ]
+
+
+def test_post_age_answer_feedback_uses_answered_snapshot(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(main, "_ensure_age_session", lambda _s: None)
+    monkeypatch.setattr(
+        main.age_engine,
+        "correct_answer",
+        lambda *_a, **_k: "Jam dveji metai.",
+    )
+    monkeypatch.setattr(main.age_engine, "check", lambda *_a, **_k: False)
+    monkeypatch.setattr(main.age_engine, "update", lambda *_a, **_k: None)
+
+    def _fake_new_age_question(session: dict) -> None:
+        session["age_exercise_type"] = "recognize"
+        session["age_pronoun"] = "Tau"
+        session["age_number_pattern"] = "teen"
+        session["age_current_question"] = "How old are you? (19)"
+
+    def _fake_feedback_incorrect(*_a, **kwargs):
+        captured["question"] = kwargs.get("question")
+        captured["exercise_type"] = kwargs.get("exercise_type")
+        captured["number_pattern"] = kwargs.get("number_pattern")
+        return "feedback"
+
+    def _fake_quiz_area(question: str, **_kwargs):
+        captured["next_question"] = question
+        return "quiz"
+
+    monkeypatch.setattr(main, "_new_age_question", _fake_new_age_question)
+    monkeypatch.setattr(main, "feedback_incorrect", _fake_feedback_incorrect)
+    monkeypatch.setattr(main, "feedback_correct", lambda *_a, **_k: "ok")
+    monkeypatch.setattr(main, "stats_panel", lambda *_a, **_k: "stats")
+    monkeypatch.setattr(main, "quiz_area", _fake_quiz_area)
+
+    session = {
+        "age_current_question": "How old is he? (2)",
+        "age_row_id": main.age_rows[0]["number"],
+        "age_exercise_type": "produce",
+        "age_pronoun": "Jam",
+        "age_number_pattern": "single",
+        "age_history": [],
+        "age_correct_count": 0,
+        "age_incorrect_count": 0,
+    }
+
+    main.post_age_answer(session, user_answer="blogai")
+
+    assert captured["question"] == "How old is he? (2)"
+    assert captured["exercise_type"] == "produce"
+    assert captured["number_pattern"] == "single"
+    assert captured["next_question"] == "How old are you? (19)"
+    assert session["age_history"] == [
+        {
+            "question": "How old is he? (2)",
+            "answer": "blogai",
+            "correct": False,
+            "true_answer": "Jam dveji metai.",
+        }
+    ]
+
+
 def test_mix_session_initializes_only_one_module_question() -> None:
     session: dict = {}
     main._ensure_mix_session(session)
@@ -403,3 +531,34 @@ def test_set_language_mirrors_mix_current_question() -> None:
     main.get_set_language(_Req(), session, lang="lt")
 
     assert session["mix_current_question"] == session[sub_key]
+
+
+def test_feedback_from_snapshot_always_passes_grammatical_case(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    def _fake_feedback_incorrect(*_args, **kwargs):
+        captured.update(kwargs)
+        return "feedback"
+
+    monkeypatch.setattr(main, "feedback_incorrect", _fake_feedback_incorrect)
+
+    main._feedback_from_snapshot(
+        {
+            "question": "Q?",
+            "answer": "blogai",
+            "correct": False,
+            "true_answer": "teisingai",
+            "diff_user": "blogai",
+            "diff_correct": "teisingai",
+            "exercise_info": {
+                "exercise_type": "produce",
+                "number_pattern": "single",
+                "grammatical_case": None,
+            },
+            "row": None,
+            "hour": None,
+        }
+    )
+
+    assert "grammatical_case" in captured
+    assert captured["grammatical_case"] is None
