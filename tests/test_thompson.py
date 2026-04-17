@@ -1,7 +1,5 @@
 """Unit tests for the shared Thompson-sampling helpers."""
 
-import random
-
 import numpy as np
 import pytest
 
@@ -31,12 +29,16 @@ class TestBumpDecay:
         assert arms["a"]["incorrect"] == pytest.approx(4.0 * DECAY_GAMMA + 1.0)
 
     def test_bump_bounds_effective_sample_size_under_long_run(self) -> None:
-        """ESS should converge to ~1/(1-γ) under a long streak of same outcome."""
+        """ESS converges to 1/(1-γ) under any fixed correct/incorrect mix.
+
+        Each bump adds exactly 1.0 to the total and both sides decay at γ,
+        so the steady-state bound is independent of the outcome distribution.
+        The all-correct streak here is just one convenient way to exercise it.
+        """
         arms: dict[str, dict[str, float]] = {}
         for _ in range(1000):
             bump(arms, "a", is_correct=True)
         ess = arms["a"]["correct"] + arms["a"]["incorrect"]
-        # Steady-state ESS is 1/(1-γ). With γ=0.98, that's 50.
         assert ess == pytest.approx(1.0 / (1.0 - DECAY_GAMMA), rel=0.01)
 
 
@@ -52,7 +54,6 @@ class TestSampleWeakest:
     def test_heavily_favors_the_weaker_arm(self) -> None:
         """Over many draws, the low-success-rate arm should dominate."""
         np.random.seed(0)
-        random.seed(0)
         arms = {
             "strong": {"correct": 20.0, "incorrect": 1.0},
             "weak": {"correct": 1.0, "incorrect": 20.0},
