@@ -236,3 +236,39 @@ class TestTimeEngineBasics:
                 assert ex["minute"] == 15
             elif ex["exercise_type"] == "quarter_to":
                 assert ex["minute"] == 45
+
+
+class TestTimeInitTrackingPreSeeds:
+    def test_fresh_session_has_all_arm_families(self) -> None:
+        from time_engine import TimeEngine
+
+        session: dict = {}
+        TimeEngine().init_tracking(session)
+        perf = session["time_performance"]
+
+        assert set(perf["exercise_types"].keys()) == {
+            "whole_hour", "half_past", "quarter_past", "quarter_to",
+        }
+        assert set(perf["hour_patterns"].keys()) == {
+            f"hour_{i}" for i in range(1, 13)
+        }
+        assert set(perf["grammatical_cases"].keys()) == {"nominative", "genitive"}
+
+    def test_legacy_session_gets_topped_up(self) -> None:
+        from time_engine import TimeEngine
+
+        session = {
+            "time_performance": {
+                "exercise_types": {
+                    "whole_hour": {"correct": 2.0, "incorrect": 1.0},
+                },
+                "hour_patterns": {},
+                "grammatical_cases": {},
+                "total_exercises": 5,
+            }
+        }
+        TimeEngine().init_tracking(session)
+        perf = session["time_performance"]
+        assert perf["exercise_types"]["whole_hour"]["correct"] == pytest.approx(2.0)
+        assert len(perf["hour_patterns"]) == 12
+        assert len(perf["grammatical_cases"]) == 2

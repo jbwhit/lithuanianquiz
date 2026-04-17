@@ -8,6 +8,8 @@ from thompson import bump as _bump
 from thompson import sample_weakest as _sample_weakest
 
 TIME_TYPES: list[str] = ["whole_hour", "half_past", "quarter_past", "quarter_to"]
+_HOUR_PATTERNS = [f"hour_{i}" for i in range(1, 13)]
+_TIME_CASES = ["nominative", "genitive"]
 
 # Feminine ordinal forms for hours 1-12
 ORDINALS_NOM: dict[int, str] = {
@@ -69,15 +71,26 @@ class TimeEngine:
         self.adaptation_threshold = adaptation_threshold
 
     def init_tracking(self, session: dict[str, Any]) -> None:
-        """Idempotently set up time performance tracking in session."""
-        if "time_performance" in session:
-            return
-        session["time_performance"] = {
-            "exercise_types": {t: {"correct": 0, "incorrect": 1} for t in TIME_TYPES},
-            "hour_patterns": {},
-            "grammatical_cases": {},
-            "total_exercises": 0,
-        }
+        """Idempotently pre-seed every time-module arm family."""
+        from thompson import _ensure_seeded
+
+        perf = session.setdefault(
+            "time_performance",
+            {
+                "exercise_types": {},
+                "hour_patterns": {},
+                "grammatical_cases": {},
+                "total_exercises": 0,
+            },
+        )
+        perf.setdefault("exercise_types", {})
+        perf.setdefault("hour_patterns", {})
+        perf.setdefault("grammatical_cases", {})
+        perf.setdefault("total_exercises", 0)
+
+        _ensure_seeded(perf["exercise_types"], list(TIME_TYPES))
+        _ensure_seeded(perf["hour_patterns"], _HOUR_PATTERNS)
+        _ensure_seeded(perf["grammatical_cases"], _TIME_CASES)
 
     def update(
         self,
