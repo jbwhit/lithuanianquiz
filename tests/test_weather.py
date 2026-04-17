@@ -315,3 +315,41 @@ class TestAdaptive:
         weak = engine.get_weak_areas(session, "weather")
         assert "Exercise Types" in weak
         assert "Sign" in weak
+
+
+class TestWeatherInitTrackingPreSeeds:
+    def test_fresh_session_has_all_arm_families(self) -> None:
+        from weather_engine import SIGN_TYPES, WeatherEngine
+
+        session: dict = {}
+        engine = WeatherEngine(
+            rows=[{"number": n, "kokia_kaina": "x"} for n in range(1, 21)]
+        )
+        engine.init_tracking(session, "weather")
+        perf = session["weather_performance"]
+
+        assert set(perf["exercise_types"].keys()) == {"produce", "recognize"}
+        assert set(perf["number_patterns"].keys()) == {
+            "single_digit", "teens", "decade", "compound",
+        }
+        assert set(perf["sign"].keys()) == set(SIGN_TYPES)
+
+    def test_legacy_session_gets_topped_up(self) -> None:
+        from weather_engine import SIGN_TYPES, WeatherEngine
+
+        session = {
+            "weather_performance": {
+                "exercise_types": {"produce": {"correct": 2.0, "incorrect": 1.0}},
+                "number_patterns": {},
+                "sign": {},
+                "total_exercises": 3,
+            }
+        }
+        engine = WeatherEngine(
+            rows=[{"number": n, "kokia_kaina": "x"} for n in range(1, 21)]
+        )
+        engine.init_tracking(session, "weather")
+        perf = session["weather_performance"]
+        assert perf["exercise_types"]["produce"]["correct"] == pytest.approx(2.0)
+        assert len(perf["number_patterns"]) == 4
+        assert set(perf["sign"].keys()) == set(SIGN_TYPES)
