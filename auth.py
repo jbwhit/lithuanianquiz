@@ -57,15 +57,37 @@ def _capped_history(value: Any) -> list[Any]:
 def _get_perf_dict(data: dict[str, Any], key: str) -> dict[str, Any]:
     """Return a validated performance dictionary from a payload key.
 
-    Also strips the legacy `combined_arms` key so pre-refactor sessions
-    don't persist it forward. (`combined_arms` was a write-only table in
-    the adaptive engine, removed alongside the pre-seed refactor.)
+    Two cleanups happen here so the loaded session goes into the cookie in
+    a compact shape regardless of what's persisted in the DB:
+
+    1. `combined_arms` — a write-only table from a pre-refactor version —
+       is dropped entirely.
+    2. Any arm that is still at the exact cold-start seed
+       (`{correct: 0.0, incorrect: 1.0}`) is stripped. The virtual sampler
+       treats missing keys as cold-start, so these arms carry no
+       information, and serializing them to the session cookie can push
+       legacy eagerly-seeded payloads over the ~4 KB browser budget.
     """
+    from thompson import strip_cold_start
+
     value = data.get(key)
     if not isinstance(value, dict):
         return {}
     value.pop("combined_arms", None)
+    for sub in value.values():
+        if _is_arm_family_dict(sub):
+            strip_cold_start(sub)
     return value
+
+
+def _is_arm_family_dict(value: Any) -> bool:
+    """True if `value` is a non-empty dict of `{correct, incorrect}` arms."""
+    if not isinstance(value, dict) or not value:
+        return False
+    return all(
+        isinstance(arm, dict) and "correct" in arm and "incorrect" in arm
+        for arm in value.values()
+    )
 
 
 def _get_bool(data: dict[str, Any], key: str, default: bool = False) -> bool:
