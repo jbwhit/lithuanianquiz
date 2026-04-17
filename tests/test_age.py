@@ -178,9 +178,9 @@ class TestAdaptive:
         }
         engine.update(session, "age", info, True)
         perf = session["age_performance"]
-        assert perf["exercise_types"]["produce"]["correct"] == 1
-        assert perf["number_patterns"]["single_digit"]["correct"] == 1
-        assert perf["pronouns"]["Jam"]["correct"] == 1
+        assert perf["exercise_types"]["produce"]["correct"] == pytest.approx(1.0)
+        assert perf["number_patterns"]["single_digit"]["correct"] == pytest.approx(1.0)
+        assert perf["pronouns"]["Jam"]["correct"] == pytest.approx(1.0)
         assert perf["total_exercises"] == 1
 
     def test_seed_from_n99(self, engine: AgeEngine) -> None:

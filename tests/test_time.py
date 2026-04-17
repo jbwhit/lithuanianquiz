@@ -151,8 +151,8 @@ class TestTimeAdaptive:
         }
         engine.update(session, info, True)
         perf = session["time_performance"]
-        assert perf["exercise_types"]["whole_hour"]["correct"] == 1
-        assert perf["hour_patterns"]["hour_3"]["correct"] == 1
+        assert perf["exercise_types"]["whole_hour"]["correct"] == pytest.approx(1.0)
+        assert perf["hour_patterns"]["hour_3"]["correct"] == pytest.approx(1.0)
         assert perf["total_exercises"] == 1
 
     def test_get_weak_areas_empty_without_perf(self, engine: TimeEngine) -> None:

@@ -96,7 +96,7 @@ class TestAdaptiveLearning:
         }
         al.update(session, info, True)
         et = session["performance"]["exercise_types"]["kokia"]
-        assert et["correct"] == 1
+        assert et["correct"] == pytest.approx(1.0)
 
     def test_select_exercise_returns_dict(self, al: AdaptiveLearning) -> None:
         engine = ExerciseEngine(ROWS)

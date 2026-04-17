@@ -106,8 +106,8 @@ class TestAdaptive:
         info = {"exercise_type": "produce", "number_pattern": "single_digit"}
         engine.update(session, "n99", info, True)
         perf = session["n99_performance"]
-        assert perf["exercise_types"]["produce"]["correct"] == 1
-        assert perf["number_patterns"]["single_digit"]["correct"] == 1
+        assert perf["exercise_types"]["produce"]["correct"] == pytest.approx(1.0)
+        assert perf["number_patterns"]["single_digit"]["correct"] == pytest.approx(1.0)
         assert perf["total_exercises"] == 1
 
     def test_seed_from_prefix_copies_priors(self, engine: NumberEngine) -> None:

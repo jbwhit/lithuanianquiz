@@ -249,9 +249,9 @@ class TestAdaptive:
         }
         engine.update(session, "weather", info, True)
         perf = session["weather_performance"]
-        assert perf["exercise_types"]["produce"]["correct"] == 1
-        assert perf["number_patterns"]["single_digit"]["correct"] == 1
-        assert perf["sign"]["positive"]["correct"] == 1
+        assert perf["exercise_types"]["produce"]["correct"] == pytest.approx(1.0)
+        assert perf["number_patterns"]["single_digit"]["correct"] == pytest.approx(1.0)
+        assert perf["sign"]["positive"]["correct"] == pytest.approx(1.0)
         assert perf["total_exercises"] == 1
 
     def test_seed_from_n99(self, engine: WeatherEngine) -> None:

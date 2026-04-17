@@ -69,7 +69,9 @@ class NumberEngine:
         else:
             exercise_type = _sample_weakest(perf["exercise_types"])
 
-        # Adaptively pick number pattern (always pre-seeded, never empty)
+        # Arm dict is always pre-seeded; matching may still be empty when
+        # the sampled pattern has no rows in this engine's range (e.g.
+        # "compound" in the 1-20 engine). Fall back to uniform row choice.
         weak_pattern = _sample_weakest(perf["number_patterns"])
         matching = [r for r in self.rows if number_pattern(r["number"]) == weak_pattern]
         row = random.choice(matching) if matching else random.choice(self.rows)

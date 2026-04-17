@@ -101,12 +101,14 @@ class WeatherEngine:
         else:
             exercise_type = _sample_weakest(perf["exercise_types"])
 
-        # Pick row (number) adaptively (always pre-seeded, never empty)
+        # Arm dict is always pre-seeded; matching may still be empty when
+        # the sampled pattern has no rows in this engine's range. Fall
+        # back to uniform row choice.
         weak_pattern = _sample_weakest(perf["number_patterns"])
         matching = [r for r in self.rows if number_pattern(r["number"]) == weak_pattern]
         row = random.choice(matching) if matching else random.choice(self.rows)
 
-        # Pick sign adaptively (always pre-seeded, never empty)
+        # Sign dict is always pre-seeded.
         weak_sign = _sample_weakest(perf["sign"])
         negative = weak_sign == "negative"
 
