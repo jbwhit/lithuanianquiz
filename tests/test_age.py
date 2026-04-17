@@ -246,3 +246,37 @@ class TestAdaptive:
         weak = engine.get_weak_areas(session, "age")
         assert "Exercise Types" in weak
         assert "Pronouns" in weak
+
+
+class TestAgeInitTrackingPreSeeds:
+    def test_fresh_session_has_all_arm_families(self) -> None:
+        from age_engine import PRONOUN_DATIVES, AgeEngine
+
+        session: dict = {}
+        engine = AgeEngine(rows=[{"number": n, "years": "metai"} for n in range(2, 21)])
+        engine.init_tracking(session, "age")
+        perf = session["age_performance"]
+
+        assert set(perf["exercise_types"].keys()) == {"produce", "recognize"}
+        assert set(perf["number_patterns"].keys()) == {
+            "single_digit", "teens", "decade", "compound",
+        }
+        assert set(perf["pronouns"].keys()) == set(PRONOUN_DATIVES)
+
+    def test_legacy_session_gets_topped_up(self) -> None:
+        from age_engine import PRONOUN_DATIVES, AgeEngine
+
+        session = {
+            "age_performance": {
+                "exercise_types": {"produce": {"correct": 2.0, "incorrect": 1.0}},
+                "number_patterns": {},
+                "pronouns": {},
+                "total_exercises": 3,
+            }
+        }
+        engine = AgeEngine(rows=[{"number": n, "years": "metai"} for n in range(2, 21)])
+        engine.init_tracking(session, "age")
+        perf = session["age_performance"]
+        assert perf["exercise_types"]["produce"]["correct"] == pytest.approx(2.0)
+        assert len(perf["number_patterns"]) == 4
+        assert set(perf["pronouns"].keys()) == set(PRONOUN_DATIVES)

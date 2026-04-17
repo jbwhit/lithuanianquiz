@@ -85,36 +85,36 @@ class AgeEngine:
         prefix: str = "age",
         seed_prefix: str | None = None,
     ) -> None:
-        """Idempotently set up age performance tracking in session.
+        """Idempotently pre-seed every age-module arm family."""
+        from thompson import _ensure_seeded
 
-        If seed_prefix is given and that module has existing performance data,
-        copy exercise_types and number_patterns priors from it.
-        """
         perf_key = f"{prefix}_performance"
-        if perf_key in session:
-            return
-        seed_key = f"{seed_prefix}_performance" if seed_prefix else None
-        if seed_key and seed_key in session:
-            source = session[seed_key]
-            session[perf_key] = {
-                "exercise_types": copy.deepcopy(source.get("exercise_types", {})),
-                "number_patterns": copy.deepcopy(source.get("number_patterns", {})),
-                "pronouns": {
-                    d: {"correct": 0, "incorrect": 1} for d in PRONOUN_DATIVES
-                },
-                "total_exercises": source.get("total_exercises", 0),
-            }
-        else:
-            session[perf_key] = {
-                "exercise_types": {
-                    t: {"correct": 0, "incorrect": 1} for t in EXERCISE_TYPES
-                },
-                "number_patterns": {},
-                "pronouns": {
-                    d: {"correct": 0, "incorrect": 1} for d in PRONOUN_DATIVES
-                },
-                "total_exercises": 0,
-            }
+        if perf_key not in session:
+            seed_key = f"{seed_prefix}_performance" if seed_prefix else None
+            if seed_key and seed_key in session:
+                source = session[seed_key]
+                session[perf_key] = {
+                    "exercise_types": copy.deepcopy(source.get("exercise_types", {})),
+                    "number_patterns": copy.deepcopy(source.get("number_patterns", {})),
+                    "pronouns": {},
+                    "total_exercises": source.get("total_exercises", 0),
+                }
+            else:
+                session[perf_key] = {
+                    "exercise_types": {},
+                    "number_patterns": {},
+                    "pronouns": {},
+                    "total_exercises": 0,
+                }
+        perf = session[perf_key]
+        perf.setdefault("exercise_types", {})
+        perf.setdefault("number_patterns", {})
+        perf.setdefault("pronouns", {})
+        perf.setdefault("total_exercises", 0)
+
+        _ensure_seeded(perf["exercise_types"], list(EXERCISE_TYPES))
+        _ensure_seeded(perf["number_patterns"], ["single_digit", "teens", "decade", "compound"])
+        _ensure_seeded(perf["pronouns"], list(PRONOUN_DATIVES))
 
     def generate(self, session: dict[str, Any], prefix: str = "age") -> dict[str, Any]:
         """Return an exercise dict using adaptive selection."""
