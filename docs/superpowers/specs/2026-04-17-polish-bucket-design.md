@@ -1,26 +1,33 @@
 # Polish Bucket — Design
 
 **Date:** 2026-04-17
-**Scope:** Three independent PRs addressing site polish: (α) head tags — per-route titles, viewport, description, and Open Graph meta; (β) mobile UX — navbar hamburger collapse below 768px; (γ) native-speaker review doc — generated Markdown listing representative exercises across every module.
+**Scope:** Three independent PRs addressing site polish: (α) head tags — correct per-route titles, plus description and Open Graph meta; (β) mobile UX audit of the existing MonsterUI `NavBar` hamburger primitive, with targeted fixes only if audit reveals concrete issues; (γ) native-speaker review artifacts — a single generator emitting both a representative cross-module exercise doc and an exhaustive time-exercise doc (retiring `time_reference.py`).
 
-**Rationale:** Each PR has a distinct review risk profile — head tags are near-risk-free (text in `<head>`), mobile UX needs device testing and visual review, the review doc is a cross-check artifact potentially driving follow-up LT content fixes — so they ship as three separate PRs in the order α → β → γ.
+**Rationale:** Each PR has a distinct review risk profile — head tags are near-risk-free (text in `<head>`), the mobile audit needs device testing and might be a no-op, the review docs are cross-check artifacts potentially driving follow-up LT content fixes — so they ship as three separate PRs in the order α → β → γ.
+
+**Reality check from a pre-implementation review of this spec:**
+
+- MonsterUI's `NavBar` already renders an `md:hidden` hamburger button toggling an `#mobile-menu` wrapper (`data-uk-toggle`). All nav items fall behind the hamburger below `md` by default — essentially "hamburger everything" collapse. Any design that layers a second hamburger system on top would conflict. PR β is therefore scoped as an audit plus targeted fixes, not a greenfield addition.
+- The current production HTML already emits `<title>FastHTML page</title>` (a FastHTML default; `fast_app(title=...)` is silently ignored in 0.13.3) and a `viewport` meta tag with `viewport-fit=cover`. What's actually missing is the correct title value, description meta, and OG tags.
+- `fasthtml.Titled(...)` adds a visible `<main><h1>...` wrapper to the body in addition to emitting a `<title>` — do not use it as a head-only primitive.
 
 ---
 
 ## Goals
 
-1. Fix the "FastHTML page" tab title bug with per-route, language-aware titles.
-2. Add standard `<head>` hygiene: viewport meta (required for mobile), description meta (search snippets), OG tags (link-share previews).
-3. Make the navbar usable on 375px–414px phones by collapsing secondary items behind a hamburger inline dropdown.
-4. Give a native-speaker reviewer a single Markdown file listing every exercise type × taxonomy branch with its correct answer, without requiring the reviewer to run the app.
+1. Fix the "FastHTML page" tab title bug with correct, per-route, language-aware titles.
+2. Add `<head>` hygiene we don't already have: description meta (search snippets) and OG tags (link-share previews). Viewport meta is already emitted by MonsterUI — no change there.
+3. Audit the existing MonsterUI hamburger behavior on real phones; patch targeted layout issues only if any surface.
+4. Give native-speaker reviewers two Markdown artifacts: a representative cross-module exercise reference (the "is each taxonomy branch correct?" review) and an exhaustive time-exercise reference (the "every time phrase at every hour" review, replacing `time_reference.py`).
 
 ## Non-goals
 
-- No redesign of the existing landing cards, stats grid, examples sections, or quiz area. Those are already responsive (`cols_sm=1`/`cols_sm=2` / `sm:grid-cols-2` / `w-full`).
+- No forked/customized `NavBar` to keep the Modules dropdown always visible at mobile widths. The default MonsterUI hamburger collapse is accepted; 2 taps to switch modules on mobile (hamburger → Modules) is fine for the current scale.
+- No redesign of the existing landing cards, stats grid, examples sections, or quiz area. Those are already responsive.
 - No PWA manifest, no service worker, no offline mode.
 - No `og:image` share card. If we want one later, it's a separate PR.
 - No migration of `LITHUANIAN_INTERFACE_REVIEW_REFERENCE.md` content into the new exercise-reference doc. Two different review passes covering different copy.
-- No exhaustive enumeration of exercises (1,600 rows eye-glazes reviewers); representative coverage by taxonomy branch catches the same systemic errors.
+- No enumeration of exhaustive answers for Numbers/Age/Weather/Prices (1,600 rows would eye-glaze reviewers); representative coverage catches the same systemic errors. Time stays exhaustive because its space is small (48 rows).
 
 ---
 
@@ -52,7 +59,7 @@ Format: `{Page} — Lithuanian Practice` for sub-pages; `Lithuanian Practice` fo
 
 ### Other head tags
 
-- **Viewport:** `<meta name="viewport" content="width=device-width, initial-scale=1">`. No `maximum-scale` / `user-scalable=no` — diacritic zooming is legitimate.
+- **Viewport:** already emitted by MonsterUI with `width=device-width, initial-scale=1, viewport-fit=cover`. No change in this PR.
 - **Description (English-only, same tag on every page):** `Adaptive Lithuanian practice: numbers, age, weather, prices, and time. Type the answer in Lithuanian; the site adapts to your weak spots.`
 - **Open Graph tags:**
   - `og:title` = `Lithuanian Practice` (static, English)
@@ -63,9 +70,25 @@ Format: `{Page} — Lithuanian Practice` for sub-pages; `Lithuanian Practice` fo
 
 ### Implementation approach
 
-`page_shell` in `ui.py` currently returns a `Div(nav, *content, ...)`. FastHTML then wraps this in an HTML page using the `title=` kwarg from `fast_app(...)`, but fasthtml 0.13.3 is silently dropping that value. Rather than debug the framework, `page_shell` will gain a `page_title` parameter and explicitly construct a `Head` list (`Title`, `Meta`, `Meta`, ...) alongside its current content, returned via `Titled(page_title, *content)` or equivalent primitive that FastHTML renders into `<head>`. Exact primitive to confirm during implementation — fallback is to return `(*head_tags, *body_tags)` tuple which FastHTML splits automatically.
+`page_shell` in `ui.py` currently returns a `Div(nav, *content, ...)`. FastHTML 0.13.3 wraps this in an HTML page but silently ignores the `title=` kwarg on `fast_app(...)`, falling through to its default `"FastHTML page"`.
 
-The `fast_app(title="Lithuanian Price Quiz", ...)` kwarg is removed since we no longer rely on it.
+`page_shell` will gain a `page_title` parameter and emit head elements explicitly using FastHTML's `Title(...)` and `Meta(...)` primitives (NOT `Titled(...)`, which adds a visible `<main><h1>` wrapper to the body and would cause a layout regression). FastHTML hoists `Title` / `Meta` elements to the `<head>` automatically even when returned as siblings of body content, so the integration point is:
+
+```python
+def page_shell(..., page_title: str, lang: str = "en"):
+    head = (
+        Title(page_title),
+        Meta(name="description", content=DESCRIPTION_META),
+        Meta(property="og:title", content="Lithuanian Practice"),
+        Meta(property="og:description", content=DESCRIPTION_META),
+        Meta(property="og:type", content="website"),
+        Meta(property="og:url", content=CANONICAL_URL),
+    )
+    body = Div(nav, *content, cls="min-h-screen px-4")
+    return (*head, body)
+```
+
+The `fast_app(title="Lithuanian Price Quiz", ...)` kwarg is removed in this PR (no longer relied upon).
 
 ### Tests
 
@@ -73,86 +96,90 @@ The `fast_app(title="Lithuanian Price Quiz", ...)` kwarg is removed since we no 
 - `test_home_page_title_lt` — same, `lang="lt"`, assert `<title>Praktika</title>`.
 - `test_module_page_title_en` — parameterised over the five modules, assert `<title>Numbers — Lithuanian Practice</title>` etc.
 - `test_module_page_title_lt` — parameterised, LT variants.
-- `test_viewport_meta_present` — assert `<meta name="viewport" content="width=device-width, initial-scale=1">` in rendered home page.
+- `test_no_body_h1_wrapper_from_title` — regression guard: render home, assert there is no stray `<h1>` injected by a `Titled(...)` primitive at the top of the body.
 - `test_description_meta_present` — assert `<meta name="description" content="...">` with the full English string.
 - `test_og_tags_present` — assert `og:title`, `og:description`, `og:type`, `og:url`.
+- `test_viewport_meta_still_present` — smoke check that MonsterUI's viewport meta survives our head-injection changes.
 
 ---
 
-## PR β — Mobile UX (navbar hamburger collapse)
+## PR β — Mobile UX audit
+
+### What this PR is (and isn't)
+
+**Is:** a structured audit of the existing mobile behavior post PR α (so the viewport meta is in place and responsive classes actually fire) with targeted fixes for any concrete issues found.
+
+**Is not:** a greenfield hamburger design. MonsterUI's `NavBar` already produces an `md:hidden` hamburger that toggles an `#mobile-menu` wrapper containing every nav item. That's the baseline — we accept it.
+
+### Existing behavior to keep (no-op unless something breaks)
+
+Below `md` (768px), the current navbar emits:
+- Brand + hamburger button (`md:hidden`, `data-uk-toggle="target: #mobile-menu; cls: hidden"`).
+- `#mobile-menu` wrapper containing every nav item in a vertical stack (`flex-col items-end`), hidden by default, toggled visible by the hamburger.
+
+At `md`+, all nav items render inline beside the brand.
+
+At either width, the Modules dropdown is one item among the stack (at mobile, behind the hamburger — 2 taps to switch modules; at desktop, always-visible dropdown).
+
+### Audit checklist
+
+Performed during implementation with Chrome DevTools (iPhone SE 375px, iPhone 14 Pro 390px, Pixel 7 412px) + one real iOS Safari check:
+
+1. Does the hamburger button have a reasonable tap target (≥44px hit area)?
+2. When tapped, does the `#mobile-menu` expand in-flow without overlapping the quiz area behind it?
+3. Do the two segmented controls (Input mode, Language toggle) render sensibly in the vertical stack? Specifically:
+   - Does "Input: Strict Tolerant" fit on one row, or wrap awkwardly?
+   - Does "English | Lietuviškai" fit on one row?
+4. Is the landing-page module-card layout (`cols_sm=1`) readable without horizontal scroll?
+5. Does the quiz input (`w-full uk-form-large`) stretch edge-to-edge?
+6. Does the stats-panel 2×2 metric grid (`cols_sm=2`) fit without overflow?
+7. Does the 🇱🇹 emoji + "Lithuanian / Practice" brand area fit next to the hamburger button without overflow on a 320px viewport?
+
+### Fix policy
+
+For each checklist item:
+- **Passes:** no change. Commit a note in the PR description listing what was verified.
+- **Concrete layout bug:** smallest-possible fix. Prefer adding a responsive utility class to the offending element over restructuring layout.
+- **Subjective "could be nicer":** out of scope for this PR. Note it as a follow-up candidate.
 
 ### Files touched
 
-- `ui.py` — `page_shell`'s navbar-construction block.
-- `tests/test_ui.py` — new assertions for navbar rendering at mobile breakpoint.
-
-### Breakpoint
-
-Tailwind's `md` = 768px. Below `md` = mobile layout; `md` and above = current desktop layout.
-
-### Navbar behavior
-
-**Always visible (at every width):**
-- Brand (🇱🇹 + "Lithuanian / Practice" wordmark).
-- Modules dropdown.
-
-**Visible at `md`+ only (hidden on mobile):**
-- Stats link.
-- Input mode segmented control (`Strict | Tolerant`).
-- Feedback link.
-- Language segmented control (`English | Lietuviškai`).
-- User name + Logout (or Login).
-
-Implementation: add Tailwind `hidden md:inline-flex` (or `md:flex`, depending on display primitive) to each of these navbar items so they only show at `md`+.
-
-**Visible below `md` only (hidden on desktop):**
-- Hamburger button (`UkIcon("menu")` inside an `A` with `uk-btn uk-btn-ghost md:hidden`).
-
-**Hamburger dropdown contents** (inline, pushes page content down when open — uses MonsterUI's `DropDownNavContainer` like the existing Modules dropdown):
-- Stats link (as a menu row).
-- Input mode segmented control — preserved as segmented, vertically stacked with its "Input:" label above the two buttons.
-- Feedback link (as a menu row).
-- Language segmented control — preserved as segmented (both buttons visible in one row).
-- User name (as a static row) + Logout link (as a menu row) — or Login link if anonymous.
-
-The segmented controls render **twice** in the DOM — once in the desktop navbar (wrapped in `hidden md:inline-flex`) and once inside the hamburger-panel dropdown (wrapped in `md:hidden` — it only exists in the below-`md` layout). Render duplication is accepted rather than try to share a single element across two DOM locations with CSS. Each pair of buttons uses the same `href`, so clicking either the desktop or the hamburger-panel "English" button does the same thing — the active-class computation is shared via a helper that takes the current state and returns the classes.
-
-### Non-navbar layout
-
-**No changes.** Existing responsive utilities are already correct:
-- Landing `_module_card` grid: `cols_md=2, cols_sm=1` — one card per row on phones.
-- Stats metrics: `cols=4, cols_sm=2` — 2×2 on phones.
-- Examples sections: `grid grid-cols-1 sm:grid-cols-2` — one column on phones.
-- Quiz input: `cls="uk-input uk-form-large w-full"` — fluid.
-- Performance cards on stats page: `cols_md=1, cols_lg=2, cols_xl=3` — stack on phones.
-
-The existing responsive utilities only take effect once the viewport meta from PR α is present. Prior to α, mobile browsers render at a simulated desktop width so breakpoints never fire.
+Unknown in advance — depends on audit findings. Most likely either `ui.py` alone (responsive class tweaks) or zero files at all. Either way, test assertions cover the invariants.
 
 ### Tests
 
-- `test_navbar_hamburger_button_present` — render `page_shell`, assert a `menu` icon button is in the output with class `md:hidden`.
-- `test_navbar_hamburger_panel_contains_secondary_items` — assert Stats, Input-mode markup, Feedback, Language-toggle markup, and Login/Logout are inside the hamburger dropdown container.
-- `test_navbar_desktop_items_hidden_below_md` — assert each desktop-only nav item has `hidden md:*` class.
-- `test_navbar_brand_and_modules_always_visible` — assert brand and Modules dropdown do not carry any `hidden` or `md:hidden` class (visible at every width).
+- `test_navbar_hamburger_button_exists` — regression guard: render `page_shell`, assert an `md:hidden` element with icon `menu` is present. Ensures future refactors don't silently remove the primitive MonsterUI gives us.
+- `test_navbar_mobile_menu_wrapper_exists` — regression guard: assert `#mobile-menu` id is emitted.
+- `test_navbar_all_items_reachable_in_mobile_menu` — assert Modules, Stats, Input-mode controls, Feedback, Language controls, and Login/Logout markup are all present inside the `#mobile-menu` container (so the audit can't later accidentally hide one without noticing).
 
-### Manual smoke (post-merge, noted in PR description — not a merge blocker)
+### Merge criteria
 
-- Chrome DevTools device emulation: iPhone SE (375px), iPhone 14 Pro (390px), Pixel 7 (412px). Tap the hamburger, verify all items reachable.
-- One real-phone check (iOS Safari).
-- Follow-up PR if any cramped element surfaces; spec does not pre-commit to fixes.
+- The three regression tests pass.
+- Audit checklist completed with each item marked pass or linked to a specific commit that patches it.
+- One real-phone manual verification screenshot posted in the PR description (or a note that no phone was available and the DevTools-only audit is the gate). For a hobby-scale project, DevTools emulation is acceptable.
 
 ---
 
-## PR γ — Native-speaker exercise review doc
+## PR γ — Native-speaker exercise review docs
 
 ### Files created
 
-- `scripts/generate_exercise_reference.py` — generator script, idempotent.
-- `docs/reviews/exercise-reference.md` — the rendered Markdown doc, committed.
+- `scripts/generate_exercise_reference.py` — generator script, idempotent. Emits **two** output documents:
+  - `docs/reviews/exercise-reference.md` (representative, cross-module, ~66 rows)
+  - `docs/reviews/time-reference.md` (exhaustive, all 48 time expressions across 12 hours × 4 types)
 
 ### Files retired
 
-- `time_reference.py` (at repo root) — superseded by the new generator, which covers time as one section.
+- `time_reference.py` (at repo root) — its exhaustive output is subsumed into `docs/reviews/time-reference.md` produced by the new generator.
+
+### Docs that need updating in the same PR
+
+The old `time_reference.py` is referenced in:
+- `CLAUDE.md` — the file-structure section lists it as a live tool.
+- `HANDOFF.md` — probably mentions it as part of project context.
+- `FUTURE_MODULES.md` — mentions it under the native-speaker-spot-check section.
+
+Each reference is updated to point at `scripts/generate_exercise_reference.py` and its two output docs.
 
 ### Output structure
 
@@ -200,18 +227,19 @@ Total target: ~66 rows.
 ### Generator behavior
 
 - Imports engines directly (`NumberEngine`, `AgeEngine`, `WeatherEngine`, `ExerciseEngine`, `TimeEngine`). Calls their `format_question` + `correct_answer` methods, same as the app. No LT string duplication.
-- Exercise lists stored as explicit tuples per module near the top of the script, grouped by subsection heading. Reviewers who want more examples can edit the tuple list and rerun.
-- Writes to `docs/reviews/exercise-reference.md`, overwriting.
-- Top of the generated doc includes a one-line header: `<!-- Generated by scripts/generate_exercise_reference.py on YYYY-MM-DD. Do not edit by hand. -->`.
+- Representative-mode exercise lists stored as explicit tuples per module near the top of the script, grouped by subsection heading. Reviewers who want more examples can edit the tuple list and rerun.
+- Exhaustive-time mode iterates over the full 12 hours × 4 time types = 48 combinations using `TimeEngine` directly. Grouped in the output by time type (whole_hour / half_past / quarter_past / quarter_to).
+- Writes both documents, overwriting.
+- Top of each generated doc includes a one-line header: `<!-- Generated by scripts/generate_exercise_reference.py on YYYY-MM-DD. Do not edit by hand. -->`.
 
-### Test (in `tests/test_regressions.py`)
+### Tests (in `tests/test_regressions.py`)
 
-- `test_exercise_reference_doc_in_sync` — runs the generator into a temp buffer, strips the date-line from both buffer and committed doc, asserts byte equality. Guarantees the committed doc can't silently drift from engine output.
+- `test_exercise_reference_doc_in_sync` — runs the generator into temp buffers, strips the date-line from both buffers and both committed docs, asserts byte equality for each. Guarantees neither committed doc can silently drift from engine output.
 
 ### Relationship to existing docs
 
 - `LITHUANIAN_INTERFACE_REVIEW_REFERENCE.md` (interface chrome: navbar, card labels, reset modal copy) — unchanged.
-- `time_reference.py` (standalone time-exercise enumeration) — deleted; superseded.
+- `time_reference.py` (standalone time-exercise enumeration script) — deleted; replaced by `docs/reviews/time-reference.md` which the new generator produces.
 
 ---
 
@@ -233,20 +261,20 @@ Post-deploy smoke for each:
 
 ## Risks and mitigations
 
-**R1. `page_shell` `Head`-injection pattern doesn't work with FastHTML 0.13.3's page wrapper.** Likelihood: non-zero — this is the reason the `fast_app(title=...)` kwarg is being dropped in the first place. Mitigation: test locally before pushing α; fallback to emitting the head tags as part of the returned body structure (FastHTML typically hoists `Title`/`Meta` to `<head>` regardless of position in the returned tuple).
+**R1. `Title`/`Meta` returned alongside body tags doesn't hoist to `<head>` on this FastHTML version.** Likelihood: low but non-zero. Mitigation: test locally immediately after wiring up `page_shell`'s new return shape. If hoisting doesn't work, fallback is to pass `hdrs=[Title(...), Meta(...), ...]` to `fast_app(...)` once and have `page_shell` never change the title (single static title) — but that surrenders per-route titles. Verify before writing the implementation code.
 
-**R2. Mobile hamburger dropdown collides with the existing Modules dropdown z-index.** Both are `DropDownNavContainer` instances positioned absolutely. Likelihood: moderate. Mitigation: visual check during DevTools smoke; fix with a `z-*` class bump if needed.
+**R2. Representative coverage in PR γ misses a real error mode.** Likelihood: always non-zero. Mitigation: the generator tuples are easy to extend — if the reviewer spots a missing branch, we add examples and regenerate. Not a merge blocker.
 
-**R3. Representative coverage in PR γ misses a real error mode.** Likelihood: always non-zero. Mitigation: the generator tuples are easy to extend — if the reviewer spots a missing branch, we add examples and regenerate. Not a merge blocker.
+**R3. `og:image` absence makes shared links look bland.** Acceptable. Follow-up PR can add a minimal share card if/when we care about virality.
 
-**R4. `og:image` absence makes shared links look bland.** Acceptable. Follow-up PR can add a minimal share card if/when we care about virality.
+**R4. `_not_found` page currently renders outside the normal `_render_page` path** (it has its own direct `page_shell` call with exception context). Needs explicit title plumbing in its handler too. Mitigation: part of PR α's scope — handler gets `page_title="Page not found — Lithuanian Practice"` (or LT equivalent).
 
-**R5. `_not_found` page currently renders outside the normal `_render_page` path** (it has its own direct `page_shell` call with exception context). Needs explicit title plumbing in its handler too. Mitigation: part of PR α's scope — handler gets `page_title="Page not found — Lithuanian Practice"` (or LT equivalent).
+**R5. Mobile audit surfaces something big and open-ended.** PR β fix policy caps scope at smallest-possible fixes for concrete bugs; subjective nits are deferred. If the audit reveals a legitimately large issue (e.g. the hamburger primitive is actively broken on iOS Safari), we close PR β without the fix and open a narrower follow-up PR rather than let scope balloon.
 
 ---
 
 ## Success criteria
 
-- **α:** Every route serves the right `<title>`; viewport + description + OG tags present in the home page HTML. Test suite assertions hold.
-- **β:** Below 768px, the navbar shows only brand + Modules + hamburger; all other items are inside the hamburger dropdown. No horizontal scroll on a 375px viewport. Navigation works without JS keyboard-accessibility regressions from the current state.
-- **γ:** `docs/reviews/exercise-reference.md` exists and can be reviewed on GitHub. `scripts/generate_exercise_reference.py` re-runs cleanly and produces identical output. Test asserts the committed doc is in sync with the engines.
+- **α:** Every route serves the right `<title>`; description + OG tags present in the home page HTML; no stray `<h1>` body injection. Test suite assertions hold.
+- **β:** Audit checklist completed with each item pass-or-patched. No horizontal scroll on a 375px viewport. The three regression tests (hamburger button exists, mobile-menu wrapper exists, all items reachable) hold.
+- **γ:** Both `docs/reviews/exercise-reference.md` (representative) and `docs/reviews/time-reference.md` (exhaustive) exist and can be reviewed on GitHub. `scripts/generate_exercise_reference.py` re-runs cleanly and produces identical output for both. `time_reference.py` is deleted. `CLAUDE.md` / `HANDOFF.md` / `FUTURE_MODULES.md` references updated. Test asserts both committed docs are in sync with the engines.
