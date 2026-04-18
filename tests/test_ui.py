@@ -1,5 +1,9 @@
 """Tests for ui.py — quiz area and HTMX swap behaviour."""
 
+import re
+
+from starlette.testclient import TestClient
+
 from fasthtml.common import to_xml
 from quiz import number_pattern
 from ui import (
@@ -14,6 +18,33 @@ from ui import (
 def _render(component: object) -> str:
     """Render a FastHTML component to an HTML string."""
     return to_xml(component)
+
+
+class TestPageShellHeadTags:
+    def test_page_shell_emits_title(self) -> None:
+        html = _render(page_shell("body", page_title="Numbers — Lithuanian Practice"))
+        assert "<title>Numbers — Lithuanian Practice</title>" in html
+
+    def test_page_shell_emits_description_meta(self) -> None:
+        html = _render(page_shell("body", page_title="Lithuanian Practice"))
+        assert '<meta name="description"' in html
+        assert "Adaptive Lithuanian practice" in html
+
+    def test_page_shell_emits_og_tags(self) -> None:
+        html = _render(page_shell("body", page_title="Lithuanian Practice"))
+        assert '<meta property="og:title" content="Lithuanian Practice"' in html
+        assert '<meta property="og:description"' in html
+        assert '<meta property="og:type" content="website"' in html
+        assert (
+            '<meta property="og:url" content="https://lithuanian-practice.com/"' in html
+        )
+
+    def test_page_shell_does_not_inject_body_h1(self) -> None:
+        """Regression guard: using Titled(...) would add a stray body <h1>/<main>
+        wrapper. Using explicit Title()/Meta() must not."""
+        html = _render(page_shell("body", page_title="Lithuanian Practice"))
+        assert '<main class="container">' not in html
+        assert "<h1>Lithuanian Practice</h1>" not in html
 
 
 class TestQuizAreaHtmxSwap:
@@ -355,3 +386,58 @@ class TestDiacriticModeToggle:
         assert "set-diacritic-mode?enabled=1&amp;next_path=/time" in html
         assert 'uk-active font-bold">Lankstus<' in html
         assert 'uk-active font-bold">Grieztas<' not in html
+
+
+class TestRouteTitles:
+    def _title_of(self, path: str, lang: str = "en") -> str:
+        import main
+
+        with TestClient(main.app, follow_redirects=False) as c:
+            if lang == "lt":
+                # Flip session language via /set-language first.
+                c.get("/set-language?lang=lt")
+            r = c.get(path)
+            m = re.search(r"<title>([^<]*)</title>", r.text)
+            assert m, f"no <title> found on {path} (status={r.status_code})"
+            return m.group(1)
+
+    def test_home_title_en(self) -> None:
+        assert self._title_of("/") == "Lithuanian Practice"
+
+    def test_home_title_lt(self) -> None:
+        assert self._title_of("/", lang="lt") == "Praktika"
+
+    def test_numbers_title_en(self) -> None:
+        assert self._title_of("/numbers") == "Numbers — Lithuanian Practice"
+
+    def test_numbers_title_lt(self) -> None:
+        assert self._title_of("/numbers", lang="lt") == "Skaičiai — Praktika"
+
+    def test_age_title_en(self) -> None:
+        assert self._title_of("/age") == "Age — Lithuanian Practice"
+
+    def test_weather_title_en(self) -> None:
+        assert self._title_of("/weather") == "Weather — Lithuanian Practice"
+
+    def test_time_title_en(self) -> None:
+        assert self._title_of("/time") == "Time — Lithuanian Practice"
+
+    def test_prices_title_en(self) -> None:
+        assert self._title_of("/prices") == "Prices — Lithuanian Practice"
+
+    def test_practice_all_title_en(self) -> None:
+        assert self._title_of("/practice-all") == "Practice All — Lithuanian Practice"
+
+    def test_stats_title_en(self) -> None:
+        assert self._title_of("/stats") == "Stats — Lithuanian Practice"
+
+    def test_about_title_en(self) -> None:
+        assert self._title_of("/about") == "About — Lithuanian Practice"
+
+    def test_login_title_en(self) -> None:
+        # /login redirects to / when a session is authed; fresh TestClient
+        # starts anonymous, so this renders the login page title.
+        assert self._title_of("/login") == "Log in — Lithuanian Practice"
+
+    def test_not_found_title_en(self) -> None:
+        assert self._title_of("/nonexistent") == "Page not found — Lithuanian Practice"

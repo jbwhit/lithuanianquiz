@@ -13,6 +13,12 @@ from time_engine import ORDINALS_GEN, ORDINALS_NOM, _next_hour
 # Page shell
 # ------------------------------------------------------------------
 
+# Site metadata shared across every page.
+_DESCRIPTION_META = (
+    "Adaptive Lithuanian practice: numbers, age, weather, prices, and time. "
+    "Type the answer in Lithuanian; the site adapts to your weak spots."
+)
+_OG_URL = "https://lithuanian-practice.com/"
 
 MODULE_NAMES = {
     "numbers",
@@ -39,7 +45,8 @@ def page_shell(
     lang: str = "en",
     diacritic_tolerant: bool = False,
     current_path: str = "/",
-) -> Div:
+    page_title: str = "Lithuanian Practice",
+) -> tuple[Any, ...]:
     """Full page wrapper with navbar."""
     brand = A(
         DivLAligned(
@@ -153,7 +160,16 @@ def page_shell(
         ),
         cls="max-w-6xl mx-auto",
     )
-    return Div(nav, *content, cls="min-h-screen px-4")
+    head = (
+        Title(page_title),
+        Meta(name="description", content=_DESCRIPTION_META),
+        Meta(property="og:title", content="Lithuanian Practice"),
+        Meta(property="og:description", content=_DESCRIPTION_META),
+        Meta(property="og:type", content="website"),
+        Meta(property="og:url", content=_OG_URL),
+    )
+    body = Div(nav, *content, cls="min-h-screen px-4")
+    return (*head, body)
 
 
 def login_page_content(login_url: str, lang: str = "en") -> Container:

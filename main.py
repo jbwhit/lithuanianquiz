@@ -115,6 +115,11 @@ def _not_found(req, exc) -> Any:
             ),
             cls=(ContainerT.xl, "px-8 py-16"),
         ),
+        page_title=tr(
+            lang,
+            "Page not found — Lithuanian Practice",
+            "Puslapis nerastas — Praktika",
+        ),
         user_name=session.get("user_name"),
         lang=lang,
         diacritic_tolerant=_is_diacritic_tolerant(session),
@@ -125,7 +130,6 @@ def _not_found(req, exc) -> Any:
 app, rt = fast_app(
     hdrs=[*Theme.green.headers(daisy=True), _custom_css, _favicon, _goatcounter],
     secret_key=os.environ.get("LQ_SECRET_KEY") or secrets.token_urlsafe(32),
-    title="Lithuanian Price Quiz",
     exception_handlers={404: _not_found},
 )
 
@@ -176,15 +180,34 @@ def _t(session: dict[str, Any], english: str, lithuanian: str) -> str:
     return tr(_ui_lang(session), english, lithuanian)
 
 
+def _page_title(
+    session: dict[str, Any], en_page: str | None, lt_page: str | None
+) -> str:
+    """Build a language-aware page title.
+
+    Landing and other root-level pages pass (None, None) to get just
+    'Lithuanian Practice' / 'Praktika'. Sub-pages pass a module/page name
+    in EN and LT and get 'Page — Lithuanian Practice' / 'Page — Praktika'.
+    """
+    lang = _ui_lang(session)
+    root = _t(session, "Lithuanian Practice", "Praktika")
+    if en_page is None:
+        return root
+    page = en_page if lang == "en" else (lt_page or en_page)
+    return f"{page} — {root}"
+
+
 def _render_page(
     session: dict[str, Any],
     *content: Any,
+    page_title: str,
     active_module: str | None = None,
     current_path: str = "/",
 ) -> Any:
     lang = _ui_lang(session)
     return page_shell(
         *content,
+        page_title=page_title,
         user_name=session.get("user_name"),
         active_module=active_module,
         lang=lang,
@@ -535,6 +558,7 @@ def get_error(session) -> Any:
             ),
             cls=(ContainerT.xl, "px-8 py-16"),
         ),
+        page_title=_page_title(session, "Error", "Klaida"),
         current_path="/error",
     )
 
@@ -547,6 +571,7 @@ def get_login(req, session) -> Any:
     return _render_page(
         session,
         login_page_content(oauth.login_link(req), lang=lang),
+        page_title=_page_title(session, "Log in", "Prisijungti"),
         current_path="/login",
     )
 
@@ -586,6 +611,7 @@ def get_home(session) -> Any:
     return _render_page(
         session,
         landing_page_content(lang=lang),
+        page_title=_page_title(session, None, None),
         active_module="home",
         current_path="/",
     )
@@ -667,6 +693,7 @@ def get_prices(session) -> Any:
     return _render_page(
         session,
         main_content,
+        page_title=_page_title(session, "Prices", "Kainos"),
         active_module="prices",
         current_path="/prices",
     )
@@ -786,6 +813,7 @@ def get_stats(session) -> Any:
             weather_stats=weather_stats,
             lang=lang,
         ),
+        page_title=_page_title(session, "Stats", "Statistika"),
         current_path="/stats",
     )
 
@@ -793,7 +821,12 @@ def get_stats(session) -> Any:
 @rt("/about")
 def get_about(session) -> Any:
     lang = _ui_lang(session)
-    return _render_page(session, about_page_content(lang=lang), current_path="/about")
+    return _render_page(
+        session,
+        about_page_content(lang=lang),
+        page_title=_page_title(session, "About", "Apie"),
+        current_path="/about",
+    )
 
 
 # ------------------------------------------------------------------
@@ -882,6 +915,7 @@ def get_time(session) -> Any:
     return _render_page(
         session,
         main_content,
+        page_title=_page_title(session, "Time", "Laikas"),
         active_module="time",
         current_path="/time",
     )
@@ -1135,6 +1169,7 @@ def get_age(session) -> Any:
     return _render_page(
         session,
         main_content,
+        page_title=_page_title(session, "Age", "Amžius"),
         active_module="age",
         current_path="/age",
     )
@@ -1319,6 +1354,7 @@ def get_weather(session) -> Any:
     return _render_page(
         session,
         main_content,
+        page_title=_page_title(session, "Weather", "Oras"),
         active_module="weather",
         current_path="/weather",
     )
@@ -1512,6 +1548,7 @@ def _make_number_routes(
         return _render_page(
             session,
             main_content,
+            page_title=_page_title(session, "Numbers", "Skaičiai"),
             active_module=module_name,
             current_path=route_base,
         )
@@ -1918,6 +1955,7 @@ def get_practice_all(session) -> Any:
     return _render_page(
         session,
         main_content,
+        page_title=_page_title(session, "Practice All", "Bendra praktika"),
         active_module="practice-all",
         current_path="/practice-all",
     )
