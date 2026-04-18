@@ -318,6 +318,69 @@ class TestAdaptive:
         assert "Sign" in weak
 
 
+class TestWeatherZeroRow:
+    def test_correct_answer_for_zero_row_positive(self) -> None:
+        """Zero-row produce answer uses 'nulis' + genitive plural 'laipsnių'."""
+        from weather_engine import WeatherEngine
+
+        zero_row = {
+            "number": 0,
+            "kokia_kaina": "nulis",
+            "kokia_kaina_compound": None,
+        }
+        engine = WeatherEngine(rows=[zero_row])
+        answer = engine.correct_answer("produce", zero_row, negative=False)
+        assert answer == "nulis laipsnių"
+
+    def test_generate_never_emits_negative_zero(self, monkeypatch) -> None:
+        """Even if the sign sampler picks 'negative' and the row sampler
+        picks row 0, generate() must fall back to negative_rows (same
+        guard as n>20). Uses monkeypatch to force those samples."""
+        import weather_engine as we
+
+        zero_row = {
+            "number": 0,
+            "kokia_kaina": "nulis",
+            "kokia_kaina_compound": None,
+        }
+        normal_row = {
+            "number": 5,
+            "kokia_kaina": "penki",
+            "kokia_kaina_compound": None,
+        }
+        engine = we.WeatherEngine(rows=[zero_row, normal_row])
+
+        # Force sampler decisions: negative=True; every _sample_weakest
+        # returns something that biases the row toward zero_row.
+        def fake_sample(tracked, full_keys=None):
+            if full_keys is not None and "negative" in full_keys:
+                return "negative"
+            if full_keys is not None and "produce" in full_keys:
+                return "produce"
+            if full_keys is not None and "single_digit" in full_keys:
+                return "single_digit"
+            # Any other category: return first key
+            return (sorted(full_keys) if full_keys else sorted(tracked))[0]
+
+        monkeypatch.setattr(we, "_sample_weakest", fake_sample)
+        # Force initial matching-row selection to land on zero_row first.
+        import random as _r
+
+        monkeypatch.setattr(_r, "choice", lambda seq: seq[0])
+
+        session: dict = {}
+        # Past warmup so the TS path runs; bump total_exercises directly.
+        engine.init_tracking(session)
+        session["weather_performance"]["total_exercises"] = 100
+
+        for _ in range(10):
+            ex = engine.generate(session)
+            if ex["negative"]:
+                assert ex["row"]["number"] != 0, (
+                    "weather must never emit 'minus nulis' — negative zero"
+                )
+
+
 class TestWeatherInitTrackingCompact:
     def test_fresh_session_has_empty_arm_dicts(self) -> None:
         from weather_engine import WeatherEngine
