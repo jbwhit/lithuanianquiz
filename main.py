@@ -179,12 +179,14 @@ def _t(session: dict[str, Any], english: str, lithuanian: str) -> str:
 def _render_page(
     session: dict[str, Any],
     *content: Any,
+    page_title: str,
     active_module: str | None = None,
     current_path: str = "/",
 ) -> Any:
     lang = _ui_lang(session)
     return page_shell(
         *content,
+        page_title=page_title,
         user_name=session.get("user_name"),
         active_module=active_module,
         lang=lang,
