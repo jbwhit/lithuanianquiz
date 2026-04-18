@@ -159,9 +159,7 @@ def _strip_legacy_number_keys(session: dict[str, Any]) -> None:
         if key.startswith(_LEGACY_NUMBER_PREFIXES):
             del session[key]
     mix_modules = session.get("mix_modules")
-    if isinstance(mix_modules, dict) and (
-        "n20" in mix_modules or "n99" in mix_modules
-    ):
+    if isinstance(mix_modules, dict) and ("n20" in mix_modules or "n99" in mix_modules):
         session.pop("mix_modules", None)
 
 
@@ -1493,7 +1491,7 @@ def _make_number_routes(
                 ),
                 cls="text-base-content/60 text-xs mb-6",
             ),
-            number_examples_section(99, lang=lang),
+            number_examples_section(lang=lang),
             quiz_area(
                 session[f"{prefix}_current_question"],
                 post_url=f"{route_base}/answer",

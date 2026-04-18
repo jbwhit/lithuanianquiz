@@ -15,8 +15,7 @@ from time_engine import ORDINALS_GEN, ORDINALS_NOM, _next_hour
 
 
 MODULE_NAMES = {
-    "numbers-20",
-    "numbers-99",
+    "numbers",
     "age",
     "weather",
     "prices",
@@ -64,8 +63,7 @@ def page_shell(
         + (" uk-active font-bold" if is_module_active else ""),
     )
     modules_dropdown = DropDownNavContainer(
-        Li(A(_txt(lang, "Numbers 1-20", "Skaiciai 1-20"), href="/numbers-20")),
-        Li(A(_txt(lang, "Numbers 1-99", "Skaiciai 1-99"), href="/numbers-99")),
+        Li(A(_txt(lang, "Numbers", "Skaičiai"), href="/numbers")),
         Li(A(_txt(lang, "Age", "Amzius"), href="/age")),
         Li(A(_txt(lang, "Weather", "Oras"), href="/weather")),
         Li(A(_txt(lang, "Prices", "Kainos"), href="/prices")),
@@ -271,26 +269,15 @@ def landing_page_content(lang: str = "en") -> Container:
         Grid(
             _module_card(
                 "🔢",
-                _txt(lang, "Numbers 1-20", "Skaiciai 1-20"),
+                _txt(lang, "Numbers", "Skaičiai"),
                 _txt(
                     lang,
-                    "Learn the basic Lithuanian number words.",
-                    "Mokykites kalbeti apie skaicius.",
+                    "Lithuanian number words from 0 to 99.",
+                    "Skaičių žodžiai nuo 0 iki 99.",
                 ),
-                "/numbers-20",
-                "border-t-success",
+                "/numbers",
+                "border-t-primary",
                 badge=_txt(lang, "Start here", "Pradekite cia"),
-            ),
-            _module_card(
-                "🔢",
-                _txt(lang, "Numbers 1-99", "Skaiciai 1-99"),
-                _txt(
-                    lang,
-                    "All numbers including decades and compounds.",
-                    "Visi skaiciai, iskaitant desimtis ir sudetinius.",
-                ),
-                "/numbers-99",
-                "border-t-info",
             ),
             _module_card(
                 "🎂",
@@ -491,8 +478,8 @@ def time_examples_section(lang: str = "en") -> Details:
     )
 
 
-def number_examples_section(max_number: int, lang: str = "en") -> Details:
-    """Collapsible examples for number exercises."""
+def number_examples_section(lang: str = "en") -> Details:
+    """Collapsible examples for the consolidated Numbers module (0-99)."""
 
     def _example(question: str, answer: str, note: str) -> Div:
         return Div(
@@ -506,54 +493,27 @@ def number_examples_section(max_number: int, lang: str = "en") -> Details:
             cls="p-3 bg-base-200 rounded-lg",
         )
 
-    if max_number <= 20:
-        examples = Div(
-            _example(
-                _txt(lang, "How do you say 5?", "Kaip pasakyti 5?"),
-                "penki",
-                _txt(
-                    lang,
-                    "Produce - type the Lithuanian number word",
-                    "Kurimas - irasykite lietuviska skaiciaus zodi",
-                ),
+    examples = Div(
+        _example(
+            _txt(lang, "How do you say 45?", "Kaip pasakyti 45?"),
+            "keturiasdešimt penki",
+            _txt(
+                lang,
+                "Produce - compounds have two words",
+                "Kurimas - sudetiniai skaiciai turi du zodzius",
             ),
-            _example(
-                _txt(
-                    lang, "What number is penkiolika?", "Koks skaicius yra penkiolika?"
-                ),
-                "15",
-                _txt(
-                    lang,
-                    "Recognize - identify the number from Lithuanian",
-                    "Atpazinimas - nustatykite skaiciu is lietuvisko zodzio",
-                ),
+        ),
+        _example(
+            _txt(lang, "What number is trisdesimt?", "Koks skaicius yra trisdesimt?"),
+            "30",
+            _txt(
+                lang,
+                "Recognize - identify the number from Lithuanian",
+                "Atpazinimas - nustatykite skaiciu is lietuvisko zodzio",
             ),
-            cls="grid grid-cols-1 gap-3 sm:grid-cols-2 mb-4",
-        )
-    else:
-        examples = Div(
-            _example(
-                _txt(lang, "How do you say 45?", "Kaip pasakyti 45?"),
-                "keturiasdešimt penki",
-                _txt(
-                    lang,
-                    "Produce - compounds have two words",
-                    "Kurimas - sudetiniai skaiciai turi du zodzius",
-                ),
-            ),
-            _example(
-                _txt(
-                    lang, "What number is trisdesimt?", "Koks skaicius yra trisdesimt?"
-                ),
-                "30",
-                _txt(
-                    lang,
-                    "Recognize - identify the number from Lithuanian",
-                    "Atpazinimas - nustatykite skaiciu is lietuvisko zodzio",
-                ),
-            ),
-            cls="grid grid-cols-1 gap-3 sm:grid-cols-2 mb-4",
-        )
+        ),
+        cls="grid grid-cols-1 gap-3 sm:grid-cols-2 mb-4",
+    )
 
     return Details(
         Summary(
@@ -1577,8 +1537,7 @@ def stats_page_content(
     stats: dict[str, Any],
     session: dict[str, Any],
     time_stats: dict[str, Any] | None = None,
-    n20_stats: dict[str, Any] | None = None,
-    n99_stats: dict[str, Any] | None = None,
+    numbers_stats: dict[str, Any] | None = None,
     age_stats: dict[str, Any] | None = None,
     weather_stats: dict[str, Any] | None = None,
     lang: str = "en",
@@ -1592,39 +1551,19 @@ def stats_page_content(
         ),
     ]
 
-    # Numbers 1-20 stats
-    if n20_stats is not None:
+    # Numbers stats
+    if numbers_stats is not None:
         sections.append(
-            H3(_txt(lang, "Numbers 1-20", "Skaiciai 1-20"), cls=(TextT.lg, "mt-8 mb-0"))
+            H3(_txt(lang, "Numbers", "Skaičiai"), cls=(TextT.lg, "mt-8 mb-0"))
         )
         sections.extend(
             _module_stats_section(
-                _txt(lang, "Numbers 1-20 Progress", "Skaiciu 1-20 Pazanga"),
-                n20_stats,
+                _txt(lang, "Numbers Progress", "Skaiciu Pazanga"),
+                numbers_stats,
                 session,
-                perf_key="n20_performance",
-                history_key="n20_history",
-                border_color="border-t-success",
-                lang=lang,
-            )
-        )
-
-    # Numbers 1-99 stats
-    if n99_stats is not None:
-        sections.append(
-            H3(
-                _txt(lang, "Numbers 1-99", "Skaiciai 1-99"),
-                cls=(TextT.lg, "mt-10 mb-0"),
-            )
-        )
-        sections.extend(
-            _module_stats_section(
-                _txt(lang, "Numbers 1-99 Progress", "Skaiciu 1-99 Pazanga"),
-                n99_stats,
-                session,
-                perf_key="n99_performance",
-                history_key="n99_history",
-                border_color="border-t-info",
+                perf_key="numbers_performance",
+                history_key="numbers_history",
+                border_color="border-t-primary",
                 lang=lang,
             )
         )
@@ -1743,29 +1682,14 @@ def about_page_content(lang: str = "en") -> Container:
             _txt(lang, "Number Exercises", "Uzduotys apie skaicius"),
             cls=(TextT.lg, "mt-6"),
         ),
-        P(
-            _txt(
-                lang,
-                "Two modules for building number vocabulary:",
-                "Du moduliai skaiciu zodynui plesti:",
-            ),
-            cls="mt-2",
-        ),
         Ul(
             Li(
-                Strong(_txt(lang, "Numbers 1-20", "Skaiciai 1-20")),
+                Strong(_txt(lang, "Numbers", "Skaičiai")),
+                " — ",
                 _txt(
                     lang,
-                    " - Learn the basic (often irregular) number words.",
-                    " - Mokykites pagrindiniu (daznai netaisyklingu) skaiciaus zodziu.",
-                ),
-            ),
-            Li(
-                Strong(_txt(lang, "Numbers 1-99", "Skaiciai 1-99")),
-                _txt(
-                    lang,
-                    " - All numbers including decades and compounds.",
-                    " - Visi skaiciai, iskaitant desimtis ir sudetinius.",
+                    "Lithuanian number words from 0 to 99.",
+                    "Skaičių žodžiai nuo 0 iki 99.",
                 ),
             ),
             cls="list-disc ml-6 mt-2 space-y-2",
