@@ -196,9 +196,7 @@ def load_progress(google_id: str, session: dict[str, Any]) -> None:
     session["mix_incorrect_count"] = data.get("mix_incorrect_count", 0)
     session["mix_history"] = _capped_history(data.get("mix_history"))
     mix_modules = data.get("mix_modules")
-    if isinstance(mix_modules, dict) and (
-        "n20" in mix_modules or "n99" in mix_modules
-    ):
+    if isinstance(mix_modules, dict) and ("n20" in mix_modules or "n99" in mix_modules):
         mix_modules = None  # legacy layout — reset
     if _is_valid_mix_modules(mix_modules):
         session["mix_modules"] = mix_modules
@@ -225,7 +223,9 @@ def save_progress(google_id: str, session: dict[str, Any]) -> None:
             # Numbers progress (consolidated 0-99)
             "numbers_correct_count": session.get("numbers_correct_count", 0),
             "numbers_incorrect_count": session.get("numbers_incorrect_count", 0),
-            "numbers_history": session.get("numbers_history", [])[-_SESSION_HISTORY_LIMIT:],
+            "numbers_history": session.get("numbers_history", [])[
+                -_SESSION_HISTORY_LIMIT:
+            ],
             "numbers_performance": session.get("numbers_performance", {}),
             # Age progress
             "age_correct_count": session.get("age_correct_count", 0),
