@@ -167,83 +167,16 @@ class TestAdaptive:
 
 
 class TestNumberInitTrackingCompact:
-    def test_fresh_n20_session_starts_empty(self) -> None:
+    def test_numbers_reachable_patterns_include_all_four(self) -> None:
         from number_engine import NumberEngine
 
-        session: dict = {}
-        engine = NumberEngine(rows=[{"number": n} for n in range(1, 21)])
-        engine.init_tracking(session, "n20")
-        perf = session["n20_performance"]
-        assert perf["exercise_types"] == {}
-        assert perf["number_patterns"] == {}
-
-    def test_n20_reachable_patterns_computed_from_rows(self) -> None:
-        """The engine exposes which patterns are actually servable; the
-        1-20 row set has no compound rows so compound must be absent."""
-        from number_engine import NumberEngine
-
-        engine = NumberEngine(rows=[{"number": n} for n in range(1, 21)])
-        assert set(engine._reachable_patterns) == {"single_digit", "teens", "decade"}
-        assert "compound" not in engine._reachable_patterns
-
-    def test_n99_reachable_patterns_include_all_four(self) -> None:
-        from number_engine import NumberEngine
-
-        engine = NumberEngine(
-            rows=[{"number": n} for n in range(1, 100)]
-        )
+        engine = NumberEngine(rows=[{"number": n} for n in range(0, 100)])
         assert set(engine._reachable_patterns) == {
             "single_digit",
             "teens",
             "decade",
             "compound",
         }
-
-    def test_legacy_n20_session_strips_unreachable_compound(self) -> None:
-        """Legacy sessions persisted with the earlier eager-seed version
-        carried an untrainable "compound" arm. It must be stripped so TS
-        cannot converge on it."""
-        from number_engine import NumberEngine
-
-        session = {
-            "n20_performance": {
-                "exercise_types": {"produce": {"correct": 1.0, "incorrect": 1.0}},
-                "number_patterns": {
-                    "compound": {"correct": 0.0, "incorrect": 1.0},
-                    "teens": {"correct": 2.0, "incorrect": 1.0},
-                },
-                "total_exercises": 3,
-            }
-        }
-        engine = NumberEngine(rows=[{"number": n} for n in range(1, 21)])
-        engine.init_tracking(session, "n20")
-        perf = session["n20_performance"]
-        assert "compound" not in perf["number_patterns"]
-        # Reachable + touched arm survives.
-        assert perf["number_patterns"]["teens"]["correct"] == pytest.approx(2.0)
-
-    def test_seed_prefix_from_n99_drops_unreachable_patterns(self) -> None:
-        """n20 seeded from n99's priors must drop n99's compound stats."""
-        from number_engine import NumberEngine
-
-        session = {
-            "n99_performance": {
-                "exercise_types": {
-                    "produce": {"correct": 5.0, "incorrect": 1.0},
-                },
-                "number_patterns": {
-                    "single_digit": {"correct": 3.0, "incorrect": 0.5},
-                    "compound": {"correct": 4.0, "incorrect": 0.5},
-                },
-                "total_exercises": 12,
-            }
-        }
-        engine = NumberEngine(rows=[{"number": n} for n in range(1, 21)])
-        engine.init_tracking(session, "n20", seed_prefix="n99")
-        perf = session["n20_performance"]
-        assert "compound" not in perf["number_patterns"]
-        # single_digit prior carried over.
-        assert perf["number_patterns"]["single_digit"]["correct"] == pytest.approx(3.0)
 
 
 class TestLocalizedPrompt:

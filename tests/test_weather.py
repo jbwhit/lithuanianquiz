@@ -255,9 +255,9 @@ class TestAdaptive:
         assert perf["sign"]["positive"]["correct"] == pytest.approx(1.0)
         assert perf["total_exercises"] == 1
 
-    def test_seed_from_n99(self, engine: WeatherEngine) -> None:
+    def test_seed_from_numbers(self, engine: WeatherEngine) -> None:
         session: dict = {
-            "n99_performance": {
+            "numbers_performance": {
                 "exercise_types": {
                     "produce": {"correct": 5, "incorrect": 2},
                     "recognize": {"correct": 3, "incorrect": 4},
@@ -268,7 +268,7 @@ class TestAdaptive:
                 "total_exercises": 14,
             }
         }
-        engine.init_tracking(session, "weather", seed_prefix="n99")
+        engine.init_tracking(session, "weather", seed_prefix="numbers")
         perf = session["weather_performance"]
         assert perf["exercise_types"]["produce"]["correct"] == 5
         assert perf["number_patterns"]["teens"]["incorrect"] == 5
@@ -278,7 +278,7 @@ class TestAdaptive:
 
     def test_seed_is_deep_copy(self, engine: WeatherEngine) -> None:
         session: dict = {
-            "n99_performance": {
+            "numbers_performance": {
                 "exercise_types": {
                     "produce": {"correct": 1, "incorrect": 1},
                     "recognize": {"correct": 1, "incorrect": 1},
@@ -287,14 +287,14 @@ class TestAdaptive:
                 "total_exercises": 2,
             }
         }
-        engine.init_tracking(session, "weather", seed_prefix="n99")
+        engine.init_tracking(session, "weather", seed_prefix="numbers")
         engine.update(
             session,
             "weather",
             {"exercise_type": "produce", "number_pattern": "teens", "sign": "positive"},
             True,
         )
-        assert session["n99_performance"]["total_exercises"] == 2
+        assert session["numbers_performance"]["total_exercises"] == 2
         assert session["weather_performance"]["total_exercises"] == 3
 
     def test_get_weak_areas_empty(self, engine: WeatherEngine) -> None:

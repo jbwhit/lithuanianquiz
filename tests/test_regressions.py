@@ -87,8 +87,7 @@ def test_session_cookie_stays_under_budget_after_module_tour() -> None:
     max_seen = 0
     with TestClient(main.app) as client:
         for path in (
-            "/numbers-20",
-            "/numbers-99",
+            "/numbers",
             "/age",
             "/weather",
             "/time",
@@ -497,8 +496,7 @@ def test_mix_session_initializes_only_one_module_question() -> None:
     module_q_keys = [
         "current_question",
         "time_current_question",
-        "n20_current_question",
-        "n99_current_question",
+        "numbers_current_question",
         "age_current_question",
         "weather_current_question",
     ]
@@ -714,22 +712,22 @@ def test_set_language_rewrites_age_question_mid_session() -> None:
 
 def test_set_language_refreshes_number_and_weather_questions() -> None:
     class _Req:
-        headers = {"referer": "/numbers-99"}
+        headers = {"referer": "/numbers"}
 
     session: dict = {}
-    main._ensure_number_session(session, main.number_engine_99, "n99")
+    main._ensure_number_session(session, main.number_engine, "numbers")
     main._ensure_weather_session(session)
 
-    n_before = session["n99_current_question"]
+    n_before = session["numbers_current_question"]
     w_before = session["weather_current_question"]
 
     main.get_set_language(_Req(), session, lang="lt")
 
     # Produce-style prompts render as "How do you say X?" in EN, "Kaip
-    # pasakyti X?" in LT. At least one of n99/weather is "produce"-shaped;
+    # pasakyti X?" in LT. At least one of numbers/weather is "produce"-shaped;
     # accept either changing, but assert neither retained English "How do
     # you say" once the cache refresh has run.
-    n_after = session["n99_current_question"]
+    n_after = session["numbers_current_question"]
     w_after = session["weather_current_question"]
     assert "How do you say" not in n_after
     assert "How do you say" not in w_after
@@ -821,7 +819,9 @@ def test_load_progress_discards_legacy_n20_n99_fields(monkeypatch) -> None:
             "n20_correct_count": 5,
             "n20_incorrect_count": 3,
             "n20_history": [{"question": "Q", "correct": True}],
-            "n20_performance": {"exercise_types": {"produce": {"correct": 5, "incorrect": 3}}},
+            "n20_performance": {
+                "exercise_types": {"produce": {"correct": 5, "incorrect": 3}}
+            },
             "n99_correct_count": 10,
             "n99_performance": {"exercise_types": {}},
             "numbers_correct_count": 2,
