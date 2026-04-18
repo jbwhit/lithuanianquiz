@@ -769,6 +769,28 @@ def test_set_language_mirrors_mix_current_question() -> None:
     assert session["mix_current_question"] == session[sub_key]
 
 
+def test_ensure_session_strips_legacy_number_keys() -> None:
+    """Anonymous users never hit auth.load_progress, so session-helper calls
+    must strip legacy n20_/n99_ keys to avoid permanent cookie bloat."""
+    session: dict = {
+        "n20_correct_count": 5,
+        "n20_performance": {
+            "exercise_types": {"produce": {"correct": 3.0, "incorrect": 1.0}}
+        },
+        "n99_current_question": "How do you say 42?",
+        "mix_modules": {
+            "n20": {"correct": 3, "incorrect": 2},
+            "age": {"correct": 1, "incorrect": 1},
+        },
+    }
+    main._ensure_session(session)
+
+    assert not any(k.startswith("n20_") for k in session)
+    assert not any(k.startswith("n99_") for k in session)
+    # mix_modules with any legacy key triggers a full reset.
+    assert "mix_modules" not in session
+
+
 def test_feedback_from_snapshot_always_passes_grammatical_case(monkeypatch) -> None:
     captured: dict[str, object] = {}
 

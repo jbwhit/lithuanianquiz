@@ -144,6 +144,27 @@ def _is_diacritic_tolerant(session: dict[str, Any]) -> bool:
     return bool(session.get(_DIACRITIC_MODE_KEY, False))
 
 
+_LEGACY_NUMBER_PREFIXES = ("n20_", "n99_")
+
+
+def _strip_legacy_number_keys(session: dict[str, Any]) -> None:
+    """Remove pre-consolidation n20_/n99_ session keys.
+
+    Anonymous users (no OAuth) never flow through auth.load_progress, so
+    their cookie would keep these keys forever otherwise. First call per
+    request cleans the session; subsequent calls in the same request are
+    no-ops.
+    """
+    for key in list(session):
+        if key.startswith(_LEGACY_NUMBER_PREFIXES):
+            del session[key]
+    mix_modules = session.get("mix_modules")
+    if isinstance(mix_modules, dict) and (
+        "n20" in mix_modules or "n99" in mix_modules
+    ):
+        session.pop("mix_modules", None)
+
+
 def _check_kwargs(session: dict[str, Any]) -> dict[str, bool]:
     """Shared answer-check options derived from current session settings."""
     return {"diacritic_tolerant": _is_diacritic_tolerant(session)}
@@ -262,6 +283,7 @@ def _feedback_from_snapshot(snapshot: dict[str, Any], lang: str = "en") -> Any:
 
 def _ensure_session(session: dict[str, Any]) -> None:
     """Initialise defaults and generate first question if needed."""
+    _strip_legacy_number_keys(session)
     session.setdefault("history", [])
     session.setdefault("correct_count", 0)
     session.setdefault("incorrect_count", 0)
@@ -405,6 +427,7 @@ def _compute_time_stats(session: dict[str, Any]) -> dict[str, Any]:
 
 def _ensure_time_session(session: dict[str, Any]) -> None:
     """Initialise time module defaults and generate first question if needed."""
+    _strip_legacy_number_keys(session)
     session.setdefault("time_history", [])
     session.setdefault("time_correct_count", 0)
     session.setdefault("time_incorrect_count", 0)
@@ -437,6 +460,7 @@ def _ensure_number_session(
     seed_prefix: str | None = None,
 ) -> None:
     """Initialise number module defaults and generate first question if needed."""
+    _strip_legacy_number_keys(session)
     session.setdefault(f"{prefix}_history", [])
     session.setdefault(f"{prefix}_correct_count", 0)
     session.setdefault(f"{prefix}_incorrect_count", 0)
@@ -954,6 +978,7 @@ def post_time_reset(session) -> Any:
 
 def _ensure_age_session(session: dict[str, Any]) -> None:
     """Initialise age module defaults and generate first question if needed."""
+    _strip_legacy_number_keys(session)
     session.setdefault("age_history", [])
     session.setdefault("age_correct_count", 0)
     session.setdefault("age_incorrect_count", 0)
@@ -991,6 +1016,7 @@ def _compute_age_stats(session: dict[str, Any]) -> dict[str, Any]:
 
 def _ensure_weather_session(session: dict[str, Any]) -> None:
     """Initialise weather module defaults and generate first question if needed."""
+    _strip_legacy_number_keys(session)
     session.setdefault("weather_history", [])
     session.setdefault("weather_correct_count", 0)
     session.setdefault("weather_incorrect_count", 0)
@@ -1691,6 +1717,7 @@ def _mix_module_label(session: dict[str, Any], module_name: str) -> str:
 
 def _ensure_mix_session(session: dict[str, Any]) -> None:
     """Initialise practice-all session and all sub-module sessions."""
+    _strip_legacy_number_keys(session)
     session.setdefault("mix_history", [])
     session.setdefault("mix_correct_count", 0)
     session.setdefault("mix_incorrect_count", 0)
