@@ -883,3 +883,46 @@ def test_legacy_numbers_routes_redirect_to_new_url() -> None:
                 f"{legacy} redirected to {resp.headers.get('location')!r}, "
                 f"expected '/numbers'"
             )
+
+
+def test_exercise_reference_docs_in_sync(tmp_path, monkeypatch) -> None:
+    """The committed native-speaker review docs must byte-match what the
+    generator currently produces (modulo the date line at the top). If
+    an engine changes output, CI fails until someone regenerates."""
+    import importlib.util
+    import re
+    from pathlib import Path
+
+    repo_root = Path(__file__).resolve().parent.parent
+    generator_path = repo_root / "scripts" / "generate_exercise_reference.py"
+
+    # Load the generator module without running its __main__.
+    spec = importlib.util.spec_from_file_location("_gen", generator_path)
+    assert spec is not None and spec.loader is not None
+    gen = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(gen)
+
+    # Call the builders directly (bypassing gen.main() which writes files).
+    rows = gen._load_rows()
+    fresh_exercise = gen._build_exercise_reference(rows)
+    fresh_time = gen._build_time_reference()
+
+    committed_exercise = (
+        repo_root / "docs" / "reviews" / "exercise-reference.md"
+    ).read_text()
+    committed_time = (repo_root / "docs" / "reviews" / "time-reference.md").read_text()
+
+    # Strip the date line (format: "<!-- Generated … on YYYY-MM-DD. …-->")
+    date_re = re.compile(r"<!-- Generated.*?-->")
+
+    def _strip(s: str) -> str:
+        return date_re.sub("<!-- GEN -->", s, count=1)
+
+    assert _strip(fresh_exercise) == _strip(committed_exercise), (
+        "docs/reviews/exercise-reference.md is out of date. Run "
+        "`uv run python scripts/generate_exercise_reference.py` to refresh."
+    )
+    assert _strip(fresh_time) == _strip(committed_time), (
+        "docs/reviews/time-reference.md is out of date. Run "
+        "`uv run python scripts/generate_exercise_reference.py` to refresh."
+    )
