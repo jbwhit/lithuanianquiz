@@ -176,16 +176,11 @@ def load_progress(google_id: str, session: dict[str, Any]) -> None:
     session["time_incorrect_count"] = data.get("time_incorrect_count", 0)
     session["time_history"] = _capped_history(data.get("time_history"))
     session["time_performance"] = _get_perf_dict(data, "time_performance")
-    # Numbers 1-20 progress
-    session["n20_correct_count"] = data.get("n20_correct_count", 0)
-    session["n20_incorrect_count"] = data.get("n20_incorrect_count", 0)
-    session["n20_history"] = _capped_history(data.get("n20_history"))
-    session["n20_performance"] = _get_perf_dict(data, "n20_performance")
-    # Numbers 1-99 progress
-    session["n99_correct_count"] = data.get("n99_correct_count", 0)
-    session["n99_incorrect_count"] = data.get("n99_incorrect_count", 0)
-    session["n99_history"] = _capped_history(data.get("n99_history"))
-    session["n99_performance"] = _get_perf_dict(data, "n99_performance")
+    # Numbers progress (consolidated 0-99)
+    session["numbers_correct_count"] = data.get("numbers_correct_count", 0)
+    session["numbers_incorrect_count"] = data.get("numbers_incorrect_count", 0)
+    session["numbers_history"] = _capped_history(data.get("numbers_history"))
+    session["numbers_performance"] = _get_perf_dict(data, "numbers_performance")
     # Age progress
     session["age_correct_count"] = data.get("age_correct_count", 0)
     session["age_incorrect_count"] = data.get("age_incorrect_count", 0)
@@ -201,6 +196,10 @@ def load_progress(google_id: str, session: dict[str, Any]) -> None:
     session["mix_incorrect_count"] = data.get("mix_incorrect_count", 0)
     session["mix_history"] = _capped_history(data.get("mix_history"))
     mix_modules = data.get("mix_modules")
+    if isinstance(mix_modules, dict) and (
+        "n20" in mix_modules or "n99" in mix_modules
+    ):
+        mix_modules = None  # legacy layout — reset
     if _is_valid_mix_modules(mix_modules):
         session["mix_modules"] = mix_modules
     else:
@@ -223,16 +222,11 @@ def save_progress(google_id: str, session: dict[str, Any]) -> None:
             "time_incorrect_count": session.get("time_incorrect_count", 0),
             "time_history": session.get("time_history", [])[-_SESSION_HISTORY_LIMIT:],
             "time_performance": session.get("time_performance", {}),
-            # Numbers 1-20 progress
-            "n20_correct_count": session.get("n20_correct_count", 0),
-            "n20_incorrect_count": session.get("n20_incorrect_count", 0),
-            "n20_history": session.get("n20_history", [])[-_SESSION_HISTORY_LIMIT:],
-            "n20_performance": session.get("n20_performance", {}),
-            # Numbers 1-99 progress
-            "n99_correct_count": session.get("n99_correct_count", 0),
-            "n99_incorrect_count": session.get("n99_incorrect_count", 0),
-            "n99_history": session.get("n99_history", [])[-_SESSION_HISTORY_LIMIT:],
-            "n99_performance": session.get("n99_performance", {}),
+            # Numbers progress (consolidated 0-99)
+            "numbers_correct_count": session.get("numbers_correct_count", 0),
+            "numbers_incorrect_count": session.get("numbers_incorrect_count", 0),
+            "numbers_history": session.get("numbers_history", [])[-_SESSION_HISTORY_LIMIT:],
+            "numbers_performance": session.get("numbers_performance", {}),
             # Age progress
             "age_correct_count": session.get("age_correct_count", 0),
             "age_incorrect_count": session.get("age_incorrect_count", 0),
