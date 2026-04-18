@@ -13,12 +13,17 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "ruff>=0.9.6", "pre-commit>=4.1.0"]
+dev = ["pytest>=9.0.3", "ruff>=0.15.11", "pre-commit>=4.5.1"]
 data = ["pandas>=2.2.3"]
 
 [tool.ruff]
 line-length = 88
-exclude = ["create-database.ipynb", "database-testing.ipynb", "credentials-checker.py"]
+exclude = [
+    "create-database.ipynb",
+    "database-testing.ipynb",
+    "credentials-checker.py",
+    "db_manager.py",
+]
 
 [tool.ruff.lint]
 select = [
