@@ -16,6 +16,33 @@ def _render(component: object) -> str:
     return to_xml(component)
 
 
+class TestPageShellHeadTags:
+    def test_page_shell_emits_title(self) -> None:
+        html = _render(page_shell("body", page_title="Numbers — Lithuanian Practice"))
+        assert "<title>Numbers — Lithuanian Practice</title>" in html
+
+    def test_page_shell_emits_description_meta(self) -> None:
+        html = _render(page_shell("body", page_title="Lithuanian Practice"))
+        assert '<meta name="description"' in html
+        assert "Adaptive Lithuanian practice" in html
+
+    def test_page_shell_emits_og_tags(self) -> None:
+        html = _render(page_shell("body", page_title="Lithuanian Practice"))
+        assert '<meta property="og:title" content="Lithuanian Practice"' in html
+        assert '<meta property="og:description"' in html
+        assert '<meta property="og:type" content="website"' in html
+        assert (
+            '<meta property="og:url" content="https://lithuanian-practice.com/"' in html
+        )
+
+    def test_page_shell_does_not_inject_body_h1(self) -> None:
+        """Regression guard: using Titled(...) would add a stray body <h1>/<main>
+        wrapper. Using explicit Title()/Meta() must not."""
+        html = _render(page_shell("body", page_title="Lithuanian Practice"))
+        assert '<main class="container">' not in html
+        assert "<h1>Lithuanian Practice</h1>" not in html
+
+
 class TestQuizAreaHtmxSwap:
     """Ensure HTMX swap attributes prevent duplicate-ID nesting.
 
