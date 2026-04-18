@@ -20,7 +20,7 @@ def sample_rows() -> list[dict]:
 
 @pytest.fixture()
 def engine(sample_rows: list[dict]) -> NumberEngine:
-    return NumberEngine(sample_rows, max_number=99)
+    return NumberEngine(sample_rows)
 
 
 class TestCorrectAnswer:
@@ -171,7 +171,7 @@ class TestNumberInitTrackingCompact:
         from number_engine import NumberEngine
 
         session: dict = {}
-        engine = NumberEngine(rows=[{"number": n} for n in range(1, 21)], max_number=20)
+        engine = NumberEngine(rows=[{"number": n} for n in range(1, 21)])
         engine.init_tracking(session, "n20")
         perf = session["n20_performance"]
         assert perf["exercise_types"] == {}
@@ -182,7 +182,7 @@ class TestNumberInitTrackingCompact:
         1-20 row set has no compound rows so compound must be absent."""
         from number_engine import NumberEngine
 
-        engine = NumberEngine(rows=[{"number": n} for n in range(1, 21)], max_number=20)
+        engine = NumberEngine(rows=[{"number": n} for n in range(1, 21)])
         assert set(engine._reachable_patterns) == {"single_digit", "teens", "decade"}
         assert "compound" not in engine._reachable_patterns
 
@@ -190,7 +190,7 @@ class TestNumberInitTrackingCompact:
         from number_engine import NumberEngine
 
         engine = NumberEngine(
-            rows=[{"number": n} for n in range(1, 100)], max_number=99
+            rows=[{"number": n} for n in range(1, 100)]
         )
         assert set(engine._reachable_patterns) == {
             "single_digit",
@@ -215,7 +215,7 @@ class TestNumberInitTrackingCompact:
                 "total_exercises": 3,
             }
         }
-        engine = NumberEngine(rows=[{"number": n} for n in range(1, 21)], max_number=20)
+        engine = NumberEngine(rows=[{"number": n} for n in range(1, 21)])
         engine.init_tracking(session, "n20")
         perf = session["n20_performance"]
         assert "compound" not in perf["number_patterns"]
@@ -238,7 +238,7 @@ class TestNumberInitTrackingCompact:
                 "total_exercises": 12,
             }
         }
-        engine = NumberEngine(rows=[{"number": n} for n in range(1, 21)], max_number=20)
+        engine = NumberEngine(rows=[{"number": n} for n in range(1, 21)])
         engine.init_tracking(session, "n20", seed_prefix="n99")
         perf = session["n20_performance"]
         assert "compound" not in perf["number_patterns"]
