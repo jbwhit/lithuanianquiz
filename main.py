@@ -45,17 +45,16 @@ init_db_tables()
 ALL_ROWS: list[dict[str, Any]] = list(_db.t["numbers"].rows)
 
 adaptive = AdaptiveLearning()
-engine = ExerciseEngine(ALL_ROWS, adaptive)
+price_rows = [r for r in ALL_ROWS if r["number"] >= 1]
+engine = ExerciseEngine(price_rows, adaptive)
 time_engine = TimeEngine()
 
-rows_20 = [r for r in ALL_ROWS if r["number"] <= 20]
-number_engine_20 = NumberEngine(rows_20, max_number=20)
-number_engine_99 = NumberEngine(ALL_ROWS, max_number=99)
+number_engine = NumberEngine(ALL_ROWS)
 
 age_rows = [r for r in ALL_ROWS if r["number"] >= 2]
 age_engine = AgeEngine(age_rows)
 
-weather_rows = [r for r in ALL_ROWS if r["number"] >= 1]
+weather_rows = [r for r in ALL_ROWS if r["number"] >= 0]
 weather_engine = WeatherEngine(weather_rows)
 
 # ------------------------------------------------------------------
@@ -293,8 +292,7 @@ def _new_question(session: dict[str, Any]) -> None:
 _MIX_Q_KEY_BY_MODULE = {
     "prices": "current_question",
     "time": "time_current_question",
-    "n20": "n20_current_question",
-    "n99": "n99_current_question",
+    "numbers": "numbers_current_question",
     "age": "age_current_question",
     "weather": "weather_current_question",
 }
@@ -322,7 +320,7 @@ def _refresh_cached_questions(session: dict[str, Any]) -> None:
             session["time_display"]
         )
 
-    for prefix, eng in (("n20", number_engine_20), ("n99", number_engine_99)):
+    for prefix, eng in (("numbers", number_engine),):
         qk = f"{prefix}_current_question"
         rid = session.get(f"{prefix}_row_id")
         ex_type = session.get(f"{prefix}_exercise_type")
@@ -752,8 +750,7 @@ def get_stats(session) -> Any:
     lang = _ui_lang(session)
     stats = _compute_stats(session)
     time_stats = _compute_time_stats(session)
-    n20_stats = _compute_number_stats(session, "n20", number_engine_20)
-    n99_stats = _compute_number_stats(session, "n99", number_engine_99)
+    numbers_stats = _compute_number_stats(session, "numbers", number_engine)
     age_stats = _compute_age_stats(session)
     weather_stats = _compute_weather_stats(session)
     return _render_page(
@@ -762,8 +759,7 @@ def get_stats(session) -> Any:
             stats,
             session,
             time_stats=time_stats,
-            n20_stats=n20_stats,
-            n99_stats=n99_stats,
+            numbers_stats=numbers_stats,
             age_stats=age_stats,
             weather_stats=weather_stats,
             lang=lang,
@@ -961,7 +957,7 @@ def _ensure_age_session(session: dict[str, Any]) -> None:
     session.setdefault("age_history", [])
     session.setdefault("age_correct_count", 0)
     session.setdefault("age_incorrect_count", 0)
-    age_engine.init_tracking(session, "age", seed_prefix="n99")
+    age_engine.init_tracking(session, "age", seed_prefix="numbers")
     if "age_current_question" not in session:
         _new_age_question(session)
 
@@ -998,7 +994,7 @@ def _ensure_weather_session(session: dict[str, Any]) -> None:
     session.setdefault("weather_history", [])
     session.setdefault("weather_correct_count", 0)
     session.setdefault("weather_incorrect_count", 0)
-    weather_engine.init_tracking(session, "weather", seed_prefix="n99")
+    weather_engine.init_tracking(session, "weather", seed_prefix="numbers")
     if "weather_current_question" not in session:
         _new_weather_question(session)
 
@@ -1403,8 +1399,6 @@ def _make_number_routes(
     engine_inst: NumberEngine,
     prefix: str,
     route_base: str,
-    title: str,
-    subtitle: str,
     module_name: str,
     seed_prefix: str | None = None,
 ) -> None:
@@ -1416,22 +1410,12 @@ def _make_number_routes(
         _ensure_number_session(session, engine_inst, prefix, seed_prefix=seed_prefix)
         stats = _compute_number_stats(session, prefix, engine_inst)
         history = session.get(f"{prefix}_history", [])
-        title_text = title
-        subtitle_text = subtitle
-        if module_name == "numbers-20":
-            title_text = _t(session, "Lithuanian Numbers 1-20", "Skaiciai 1-20")
-            subtitle_text = _t(
-                session,
-                "Learn the basic Lithuanian number words.",
-                "Mokykites kalbeti apie skaicius.",
-            )
-        elif module_name == "numbers-99":
-            title_text = _t(session, "Lithuanian Numbers 1-99", "Skaiciai 1-99")
-            subtitle_text = _t(
-                session,
-                "All numbers including decades and compounds.",
-                "Visi skaiciai, iskaitant desimtis ir sudetinius.",
-            )
+        title_text = _t(session, "Lithuanian Numbers", "Skaičiai")
+        subtitle_text = _t(
+            session,
+            "Lithuanian number words from 0 to 99.",
+            "Skaičių žodžiai nuo 0 iki 99.",
+        )
 
         reset_modal = Modal(
             ModalHeader(H3(_t(session, "Reset Progress?", "Atstatyti Pazanga?"))),
@@ -1483,7 +1467,7 @@ def _make_number_routes(
                 ),
                 cls="text-base-content/60 text-xs mb-6",
             ),
-            number_examples_section(engine_inst.max_number, lang=lang),
+            number_examples_section(99, lang=lang),
             quiz_area(
                 session[f"{prefix}_current_question"],
                 post_url=f"{route_base}/answer",
@@ -1597,22 +1581,17 @@ def _make_number_routes(
 
 
 _make_number_routes(
-    number_engine_20,
-    "n20",
-    "/numbers-20",
-    "Lithuanian Numbers 1-20",
-    "Learn the basic Lithuanian number words.",
-    "numbers-20",
+    number_engine,
+    "numbers",
+    "/numbers",
+    "numbers",
 )
-_make_number_routes(
-    number_engine_99,
-    "n99",
-    "/numbers-99",
-    "Lithuanian Numbers 1-99",
-    "All numbers including decades and compounds.",
-    "numbers-99",
-    seed_prefix="n20",
-)
+
+
+@rt("/numbers-20")
+@rt("/numbers-99")
+def get_legacy_numbers() -> RedirectResponse:
+    return RedirectResponse("/numbers", status_code=301)
 
 
 # ------------------------------------------------------------------
@@ -1620,17 +1599,10 @@ _make_number_routes(
 # ------------------------------------------------------------------
 
 _MIX_MODULES = {
-    "n20": {
-        "ensure": lambda s: _ensure_number_session(s, number_engine_20, "n20"),
-        "new_q": lambda s: _new_number_question(s, number_engine_20, "n20"),
-        "label": "1-20",
-    },
-    "n99": {
-        "ensure": lambda s: _ensure_number_session(
-            s, number_engine_99, "n99", seed_prefix="n20"
-        ),
-        "new_q": lambda s: _new_number_question(s, number_engine_99, "n99"),
-        "label": "1-99",
+    "numbers": {
+        "ensure": lambda s: _ensure_number_session(s, number_engine, "numbers"),
+        "new_q": lambda s: _new_number_question(s, number_engine, "numbers"),
+        "label": "Numbers",
     },
     "age": {
         "ensure": _ensure_age_session,
@@ -1655,17 +1627,11 @@ _MIX_MODULES = {
 }
 
 _MIX_TRANSIENT_KEYS: dict[str, tuple[str, ...]] = {
-    "n20": (
-        "n20_exercise_type",
-        "n20_row_id",
-        "n20_number_pattern",
-        "n20_current_question",
-    ),
-    "n99": (
-        "n99_exercise_type",
-        "n99_row_id",
-        "n99_number_pattern",
-        "n99_current_question",
+    "numbers": (
+        "numbers_exercise_type",
+        "numbers_row_id",
+        "numbers_number_pattern",
+        "numbers_current_question",
     ),
     "age": (
         "age_exercise_type",
@@ -1713,8 +1679,7 @@ def _clear_mix_transient_state(session: dict[str, Any], keep_module: str) -> Non
 
 def _mix_module_label(session: dict[str, Any], module_name: str) -> str:
     labels = {
-        "n20": ("1-20", "1-20"),
-        "n99": ("1-99", "1-99"),
+        "numbers": ("Numbers", "Skaičiai"),
         "age": ("Age", "Amzius"),
         "weather": ("Weather", "Oras"),
         "prices": ("Prices", "Kainos"),
@@ -1747,8 +1712,7 @@ def _new_mix_question(session: dict[str, Any]) -> None:
         mod_name = _sample_weakest(session["mix_modules"])
 
     q_key = {
-        "n20": "n20_current_question",
-        "n99": "n99_current_question",
+        "numbers": "numbers_current_question",
         "age": "age_current_question",
         "weather": "weather_current_question",
         "prices": "current_question",
@@ -1782,9 +1746,9 @@ def _check_mix_answer(
     mod = session["mix_current_module"]
     check_kwargs = _check_kwargs(session)
 
-    if mod in ("n20", "n99"):
+    if mod == "numbers":
         prefix = mod
-        eng = number_engine_20 if mod == "n20" else number_engine_99
+        eng = number_engine
         row_id = session[f"{prefix}_row_id"]
         ex_type = session[f"{prefix}_exercise_type"]
         row = next((r for r in eng.rows if r["number"] == row_id), eng.rows[0])
@@ -1868,7 +1832,7 @@ def get_practice_all(session) -> Any:
     _ensure_mix_session(session)
     stats = _compute_mix_stats(session)
     history = session.get("mix_history", [])
-    mod = session.get("mix_current_module", "n20")
+    mod = session.get("mix_current_module", "numbers")
     label = _mix_module_label(session, mod)
 
     reset_modal = Modal(
@@ -2005,7 +1969,7 @@ def post_practice_all_reset(session) -> Any:
     if session.get("auth"):
         save_progress(session["auth"], session)
 
-    mod = session.get("mix_current_module", "n20")
+    mod = session.get("mix_current_module", "numbers")
     label = _mix_module_label(session, mod)
 
     stats = _compute_mix_stats(session)
