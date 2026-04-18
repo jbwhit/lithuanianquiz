@@ -866,3 +866,20 @@ def test_load_progress_resets_mix_modules_with_legacy_keys(monkeypatch) -> None:
     auth.load_progress("legacy-mix", session)
 
     assert "mix_modules" not in session
+
+
+def test_legacy_numbers_routes_redirect_to_new_url() -> None:
+    """Old /numbers-20 and /numbers-99 URLs must 301 to /numbers so
+    bookmarks and any external links keep working."""
+    from starlette.testclient import TestClient
+
+    with TestClient(main.app, follow_redirects=False) as client:
+        for legacy in ("/numbers-20", "/numbers-99"):
+            resp = client.get(legacy)
+            assert resp.status_code == 301, (
+                f"{legacy} returned {resp.status_code}, expected 301"
+            )
+            assert resp.headers["location"] == "/numbers", (
+                f"{legacy} redirected to {resp.headers.get('location')!r}, "
+                f"expected '/numbers'"
+            )

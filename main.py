@@ -1614,7 +1614,7 @@ _make_number_routes(
 
 @rt("/numbers-20")
 @rt("/numbers-99")
-def get_legacy_numbers() -> RedirectResponse:
+def get_legacy_numbers() -> Any:
     return RedirectResponse("/numbers", status_code=301)
 
 

@@ -116,6 +116,17 @@ Updated per native speaker review (jbagd, 2026-04-15).
 - Žiūrėti viską
 - Peržiūrėkite ankstesnes užduotis
 
+---
+
+## Added for 0-99 consolidation (2026-04-17)
+
+**DB row for `number=0`** — please spot-check these forms:
+
+- `nulis` (nominative; "Kaip pasakyti 0?" → "nulis")
+- `nulį` (accusative; price answer for €0, not user-facing because prices filter to n≥1)
+- `nulis eurų` (zero euros; genitive plural; prices completeness only)
+- `nulis laipsnių` (zero degrees; used in weather produce answers)
+
 ## About Page
 - Apie šią programą
 - Mokykitės kalbėti apie skaičius su adaptyviomis užduotimis!
