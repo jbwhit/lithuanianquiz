@@ -441,3 +441,68 @@ class TestRouteTitles:
 
     def test_not_found_title_en(self) -> None:
         assert self._title_of("/nonexistent") == "Page not found — Lithuanian Practice"
+
+
+class TestNavbarMobilePrimitives:
+    """Freeze the existing MonsterUI mobile-nav behavior.
+
+    NavBar already emits an md:hidden hamburger toggling an #mobile-menu
+    wrapper that contains every nav item (Modules dropdown, Stats, Input
+    mode, Feedback, Language toggle, user/login). These tests ensure a
+    future refactor can't silently remove that primitive.
+    """
+
+    def test_hamburger_button_present_and_md_hidden(self) -> None:
+        html = _render(page_shell("body", page_title="Lithuanian Practice"))
+        assert 'aria-controls="mobile-menu"' in html, (
+            "hamburger button with aria-controls=mobile-menu not found"
+        )
+        assert 'icon="menu"' in html, "menu icon missing from hamburger"
+        # Hamburger must be hidden at md+ (desktop shows the full nav inline).
+        # MonsterUI's NavBar includes 'md:hidden' on the button's class list.
+        m = re.search(
+            r'<button[^>]*aria-controls="mobile-menu"[^>]*class="([^"]*)"', html
+        )
+        assert m, "could not locate hamburger button's class attribute"
+        assert "md:hidden" in m.group(1), (
+            f"hamburger button missing md:hidden class; got: {m.group(1)!r}"
+        )
+
+    def test_mobile_menu_wrapper_present(self) -> None:
+        html = _render(page_shell("body", page_title="Lithuanian Practice"))
+        assert 'id="mobile-menu"' in html, "#mobile-menu wrapper missing"
+
+    def test_all_nav_items_reachable_in_mobile_menu(self) -> None:
+        """Assert each primary/secondary nav item is inside the mobile-menu
+        wrapper. Catches the case where a future refactor renders an item
+        outside #mobile-menu (so it'd disappear entirely on mobile)."""
+        html = _render(
+            page_shell(
+                "body",
+                page_title="Lithuanian Practice",
+                lang="en",
+                user_name="Jane",
+            )
+        )
+        m = re.search(
+            r'<div id="mobile-menu"[^>]*>(.*?)</div>\s*</nav>', html, re.DOTALL
+        )
+        assert m, "could not isolate #mobile-menu block"
+        menu_html = m.group(1)
+
+        for needle in (
+            'href="/numbers"',
+            'href="/stats"',
+            "set-diacritic-mode",
+            '"/set-language?lang=en"',
+            '"/set-language?lang=lt"',
+            "github.com/jbwhit/lithuanianquiz/issues/new",
+            'href="/logout"',
+        ):
+            assert needle in menu_html, (
+                f"expected {needle!r} inside #mobile-menu; got: ...{menu_html[:400]}..."
+            )
+
+    def test_anonymous_session_shows_login_in_mobile_menu(self) -> None:
+        html = _render(page_shell("body", page_title="Lithuanian Practice"))
+        assert 'href="/login"' in html
