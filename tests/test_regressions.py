@@ -87,8 +87,7 @@ def test_session_cookie_stays_under_budget_after_module_tour() -> None:
     max_seen = 0
     with TestClient(main.app) as client:
         for path in (
-            "/numbers-20",
-            "/numbers-99",
+            "/numbers",
             "/age",
             "/weather",
             "/time",
@@ -140,16 +139,7 @@ def test_load_progress_strips_cold_start_arms_from_legacy_payload(
             "grammatical_cases": {"nominative": cold, "genitive": cold},
             "total_exercises": 0,
         },
-        "n20_performance": {
-            "exercise_types": {"produce": cold, "recognize": cold},
-            "number_patterns": {
-                "single_digit": cold,
-                "teens": cold,
-                "decade": cold,
-            },
-            "total_exercises": 0,
-        },
-        "n99_performance": {
+        "numbers_performance": {
             "exercise_types": {"produce": cold, "recognize": cold},
             "number_patterns": {
                 "single_digit": cold,
@@ -197,8 +187,7 @@ def test_load_progress_strips_cold_start_arms_from_legacy_payload(
     for perf_key in (
         "performance",
         "time_performance",
-        "n20_performance",
-        "n99_performance",
+        "numbers_performance",
         "age_performance",
         "weather_performance",
     ):
@@ -507,8 +496,7 @@ def test_mix_session_initializes_only_one_module_question() -> None:
     module_q_keys = [
         "current_question",
         "time_current_question",
-        "n20_current_question",
-        "n99_current_question",
+        "numbers_current_question",
         "age_current_question",
         "weather_current_question",
     ]
@@ -543,8 +531,7 @@ def test_load_progress_caps_oversized_histories(monkeypatch) -> None:
         {
             "history": long,
             "time_history": long,
-            "n20_history": long,
-            "n99_history": long,
+            "numbers_history": long,
             "age_history": long,
             "weather_history": long,
             "mix_history": long,
@@ -563,8 +550,7 @@ def test_load_progress_caps_oversized_histories(monkeypatch) -> None:
 
     assert len(loaded_session["history"]) == 5
     assert len(loaded_session["time_history"]) == 5
-    assert len(loaded_session["n20_history"]) == 5
-    assert len(loaded_session["n99_history"]) == 5
+    assert len(loaded_session["numbers_history"]) == 5
     assert len(loaded_session["age_history"]) == 5
     assert len(loaded_session["weather_history"]) == 5
     assert len(loaded_session["mix_history"]) == 5
@@ -726,22 +712,22 @@ def test_set_language_rewrites_age_question_mid_session() -> None:
 
 def test_set_language_refreshes_number_and_weather_questions() -> None:
     class _Req:
-        headers = {"referer": "/numbers-99"}
+        headers = {"referer": "/numbers"}
 
     session: dict = {}
-    main._ensure_number_session(session, main.number_engine_99, "n99")
+    main._ensure_number_session(session, main.number_engine, "numbers")
     main._ensure_weather_session(session)
 
-    n_before = session["n99_current_question"]
+    n_before = session["numbers_current_question"]
     w_before = session["weather_current_question"]
 
     main.get_set_language(_Req(), session, lang="lt")
 
     # Produce-style prompts render as "How do you say X?" in EN, "Kaip
-    # pasakyti X?" in LT. At least one of n99/weather is "produce"-shaped;
+    # pasakyti X?" in LT. At least one of numbers/weather is "produce"-shaped;
     # accept either changing, but assert neither retained English "How do
     # you say" once the cache refresh has run.
-    n_after = session["n99_current_question"]
+    n_after = session["numbers_current_question"]
     w_after = session["weather_current_question"]
     assert "How do you say" not in n_after
     assert "How do you say" not in w_after
@@ -767,6 +753,28 @@ def test_set_language_mirrors_mix_current_question() -> None:
     main.get_set_language(_Req(), session, lang="lt")
 
     assert session["mix_current_question"] == session[sub_key]
+
+
+def test_ensure_session_strips_legacy_number_keys() -> None:
+    """Anonymous users never hit auth.load_progress, so session-helper calls
+    must strip legacy n20_/n99_ keys to avoid permanent cookie bloat."""
+    session: dict = {
+        "n20_correct_count": 5,
+        "n20_performance": {
+            "exercise_types": {"produce": {"correct": 3.0, "incorrect": 1.0}}
+        },
+        "n99_current_question": "How do you say 42?",
+        "mix_modules": {
+            "n20": {"correct": 3, "incorrect": 2},
+            "age": {"correct": 1, "incorrect": 1},
+        },
+    }
+    main._ensure_session(session)
+
+    assert not any(k.startswith("n20_") for k in session)
+    assert not any(k.startswith("n99_") for k in session)
+    # mix_modules with any legacy key triggers a full reset.
+    assert "mix_modules" not in session
 
 
 def test_feedback_from_snapshot_always_passes_grammatical_case(monkeypatch) -> None:
@@ -798,3 +806,80 @@ def test_feedback_from_snapshot_always_passes_grammatical_case(monkeypatch) -> N
 
     assert "grammatical_case" in captured
     assert captured["grammatical_case"] is None
+
+
+def test_load_progress_discards_legacy_n20_n99_fields(monkeypatch) -> None:
+    """load_progress must not write n20_*/n99_* fields into session;
+    legacy DB rows carry them but we treat them as cold-start data."""
+    db = _SQLiteDB()
+    monkeypatch.setattr(auth, "_db", db)
+
+    data = json.dumps(
+        {
+            "n20_correct_count": 5,
+            "n20_incorrect_count": 3,
+            "n20_history": [{"question": "Q", "correct": True}],
+            "n20_performance": {
+                "exercise_types": {"produce": {"correct": 5, "incorrect": 3}}
+            },
+            "n99_correct_count": 10,
+            "n99_performance": {"exercise_types": {}},
+            "numbers_correct_count": 2,
+        }
+    )
+    db.execute(
+        """INSERT INTO user_progress (google_id, data, updated_at)
+           VALUES (?, ?, ?)""",
+        ["legacy-user", data, "2026-04-17T00:00:00+00:00"],
+    )
+
+    session: dict = {}
+    auth.load_progress("legacy-user", session)
+
+    assert not any(k.startswith("n20_") for k in session)
+    assert not any(k.startswith("n99_") for k in session)
+    # The new-prefix fields should be loaded.
+    assert session["numbers_correct_count"] == 2
+
+
+def test_load_progress_resets_mix_modules_with_legacy_keys(monkeypatch) -> None:
+    """A mix_modules dict containing n20 or n99 keys is treated as legacy
+    and reset; _is_valid_mix_modules is not asked to validate it."""
+    db = _SQLiteDB()
+    monkeypatch.setattr(auth, "_db", db)
+
+    data = json.dumps(
+        {
+            "mix_modules": {
+                "n20": {"correct": 3, "incorrect": 2},
+                "age": {"correct": 1, "incorrect": 1},
+            },
+        }
+    )
+    db.execute(
+        """INSERT INTO user_progress (google_id, data, updated_at)
+           VALUES (?, ?, ?)""",
+        ["legacy-mix", data, "2026-04-17T00:00:00+00:00"],
+    )
+
+    session: dict = {}
+    auth.load_progress("legacy-mix", session)
+
+    assert "mix_modules" not in session
+
+
+def test_legacy_numbers_routes_redirect_to_new_url() -> None:
+    """Old /numbers-20 and /numbers-99 URLs must 301 to /numbers so
+    bookmarks and any external links keep working."""
+    from starlette.testclient import TestClient
+
+    with TestClient(main.app, follow_redirects=False) as client:
+        for legacy in ("/numbers-20", "/numbers-99"):
+            resp = client.get(legacy)
+            assert resp.status_code == 301, (
+                f"{legacy} returned {resp.status_code}, expected 301"
+            )
+            assert resp.headers["location"] == "/numbers", (
+                f"{legacy} redirected to {resp.headers.get('location')!r}, "
+                f"expected '/numbers'"
+            )

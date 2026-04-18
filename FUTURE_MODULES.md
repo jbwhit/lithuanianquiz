@@ -101,10 +101,9 @@ This is the full integration: number + noun + gender agreement + case.
 
 ## Done
 
-- ~~**Age in Years**~~ — Implemented. Dative pronouns (Man/Tau/Jam/Jai) + number words + metai/metu. Ages 2-99, produce/recognize, Thompson Sampling. Seeds from n99.
-- ~~**Weather Temperature**~~ — Implemented. Number words + laipsnis/laipsniai/laipsnių. Range -20 to +40, produce/recognize, Thompson Sampling. Seeds from n99.
-- ~~**Numbers 1-20**~~ — Implemented.
-- ~~**Numbers 1-99**~~ — Implemented.
+- ~~**Age in Years**~~ — Implemented. Dative pronouns (Man/Tau/Jam/Jai) + number words + metai/metu. Ages 2-99, produce/recognize, Thompson Sampling. Seeds from numbers.
+- ~~**Weather Temperature**~~ — Implemented. Number words + laipsnis/laipsniai/laipsnių. Range -20 to +40, produce/recognize, Thompson Sampling. Seeds from numbers.
+- ~~**Numbers 0-99**~~ — Implemented. Consolidated from earlier 1-20 / 1-99 split.
 - ~~**Prices**~~ — Implemented.
 - ~~**Time**~~ — Implemented. Whole hours, half past, quarter past, quarter to.
 - ~~**Landing page card alignment**~~ — Flexbox bottom-aligned buttons.

@@ -15,10 +15,13 @@ SIGN_TYPES: list[str] = ["positive", "negative"]
 def _degree_form(row: dict[str, Any]) -> str:
     """Pick laipsnis/laipsniai/laipsnių based on same rule as years column.
 
+    - number == 0 → laipsnių (gen. pl., same as 10-19/decades)
     - number == 1 → laipsnis (nom. sg.)
     - years == "metai" (2-9, compounds ending 2-9) → laipsniai (nom. pl.)
     - years == "metų" (10-19, decades) → laipsnių (gen. pl.)
     """
+    if row["number"] == 0:
+        return "laipsnių"
     if row["number"] == 1:
         return "laipsnis"
     if row["years"] == "metai":
@@ -43,8 +46,8 @@ class WeatherEngine:
         adaptation_threshold: int = 10,
     ) -> None:
         self.rows = rows
-        # Negative temperatures only for numbers 1-20
-        self.negative_rows = [r for r in rows if r["number"] <= 20]
+        # Negative temperatures only for numbers 1-20 (never zero, never 21+)
+        self.negative_rows = [r for r in rows if 1 <= r["number"] <= 20]
         self.adaptation_threshold = adaptation_threshold
 
     def init_tracking(
@@ -118,8 +121,9 @@ class WeatherEngine:
         weak_sign = _sample_weakest(perf["sign"], list(SIGN_TYPES))
         negative = weak_sign == "negative"
 
-        # If negative, constrain to numbers 1-20
-        if negative and row["number"] > 20:
+        # If negative, constrain to numbers 1-20 (never emit 'minus nulis',
+        # never emit 'minus 21+').
+        if negative and (row["number"] == 0 or row["number"] > 20):
             row = random.choice(self.negative_rows)
 
         return {

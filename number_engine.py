@@ -17,15 +17,12 @@ class NumberEngine:
     def __init__(
         self,
         rows: list[dict[str, Any]],
-        max_number: int,
         adaptation_threshold: int = 10,
     ) -> None:
         self.rows = rows
-        self.max_number = max_number
         self.adaptation_threshold = adaptation_threshold
-        # Patterns reachable from this engine's row set. The 1-20 engine,
-        # for example, cannot serve "compound" (21+), so we must not seed
-        # that arm or TS will converge on an untrainable pattern.
+        # Patterns reachable from this engine's row set. Computed from rows so
+        # callers can't request a pattern (e.g. "compound") that has no rows.
         self._reachable_patterns = sorted({number_pattern(r["number"]) for r in rows})
 
     def init_tracking(

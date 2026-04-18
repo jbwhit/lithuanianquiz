@@ -186,9 +186,9 @@ class TestAdaptive:
         assert perf["pronouns"]["Jam"]["correct"] == pytest.approx(1.0)
         assert perf["total_exercises"] == 1
 
-    def test_seed_from_n99(self, engine: AgeEngine) -> None:
+    def test_seed_from_numbers(self, engine: AgeEngine) -> None:
         session: dict = {
-            "n99_performance": {
+            "numbers_performance": {
                 "exercise_types": {
                     "produce": {"correct": 5, "incorrect": 2},
                     "recognize": {"correct": 3, "incorrect": 4},
@@ -199,9 +199,9 @@ class TestAdaptive:
                 "total_exercises": 14,
             }
         }
-        engine.init_tracking(session, "age", seed_prefix="n99")
+        engine.init_tracking(session, "age", seed_prefix="numbers")
         perf = session["age_performance"]
-        # exercise_types and number_patterns seeded from n99
+        # exercise_types and number_patterns seeded from numbers
         assert perf["exercise_types"]["produce"]["correct"] == 5
         assert perf["number_patterns"]["teens"]["incorrect"] == 5
         # pronouns are lazily created; init_tracking leaves them empty.
@@ -210,7 +210,7 @@ class TestAdaptive:
 
     def test_seed_is_deep_copy(self, engine: AgeEngine) -> None:
         session: dict = {
-            "n99_performance": {
+            "numbers_performance": {
                 "exercise_types": {
                     "produce": {"correct": 1, "incorrect": 1},
                     "recognize": {"correct": 1, "incorrect": 1},
@@ -219,15 +219,15 @@ class TestAdaptive:
                 "total_exercises": 2,
             }
         }
-        engine.init_tracking(session, "age", seed_prefix="n99")
+        engine.init_tracking(session, "age", seed_prefix="numbers")
         engine.update(
             session,
             "age",
             {"exercise_type": "produce", "number_pattern": "teens", "pronoun": "Man"},
             True,
         )
-        # Mutating age shouldn't affect n99
-        assert session["n99_performance"]["total_exercises"] == 2
+        # Mutating age shouldn't affect numbers
+        assert session["numbers_performance"]["total_exercises"] == 2
         assert session["age_performance"]["total_exercises"] == 3
 
     def test_get_weak_areas_empty(self, engine: AgeEngine) -> None:

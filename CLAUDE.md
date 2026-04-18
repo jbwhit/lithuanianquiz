@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Adaptive Lithuanian practice app built with FastHTML + MonsterUI. Six modules: **Numbers 1-20**, **Numbers 1-99**, **Age**, **Weather**, **Prices**, and **Time**.
+Adaptive Lithuanian practice app built with FastHTML + MonsterUI. Five modules: **Numbers** (0-99), **Age**, **Weather**, **Prices**, and **Time**.
 
 ### File structure
 
@@ -36,8 +36,8 @@ Adaptive Lithuanian practice app built with FastHTML + MonsterUI. Six modules: *
 
 ### Architecture
 
-- **Landing page** at `/` with module cards; Numbers at `/numbers-20` & `/numbers-99`, Age at `/age`, Weather at `/weather`, Prices at `/prices`, Time at `/time`
-- **Six modules**: Numbers 1-20 (`/numbers-20`), Numbers 1-99 (`/numbers-99`), Age (`/age`), Weather (`/weather`), Prices (`/prices`), Time (`/time`) — each with own engine, adaptive tracking, and session state
+- **Landing page** at `/` with module cards; Numbers at `/numbers`, Age at `/age`, Weather at `/weather`, Prices at `/prices`, Time at `/time`
+- **Five modules**: Numbers (`/numbers`, 0-99), Age (`/age`), Weather (`/weather`), Prices (`/prices`), Time (`/time`) — each with own engine, adaptive tracking, and session state
 - **Google OAuth** via `fasthtml.oauth.GoogleAppClient` + `QuizOAuth(OAuth)` — optional login for cross-session persistence
 - **User progress persisted** to `user_progress` table in SQLite (both price and time data, loaded on login, saved on answer/reset)
 - **Cookie sessions** via FastHTML's built-in `SessionMiddleware` (no custom session DB)
