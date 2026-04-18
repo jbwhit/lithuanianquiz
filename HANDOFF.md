@@ -55,7 +55,7 @@ quiz.py            — Price exercise engine (no FastHTML dependency)
 time_engine.py     — Time exercise engine + adaptive (no FastHTML dependency)
 adaptive.py        — Thompson Sampling adaptive selector (prices)
 ui.py              — All UI as plain functions (no classes)
-time_reference.py  — Generates all time expressions for native speaker review
+scripts/generate_exercise_reference.py — Generates exercise reference docs for native speaker review
 tests/             — pytest suite (77 tests: 31 price, 46 time)
 .githooks/         — Pre-commit hook (auto ruff format)
 lithuanian_data.db — SQLite: numbers table + users + user_progress
@@ -209,8 +209,8 @@ Each module gets its **own engine class** (not a refactor of `ExerciseEngine`). 
 
 ## 6. Open Questions / Loose Ends
 
-- **Native speaker review of time expressions** — Run `uv run python time_reference.py`
-  to generate all 48 time expressions. Key question: is "Pusė trečios" (ordinal
+- **Native speaker review of time expressions** — Run `uv run python scripts/generate_exercise_reference.py`
+  to generate `docs/reviews/time-reference.md` (all 48 time expressions) and `docs/reviews/exercise-reference.md` (representative cross-module). Key question: is "Pusė trečios" (ordinal
   genitive) or "Pusė trijų" (cardinal genitive) the standard form for half past?
 - **`/error` route is unhandled** — if OAuth fails (e.g. user denies consent),
   they land on `/error` which returns a 404. A simple friendly page with a

@@ -207,6 +207,5 @@ The research found two patterns for "half past":
 - **Ordinal genitive:** `Pusė trečios` (2:30) — standard grammar reference form
 - **Cardinal genitive:** `Pusė trijų` (2:30) — seen in some conversational sources
 
-This spec uses the ordinal genitive form. Run `uv run python time_reference.py` to
-generate a full reference document for native speaker verification before implementing
-answer checking.
+This spec uses the ordinal genitive form. Run `uv run python scripts/generate_exercise_reference.py` to
+generate a full reference document (`docs/reviews/time-reference.md`) for native speaker verification of the implemented answer checking.

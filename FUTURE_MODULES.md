@@ -19,7 +19,9 @@ A "Practice All" option that randomly pulls exercises from any module the user h
 
 ## Native Speaker Spot Check
 
-Generate a document with all exercise types and their correct answers for native speaker review. Similar to `time_reference.py` but covering all modules. Key open question: is "Puse trecios" (ordinal genitive) or "Puse triju" (cardinal genitive) the standard form for half past?
+~~Generate a document with all exercise types and their correct answers for native speaker review.~~ **Done.** `scripts/generate_exercise_reference.py` produces two review docs: representative cross-module `docs/reviews/exercise-reference.md` (52 rows) and exhaustive `docs/reviews/time-reference.md` (48 rows).
+
+Open question: is "Pusė trečios" (ordinal genitive) or "Pusė trijų" (cardinal genitive) the standard form for half past? This needs native speaker verification.
 
 ---
 

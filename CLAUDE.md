@@ -17,7 +17,7 @@ Adaptive Lithuanian practice app built with FastHTML + MonsterUI. Five modules: 
 - `weather_engine.py` — Weather temperature exercise engine: number words + laipsnis/laipsniai/laipsnių, Thompson Sampling (no FastHTML dependency)
 - `adaptive.py` — Thompson Sampling adaptive learning engine (prices)
 - `ui.py` — UI component functions (plain functions, not classes)
-- `time_reference.py` — Standalone script to generate all time expressions for native speaker review
+- `scripts/generate_exercise_reference.py` — Generates `docs/reviews/exercise-reference.md` (representative, cross-module) and `docs/reviews/time-reference.md` (exhaustive) for native-speaker review
 - `tests/test_quiz.py` — Tests for price quiz engine
 - `tests/test_time.py` — Tests for time engine + adaptive
 - `tests/test_adaptive.py` — Tests for price adaptive learning
