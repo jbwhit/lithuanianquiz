@@ -926,3 +926,313 @@ def test_exercise_reference_docs_in_sync(tmp_path, monkeypatch) -> None:
         "docs/reviews/time-reference.md is out of date. Run "
         "`uv run python scripts/generate_exercise_reference.py` to refresh."
     )
+
+
+# ---------------------------------------------------------------------
+# Logged-in cookie-size fix
+# ---------------------------------------------------------------------
+
+
+def _realistic_progress_payload() -> dict:
+    """A user_progress payload that mirrors an active user's state:
+    each module with ~5-10 touched arms plus counters and history."""
+    perf_typical = {
+        "exercise_types": {
+            "produce": {"correct": 8.0, "incorrect": 3.2},
+            "recognize": {"correct": 5.0, "incorrect": 2.1},
+        },
+        "number_patterns": {
+            "single_digit": {"correct": 4.0, "incorrect": 1.2},
+            "teens": {"correct": 3.0, "incorrect": 2.5},
+            "decade": {"correct": 2.0, "incorrect": 1.8},
+            "compound": {"correct": 1.0, "incorrect": 3.5},
+        },
+        "total_exercises": 30,
+    }
+    hist = [
+        {
+            "question": "How do you say 42?",
+            "answer": "keturiasdešimt du",
+            "correct": True,
+            "true_answer": "keturiasdešimt du",
+        }
+    ] * 5
+    return {
+        "correct_count": 30,
+        "incorrect_count": 12,
+        "history": hist,
+        "performance": {
+            **perf_typical,
+            "grammatical_cases": {
+                "nominative": {"correct": 6.0, "incorrect": 2.1},
+                "accusative": {"correct": 5.0, "incorrect": 3.2},
+            },
+        },
+        "time_correct_count": 25,
+        "time_incorrect_count": 10,
+        "time_history": hist,
+        "time_performance": {
+            "exercise_types": {
+                t: {"correct": 3.0, "incorrect": 2.0}
+                for t in ("whole_hour", "half_past", "quarter_past", "quarter_to")
+            },
+            "hour_patterns": {
+                f"hour_{i}": {"correct": 2.0, "incorrect": 1.5} for i in range(1, 13)
+            },
+            "grammatical_cases": {
+                "nominative": {"correct": 6.0, "incorrect": 4.2},
+                "genitive": {"correct": 6.0, "incorrect": 4.2},
+            },
+            "total_exercises": 48,
+        },
+        "numbers_correct_count": 20,
+        "numbers_incorrect_count": 8,
+        "numbers_history": hist,
+        "numbers_performance": perf_typical,
+        "age_correct_count": 18,
+        "age_incorrect_count": 7,
+        "age_history": hist,
+        "age_performance": {
+            **perf_typical,
+            "pronouns": {
+                p: {"correct": 3.0, "incorrect": 1.8}
+                for p in ("Man", "Tau", "Jam", "Jai")
+            },
+        },
+        "weather_correct_count": 22,
+        "weather_incorrect_count": 9,
+        "weather_history": hist,
+        "weather_performance": {
+            **perf_typical,
+            "sign": {
+                "positive": {"correct": 15.0, "incorrect": 4.2},
+                "negative": {"correct": 5.0, "incorrect": 3.8},
+            },
+        },
+        "mix_correct_count": 5,
+        "mix_incorrect_count": 2,
+        "mix_history": hist,
+        "mix_modules": {
+            m: {"correct": 5, "incorrect": 2}
+            for m in ("prices", "time", "numbers", "age", "weather")
+        },
+        "ui_lang": "en",
+        "diacritic_tolerant": False,
+    }
+
+
+def test_strip_progress_noop_for_anonymous_session() -> None:
+    """Anonymous sessions must not be stripped — they have no DB row backing
+    them, so their progress lives only in the cookie."""
+    session = {
+        "ui_lang": "en",
+        "performance": {
+            "exercise_types": {"kokia": {"correct": 3.0, "incorrect": 1.0}}
+        },
+        "correct_count": 5,
+        "history": [{"question": "Q", "correct": True}],
+    }
+    before = dict(session)
+    main._strip_progress_from_cookie_session(session)
+    assert session == before
+
+
+def test_strip_progress_removes_db_keys_for_logged_in() -> None:
+    """Logged-in sessions shed everything that load_progress/save_progress
+    owns; ephemeral UI state and identity keys stay."""
+    session = {
+        "auth": "google-id-123",
+        "user_name": "Jane",
+        "user_email": "jane@example.com",
+        # Ephemeral — must stay.
+        "current_question": "Kokia kaina? (€5)",
+        "exercise_type": "kokia",
+        "row_id": 5,
+        "number_pattern": "single_digit",
+        "grammatical_case": "nominative",
+        "numbers_current_question": "How do you say 12?",
+        # DB-authoritative — must go.
+        "ui_lang": "lt",
+        "diacritic_tolerant": True,
+        "correct_count": 5,
+        "incorrect_count": 2,
+        "history": [{"q": 1}],
+        "performance": {"exercise_types": {}},
+        "numbers_performance": {"exercise_types": {}},
+        "mix_modules": {"time": {"correct": 1, "incorrect": 1}},
+    }
+    main._strip_progress_from_cookie_session(session)
+
+    assert session["auth"] == "google-id-123"
+    assert session["user_name"] == "Jane"
+    assert session["user_email"] == "jane@example.com"
+    assert session["current_question"] == "Kokia kaina? (€5)"
+    assert session["exercise_type"] == "kokia"
+    assert session["numbers_current_question"] == "How do you say 12?"
+    for stripped in (
+        "ui_lang",
+        "diacritic_tolerant",
+        "correct_count",
+        "incorrect_count",
+        "history",
+        "performance",
+        "numbers_performance",
+        "mix_modules",
+    ):
+        assert stripped not in session, (
+            f"expected {stripped!r} to be stripped for logged-in session"
+        )
+
+
+def test_hydrate_progress_noop_for_anonymous() -> None:
+    session: dict = {"ui_lang": "en"}
+    main._hydrate_progress_if_logged_in(session)
+    assert session == {"ui_lang": "en"}
+
+
+def test_hydrate_progress_loads_from_db_when_logged_in(monkeypatch) -> None:
+    db = _SQLiteDB()
+    monkeypatch.setattr(auth, "_db", db)
+    payload = {"correct_count": 42, "performance": {"exercise_types": {}}}
+    db.execute(
+        "INSERT INTO user_progress (google_id, data, updated_at) VALUES (?, ?, ?)",
+        ["user-hydrate", json.dumps(payload), "2026-04-21"],
+    )
+
+    session: dict = {
+        "auth": "user-hydrate",
+        "user_name": "H",
+        "user_email": "h@example.com",
+    }
+    main._hydrate_progress_if_logged_in(session)
+
+    assert session["correct_count"] == 42
+    assert "performance" in session
+
+
+def test_hydrate_progress_idempotent_when_already_loaded(monkeypatch) -> None:
+    """If `performance` is already in session, hydrate is a no-op — we don't
+    want to re-hit the DB mid-request after the first _ensure_*_session call
+    already hydrated."""
+    db = _SQLiteDB()
+    monkeypatch.setattr(auth, "_db", db)
+    # DB has DIFFERENT data from what's in the session; hydrate should
+    # NOT overwrite.
+    db.execute(
+        "INSERT INTO user_progress (google_id, data, updated_at) VALUES (?, ?, ?)",
+        [
+            "user-idem",
+            json.dumps({"correct_count": 999, "performance": {"exercise_types": {}}}),
+            "2026-04-21",
+        ],
+    )
+
+    session = {
+        "auth": "user-idem",
+        "user_name": "I",
+        "user_email": "i@example.com",
+        "performance": {
+            "exercise_types": {"kokia": {"correct": 3.0, "incorrect": 1.0}}
+        },
+        "correct_count": 3,
+    }
+    main._hydrate_progress_if_logged_in(session)
+
+    # Unchanged — DB's 999 did not clobber the in-memory 3.
+    assert session["correct_count"] == 3
+
+
+def test_logged_in_session_cookie_stays_under_budget_after_strip(
+    monkeypatch,
+) -> None:
+    """The bug that motivated this fix: a realistic user's session after
+    load_progress was ~7.5 KB of JSON, encoding to >10 KB of Set-Cookie,
+    which browsers silently drop. After the strip, the session must stay
+    well under the 4 KB cookie budget."""
+    db = _SQLiteDB()
+    monkeypatch.setattr(auth, "_db", db)
+    db.execute(
+        "INSERT INTO user_progress (google_id, data, updated_at) VALUES (?, ?, ?)",
+        ["user-big", json.dumps(_realistic_progress_payload()), "2026-04-21"],
+    )
+
+    # Simulate what happens in QuizOAuth.get_auth immediately after Google
+    # returns: auth + user_name + user_email are set, then load_progress is
+    # called. Without the strip, the RedirectResponse-to-home would carry
+    # all of this in the cookie.
+    session: dict = {
+        "auth": "user-big",
+        "user_name": "Jonathan Whitmore",
+        "user_email": "jbwhit@gmail.com",
+    }
+    auth.load_progress("user-big", session)
+
+    # Pre-strip: large (the bug).
+    pre_strip_size = len(json.dumps(session))
+    assert pre_strip_size > 4000, (
+        f"test fixture doesn't reproduce the bug — pre-strip session was "
+        f"only {pre_strip_size} bytes; cookie wouldn't have overflowed. "
+        "Make _realistic_progress_payload more realistic."
+    )
+
+    # Post-strip: compact.
+    main._strip_progress_from_cookie_session(session)
+    post_strip_size = len(json.dumps(session))
+    assert post_strip_size < 1500, (
+        f"post-strip session is {post_strip_size} bytes; too big for the "
+        "cookie budget. Check _DB_AUTHORITATIVE_KEYS."
+    )
+    # Identity + ephemeral keys survive.
+    assert session["auth"] == "user-big"
+    assert session["user_name"] == "Jonathan Whitmore"
+    assert session["user_email"] == "jbwhit@gmail.com"
+
+
+def test_hydrate_strip_round_trip_preserves_db_state(monkeypatch) -> None:
+    """Simulate two request cycles: hydrate → handler mutation → save →
+    strip → hydrate. The DB must reflect the mutation across cycles."""
+    db = _SQLiteDB()
+    monkeypatch.setattr(auth, "_db", db)
+    db.execute(
+        "INSERT INTO user_progress (google_id, data, updated_at) VALUES (?, ?, ?)",
+        [
+            "user-rt",
+            json.dumps({"correct_count": 10, "performance": {"exercise_types": {}}}),
+            "2026-04-21",
+        ],
+    )
+
+    # Cycle 1: request arrives with tiny cookie.
+    session: dict = {
+        "auth": "user-rt",
+        "user_name": "RT",
+        "user_email": "rt@example.com",
+    }
+    main._hydrate_progress_if_logged_in(session)
+    assert session["correct_count"] == 10
+
+    # Handler increments.
+    session["correct_count"] = 11
+
+    # save_progress persists to DB.
+    auth.save_progress("user-rt", session)
+
+    # After-hook strips before response goes out.
+    main._strip_progress_from_cookie_session(session)
+    assert "correct_count" not in session
+
+    # Cycle 2: next request, hydrate again.
+    main._hydrate_progress_if_logged_in(session)
+    assert session["correct_count"] == 11, (
+        "mutation from cycle 1 should be visible in cycle 2 via the DB"
+    )
+
+
+def test_compact_logged_in_session_is_wired_as_after_hook() -> None:
+    """Regression: the after-hook must be registered on fast_app so every
+    response path gets the strip. Without this, the hydrate work would
+    land the DB-authoritative keys straight back into the cookie."""
+    assert main._compact_logged_in_session in main.app.after, (
+        "_compact_logged_in_session missing from app.after — the strip "
+        "won't run and the cookie bloat will reappear"
+    )
