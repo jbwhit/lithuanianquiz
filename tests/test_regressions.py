@@ -2,6 +2,9 @@
 
 import json
 import sqlite3
+from base64 import b64decode, b64encode
+
+from itsdangerous import TimestampSigner
 
 import auth
 import main
@@ -27,6 +30,21 @@ class _SQLiteDB:
         cur = self.conn.execute(sql, params or [])
         self.conn.commit()
         return cur
+
+
+def _session_signer() -> TimestampSigner:
+    middleware = main.app.user_middleware[0]
+    return TimestampSigner(middleware.kwargs["secret_key"])
+
+
+def _encode_session_cookie(session: dict) -> str:
+    payload = b64encode(json.dumps(session).encode("utf-8"))
+    return _session_signer().sign(payload).decode("utf-8")
+
+
+def _decode_session_cookie(cookie_value: str) -> dict:
+    raw = _session_signer().unsign(cookie_value.encode("utf-8"))
+    return json.loads(b64decode(raw))
 
 
 def test_save_and_load_progress_persists_mix_fields(monkeypatch) -> None:
@@ -775,6 +793,45 @@ def test_ensure_session_strips_legacy_number_keys() -> None:
     assert not any(k.startswith("n99_") for k in session)
     # mix_modules with any legacy key triggers a full reset.
     assert "mix_modules" not in session
+
+
+def test_after_hook_strips_legacy_number_keys_on_plain_home_request() -> None:
+    """A stale anonymous cookie should self-heal even on routes like `/`
+    that do not call any module-specific `_ensure_*_session` helper."""
+    from starlette.testclient import TestClient
+
+    legacy_session = {
+        "n20_correct_count": 5,
+        "n20_incorrect_count": 2,
+        "n20_history": [{"question": "Q1", "correct": True}] * 5,
+        "n20_performance": {
+            "exercise_types": {"produce": {"correct": 8.0, "incorrect": 3.0}}
+        },
+        "n99_current_question": "How do you say 42?",
+        "n99_performance": {
+            "exercise_types": {"recognize": {"correct": 6.0, "incorrect": 2.0}}
+        },
+        "mix_modules": {
+            "n20": {"correct": 3, "incorrect": 2},
+            "age": {"correct": 1, "incorrect": 1},
+        },
+    }
+
+    with TestClient(main.app) as client:
+        client.cookies.set("session_", _encode_session_cookie(legacy_session))
+        resp = client.get("/")
+
+    assert resp.status_code == 200
+    set_cookie = resp.headers.get("set-cookie", "")
+    assert "session_=" in set_cookie
+    compact_cookie = set_cookie.split("session_=", 1)[1].split(";", 1)[0]
+    if compact_cookie == "null":
+        return
+
+    healed = _decode_session_cookie(compact_cookie)
+    assert not any(k.startswith("n20_") for k in healed)
+    assert not any(k.startswith("n99_") for k in healed)
+    assert "mix_modules" not in healed
 
 
 def test_feedback_from_snapshot_always_passes_grammatical_case(monkeypatch) -> None:

@@ -128,9 +128,9 @@ def _not_found(req, exc) -> Any:
 
 
 def _compact_logged_in_session(session, resp):  # noqa: ANN001 — see below
-    """fasthtml after-hook: strip DB-authoritative keys from logged-in
-    sessions before the response goes out, so the Set-Cookie stays under
-    the ~4 KB browser budget.
+    """fasthtml after-hook: strip stale cookie-only data before the
+    response goes out, so the Set-Cookie stays under the ~4 KB browser
+    budget.
 
     Parameters are intentionally untyped: fasthtml's DI injects `session`
     and `resp` by **name** only when the annotation is empty (see
@@ -142,6 +142,7 @@ def _compact_logged_in_session(session, resp):  # noqa: ANN001 — see below
     """
     del resp  # unused; we don't modify the response body, just the session
     if isinstance(session, dict):
+        _strip_legacy_number_keys(session)
         _strip_progress_from_cookie_session(session)
 
 
