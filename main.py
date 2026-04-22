@@ -7,7 +7,7 @@ from typing import Any
 
 from adaptive import AdaptiveLearning
 from age_engine import AgeEngine
-from auth import QuizOAuth, auth_client, init_db_tables, save_progress
+from auth import QuizOAuth, auth_client, init_db_tables, load_progress, save_progress
 from fasthtml.common import *
 from fastlite import database
 from i18n import UI_LANGUAGE_KEY, normalize_ui_lang, tr, ui_lang_from_session
@@ -127,11 +127,34 @@ def _not_found(req, exc) -> Any:
     )
 
 
+def _compact_logged_in_session(session, resp):  # noqa: ANN001 — see below
+    """fasthtml after-hook: strip DB-authoritative keys from logged-in
+    sessions before the response goes out, so the Set-Cookie stays under
+    the ~4 KB browser budget.
+
+    Parameters are intentionally untyped: fasthtml's DI injects `session`
+    and `resp` by **name** only when the annotation is empty (see
+    `_find_p` in fasthtml.core). Adding `session: dict[str, Any]` makes
+    DI treat it as a body param and the injection fails with 400.
+
+    Returning None leaves the original response unchanged (fasthtml only
+    swaps resp if the hook returns a truthy value).
+    """
+    del resp  # unused; we don't modify the response body, just the session
+    if isinstance(session, dict):
+        _strip_progress_from_cookie_session(session)
+
+
 app, rt = fast_app(
     hdrs=[*Theme.green.headers(daisy=True), _custom_css, _favicon, _goatcounter],
     secret_key=os.environ.get("LQ_SECRET_KEY") or secrets.token_urlsafe(32),
     exception_handlers={404: _not_found},
 )
+# fast_app doesn't forward `after=` to the underlying FastHTML instance, so
+# register the compaction hook post-hoc. FastHTML runs app.after hooks after
+# the route handler returns but before SessionMiddleware serializes — that's
+# exactly the window we need to strip DB-authoritative keys from the session.
+app.after.append(_compact_logged_in_session)
 
 oauth = QuizOAuth(app, auth_client)
 
@@ -165,6 +188,77 @@ def _strip_legacy_number_keys(session: dict[str, Any]) -> None:
     mix_modules = session.get("mix_modules")
     if isinstance(mix_modules, dict) and ("n20" in mix_modules or "n99" in mix_modules):
         session.pop("mix_modules", None)
+
+
+# Keys that are owned by the DB for logged-in users. We hydrate them from DB
+# at request start and strip them from the cookie before the response goes
+# out — otherwise a realistic progress payload (5 modules × perf + history +
+# counters) blows the ~4 KB browser cookie budget and the browser silently
+# drops the Set-Cookie, leaving the user appearing anonymous.
+_DB_AUTHORITATIVE_KEYS = frozenset(
+    {
+        "diacritic_tolerant",
+        "ui_lang",
+        "correct_count",
+        "incorrect_count",
+        "history",
+        "performance",
+        "time_correct_count",
+        "time_incorrect_count",
+        "time_history",
+        "time_performance",
+        "numbers_correct_count",
+        "numbers_incorrect_count",
+        "numbers_history",
+        "numbers_performance",
+        "age_correct_count",
+        "age_incorrect_count",
+        "age_history",
+        "age_performance",
+        "weather_correct_count",
+        "weather_incorrect_count",
+        "weather_history",
+        "weather_performance",
+        "mix_correct_count",
+        "mix_incorrect_count",
+        "mix_history",
+        "mix_modules",
+    }
+)
+
+
+def _hydrate_progress_if_logged_in(session: dict[str, Any]) -> None:
+    """For logged-in users, reload DB-persisted state into the session.
+
+    The cookie-backed session only carries ephemeral UI state for logged-in
+    users; authoritative progress lives in the DB and is reloaded on each
+    request. See `_strip_progress_from_cookie_session` for the counterpart
+    that runs after the route handler.
+
+    Idempotent: a session that already has `performance` is assumed to be
+    hydrated (the handler may have already called `_ensure_*_session` once).
+    """
+    if session.get("auth") and "performance" not in session:
+        load_progress(session["auth"], session)
+
+
+def _strip_progress_from_cookie_session(session: dict[str, Any]) -> None:
+    """Remove DB-authoritative keys from the session so they don't bloat the
+    Set-Cookie on the way out.
+
+    Only applies to logged-in users — anonymous users keep their progress in
+    the cookie because there's no DB row backing them.
+
+    Safe because anything removed here is already persisted to the DB by
+    `save_progress` (which every mutating route calls), or (for `ui_lang` /
+    `diacritic_tolerant`) is persisted by the /set-language and
+    /set-diacritic-mode routes before they redirect.
+    """
+    if not session.get("auth"):
+        return
+    for key in list(session):
+        if key in _DB_AUTHORITATIVE_KEYS:
+            del session[key]
 
 
 def _check_kwargs(session: dict[str, Any]) -> dict[str, bool]:
@@ -305,6 +399,7 @@ def _feedback_from_snapshot(snapshot: dict[str, Any], lang: str = "en") -> Any:
 def _ensure_session(session: dict[str, Any]) -> None:
     """Initialise defaults and generate first question if needed."""
     _strip_legacy_number_keys(session)
+    _hydrate_progress_if_logged_in(session)
     session.setdefault("history", [])
     session.setdefault("correct_count", 0)
     session.setdefault("incorrect_count", 0)
@@ -449,6 +544,7 @@ def _compute_time_stats(session: dict[str, Any]) -> dict[str, Any]:
 def _ensure_time_session(session: dict[str, Any]) -> None:
     """Initialise time module defaults and generate first question if needed."""
     _strip_legacy_number_keys(session)
+    _hydrate_progress_if_logged_in(session)
     session.setdefault("time_history", [])
     session.setdefault("time_correct_count", 0)
     session.setdefault("time_incorrect_count", 0)
@@ -482,6 +578,7 @@ def _ensure_number_session(
 ) -> None:
     """Initialise number module defaults and generate first question if needed."""
     _strip_legacy_number_keys(session)
+    _hydrate_progress_if_logged_in(session)
     session.setdefault(f"{prefix}_history", [])
     session.setdefault(f"{prefix}_correct_count", 0)
     session.setdefault(f"{prefix}_incorrect_count", 0)
@@ -1011,6 +1108,7 @@ def post_time_reset(session) -> Any:
 def _ensure_age_session(session: dict[str, Any]) -> None:
     """Initialise age module defaults and generate first question if needed."""
     _strip_legacy_number_keys(session)
+    _hydrate_progress_if_logged_in(session)
     session.setdefault("age_history", [])
     session.setdefault("age_correct_count", 0)
     session.setdefault("age_incorrect_count", 0)
@@ -1049,6 +1147,7 @@ def _compute_age_stats(session: dict[str, Any]) -> dict[str, Any]:
 def _ensure_weather_session(session: dict[str, Any]) -> None:
     """Initialise weather module defaults and generate first question if needed."""
     _strip_legacy_number_keys(session)
+    _hydrate_progress_if_logged_in(session)
     session.setdefault("weather_history", [])
     session.setdefault("weather_correct_count", 0)
     session.setdefault("weather_incorrect_count", 0)
@@ -1753,6 +1852,7 @@ def _mix_module_label(session: dict[str, Any], module_name: str) -> str:
 def _ensure_mix_session(session: dict[str, Any]) -> None:
     """Initialise practice-all session and all sub-module sessions."""
     _strip_legacy_number_keys(session)
+    _hydrate_progress_if_logged_in(session)
     session.setdefault("mix_history", [])
     session.setdefault("mix_correct_count", 0)
     session.setdefault("mix_incorrect_count", 0)
