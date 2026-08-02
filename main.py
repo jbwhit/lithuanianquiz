@@ -174,6 +174,21 @@ def _is_diacritic_tolerant(session: dict[str, Any]) -> bool:
     return bool(session.get(_DIACRITIC_MODE_KEY, False))
 
 
+def _is_safe_local_redirect(path: Any) -> bool:
+    """True if `path` is a same-origin, path-only redirect target.
+
+    A leading `//` (or `/\\`) is protocol-relative — browsers resolve
+    `Location: //evil.example/x` to `https://evil.example/x`, not a
+    same-origin path, so `path.startswith("/")` alone isn't enough.
+    """
+    return (
+        isinstance(path, str)
+        and path.startswith("/")
+        and not path.startswith("//")
+        and not path.startswith("/\\")
+    )
+
+
 _LEGACY_NUMBER_PREFIXES = ("n20_", "n99_")
 
 
@@ -690,7 +705,7 @@ def get_set_language(req, session, lang: str = "en") -> Any:
     redirect_to = parsed.path if parsed.path else "/"
     if parsed.query:
         redirect_to = f"{redirect_to}?{parsed.query}"
-    if not redirect_to.startswith("/"):
+    if not _is_safe_local_redirect(redirect_to):
         redirect_to = "/"
     return RedirectResponse(redirect_to, status_code=303)
 
@@ -701,9 +716,7 @@ def get_set_diacritic_mode(session, enabled: str = "0", next_path: str = "/") ->
     session[_DIACRITIC_MODE_KEY] = enabled == "1"
     if session.get("auth"):
         save_progress(session["auth"], session)
-    safe_next = (
-        next_path if isinstance(next_path, str) and next_path.startswith("/") else "/"
-    )
+    safe_next = next_path if _is_safe_local_redirect(next_path) else "/"
     return RedirectResponse(safe_next, status_code=303)
 
 

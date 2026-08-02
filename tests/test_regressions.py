@@ -733,6 +733,16 @@ def test_set_language_route_returns_303_over_http() -> None:
     assert resp.headers["location"] == "/age"
 
 
+def test_set_language_rejects_protocol_relative_redirect() -> None:
+    class _Req:
+        headers = {"referer": "https://evil.com//phish.example/x"}
+
+    session: dict = {}
+    response = main.get_set_language(_Req(), session, lang="lt")
+
+    assert response.headers["location"] == "/"
+
+
 def test_set_diacritic_mode_route_updates_session_and_redirects() -> None:
     session: dict = {}
     response = main.get_set_diacritic_mode(
@@ -753,6 +763,25 @@ def test_set_diacritic_mode_rejects_non_local_redirects() -> None:
     assert session["diacritic_tolerant"] is False
     assert response.status_code == 303
     assert response.headers.get("location") == "/"
+
+
+def test_set_diacritic_mode_rejects_protocol_relative_redirect() -> None:
+    session: dict = {}
+    response = main.get_set_diacritic_mode(
+        session, enabled="1", next_path="//evil.example/phish"
+    )
+
+    assert response.headers["location"] == "/"
+
+
+def test_set_diacritic_mode_rejects_backslash_protocol_relative_redirect() -> None:
+    """Some browsers treat a leading /\\ the same as // (protocol-relative)."""
+    session: dict = {}
+    response = main.get_set_diacritic_mode(
+        session, enabled="1", next_path="/\\evil.example"
+    )
+
+    assert response.headers["location"] == "/"
 
 
 def test_set_language_rewrites_age_question_mid_session() -> None:
