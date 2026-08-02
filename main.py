@@ -8,6 +8,7 @@ from typing import Any
 from adaptive import AdaptiveLearning
 from age_engine import AgeEngine
 from auth import QuizOAuth, auth_client, init_db_tables, load_progress, save_progress
+from dbpath import resolve_db_path
 from fasthtml.common import *
 from fastlite import database
 from i18n import UI_LANGUAGE_KEY, normalize_ui_lang, tr, ui_lang_from_session
@@ -40,7 +41,7 @@ log = logging.getLogger(__name__)
 # Data & services (loaded once at startup)
 # ------------------------------------------------------------------
 
-_db = database("lithuanian_data.db")
+_db = database(resolve_db_path())
 init_db_tables()
 ALL_ROWS: list[dict[str, Any]] = list(_db.t["numbers"].rows)
 

@@ -8,6 +8,7 @@ from typing import Any
 
 from dotenv import load_dotenv
 
+from dbpath import resolve_db_path
 from fasthtml.common import RedirectResponse
 from fasthtml.oauth import GoogleAppClient, OAuth
 from fastlite import database
@@ -15,7 +16,7 @@ from i18n import UI_LANGUAGE_KEY, normalize_ui_lang
 
 load_dotenv()
 
-_db = database("lithuanian_data.db")
+_db = database(resolve_db_path())
 
 auth_client = GoogleAppClient(
     os.environ.get("GOOGLE_CLIENT_ID", "test"),
