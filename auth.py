@@ -2,6 +2,7 @@
 
 import json
 import logging
+import math
 import os
 from datetime import UTC, datetime
 from typing import Any
@@ -99,7 +100,14 @@ def _get_bool(data: dict[str, Any], key: str, default: bool = False) -> bool:
 
 
 def _is_valid_mix_modules(value: Any) -> bool:
-    """Validate persisted mix-module counters before loading."""
+    """Validate persisted mix-module counters before loading.
+
+    Counters are ints only until the first thompson.bump() call, which
+    gamma-decays them into floats — both types must be accepted (but not
+    bool, an int subclass, and not NaN/Infinity, which json round-trips
+    happily but would corrupt Thompson sampling) or every post-bump save
+    gets silently dropped on the next load.
+    """
     if not isinstance(value, dict) or not value:
         return False
     for stats in value.values():
@@ -107,7 +115,18 @@ def _is_valid_mix_modules(value: Any) -> bool:
             return False
         correct = stats.get("correct")
         incorrect = stats.get("incorrect")
-        if not isinstance(correct, int) or not isinstance(incorrect, int):
+        if isinstance(correct, bool) or isinstance(incorrect, bool):
+            return False
+        if not isinstance(correct, (int, float)) or not isinstance(
+            incorrect, (int, float)
+        ):
+            return False
+        try:
+            if not math.isfinite(correct) or not math.isfinite(incorrect):
+                return False
+        except OverflowError:
+            # A JSON integer with no size limit (e.g. 10**400) can't be
+            # converted to float — treat it as invalid, don't crash.
             return False
         if correct < 0 or incorrect < 0:
             return False

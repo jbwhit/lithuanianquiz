@@ -89,6 +89,50 @@ def test_save_and_load_progress_persists_mix_fields(monkeypatch) -> None:
     assert loaded_session["diacritic_tolerant"] is True
 
 
+def test_save_and_load_progress_persists_bumped_mix_counts(monkeypatch) -> None:
+    """Regression: after the first thompson.bump() call, mix_modules counts
+    are floats (gamma-decayed), not ints. _is_valid_mix_modules must accept
+    them or the adaptive weighting silently resets on every hydrate."""
+    from thompson import bump
+
+    db = _SQLiteDB()
+    monkeypatch.setattr(auth, "_db", db)
+
+    mix_modules = {}
+    bump(mix_modules, "time", is_correct=True)
+    bump(mix_modules, "prices", is_correct=False)
+    assert isinstance(
+        mix_modules["time"]["correct"], float
+    )  # sanity: real bump() output
+
+    auth.save_progress("user-float-mix", {"mix_modules": mix_modules})
+
+    loaded_session: dict = {}
+    auth.load_progress("user-float-mix", loaded_session)
+
+    assert loaded_session["mix_modules"] == mix_modules
+
+
+def test_is_valid_mix_modules_rejects_non_finite_and_bool_counts() -> None:
+    """A fail-closed validator must reject NaN/Infinity (Python's json
+    module happily round-trips them, and they'd otherwise feed straight
+    into Thompson sampling) and bool (an int subclass that isn't a valid
+    counter)."""
+    base = {"correct": 1.0, "incorrect": 1.0}
+    for bad_correct in (float("nan"), float("inf"), float("-inf"), True):
+        value = {"time": {**base, "correct": bad_correct}}
+        assert auth._is_valid_mix_modules(value) is False
+
+
+def test_is_valid_mix_modules_rejects_oversized_integers() -> None:
+    """JSON integers have no size limit, so a corrupted/crafted payload
+    could contain one too large to convert to float. math.isfinite()
+    raises OverflowError on that instead of returning False — the
+    validator must catch it and fail closed, not crash the caller."""
+    value = {"time": {"correct": 10**400, "incorrect": 1}}
+    assert auth._is_valid_mix_modules(value) is False
+
+
 def test_load_progress_defaults_diacritic_mode_to_strict(monkeypatch) -> None:
     db = _SQLiteDB()
     monkeypatch.setattr(auth, "_db", db)
