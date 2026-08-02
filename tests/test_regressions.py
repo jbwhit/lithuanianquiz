@@ -1516,3 +1516,23 @@ def test_get_stats_hydrates_progress_for_logged_in_user(monkeypatch) -> None:
 
     assert session.get("correct_count") == 42
     assert session.get("incorrect_count") == 3
+
+
+def test_answer_route_does_not_500_on_stale_row_id() -> None:
+    """Regression: a stale row_id=0 cookie (0 is excluded from price
+    rows -- price_rows = [r for r in ALL_ROWS if r["number"] >= 1])
+    previously crashed /answer with a 500 (KeyError from
+    ExerciseEngine.get_row). Falls back to the first row instead."""
+    from starlette.testclient import TestClient
+
+    session = {
+        "row_id": 0,
+        "exercise_type": "kokia",
+        "current_question": "Kokia kaina? (€0)",
+    }
+
+    with TestClient(main.app) as client:
+        client.cookies.set("session_", _encode_session_cookie(session))
+        resp = client.post("/answer", data={"user_answer": "vienas euras"})
+
+    assert resp.status_code == 200

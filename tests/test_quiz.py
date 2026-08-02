@@ -167,6 +167,15 @@ class TestExerciseEngine:
     def test_get_row(self, engine: ExerciseEngine) -> None:
         assert engine.get_row(1) == SAMPLE_ROW
 
+    def test_get_row_falls_back_to_first_row_for_unknown_number(
+        self, engine: ExerciseEngine
+    ) -> None:
+        """Regression: a stale session cookie can carry a row_id that no
+        longer exists (e.g. 0, which price rows exclude). get_row() must
+        fall back to the first row instead of raising KeyError and 500ing
+        the /answer route."""
+        assert engine.get_row(0) == SAMPLE_ROW
+
     def test_generate_returns_dict(self, engine: ExerciseEngine) -> None:
         ex = engine.generate({})
         assert "exercise_type" in ex

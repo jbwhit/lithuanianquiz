@@ -101,7 +101,13 @@ class ExerciseEngine:
         self.adaptive = adaptive
 
     def get_row(self, number: int) -> dict[str, Any]:
-        return self.by_number[number]
+        """Look up a row by number, falling back to the first row.
+
+        A session cookie can carry a stale row_id from before the price
+        rows changed (e.g. 0, which is excluded) or persist across a
+        year; falling back avoids a 500 on /answer for those users.
+        """
+        return self.by_number.get(number, self.rows[0])
 
     def generate(self, session: dict[str, Any]) -> dict[str, Any]:
         """Return an exercise dict using adaptive selection if available."""
