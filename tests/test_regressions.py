@@ -1475,3 +1475,44 @@ def test_get_auth_self_heals_corrupted_progress_row(monkeypatch) -> None:
     auth.load_progress("user-corrupt", reloaded)
     assert reloaded["correct_count"] == 8
     assert reloaded["incorrect_count"] == 1
+
+
+def test_get_home_hydrates_progress_for_logged_in_user(monkeypatch) -> None:
+    """Regression: get_home() never hydrated DB progress, so a logged-in
+    user's persisted ui_lang was ignored (the cookie has it stripped by
+    _compact_logged_in_session) and the landing page silently fell back
+    to English."""
+    db = _SQLiteDB()
+    monkeypatch.setattr(auth, "_db", db)
+    auth.save_progress("user-home", {"ui_lang": "lt"})
+
+    session: dict = {"auth": "user-home", "user_name": "Test User"}
+    main.get_home(session)
+
+    assert session.get(main.UI_LANGUAGE_KEY) == "lt"
+
+
+def test_get_about_hydrates_progress_for_logged_in_user(monkeypatch) -> None:
+    """Same bug as get_home(), for the /about page."""
+    db = _SQLiteDB()
+    monkeypatch.setattr(auth, "_db", db)
+    auth.save_progress("user-about", {"ui_lang": "lt"})
+
+    session: dict = {"auth": "user-about"}
+    main.get_about(session)
+
+    assert session.get(main.UI_LANGUAGE_KEY) == "lt"
+
+
+def test_get_stats_hydrates_progress_for_logged_in_user(monkeypatch) -> None:
+    """Regression: get_stats() never hydrated DB progress, so a logged-in
+    user's /stats page rendered all zeros regardless of real progress."""
+    db = _SQLiteDB()
+    monkeypatch.setattr(auth, "_db", db)
+    auth.save_progress("user-stats", {"correct_count": 42, "incorrect_count": 3})
+
+    session: dict = {"auth": "user-stats"}
+    main.get_stats(session)
+
+    assert session.get("correct_count") == 42
+    assert session.get("incorrect_count") == 3

@@ -722,6 +722,7 @@ def get_set_diacritic_mode(session, enabled: str = "0", next_path: str = "/") ->
 
 @rt("/")
 def get_home(session) -> Any:
+    _hydrate_progress_if_logged_in(session)
     lang = _ui_lang(session)
     return _render_page(
         session,
@@ -911,6 +912,7 @@ def post_reset(session) -> Any:
 
 @rt("/stats")
 def get_stats(session) -> Any:
+    _hydrate_progress_if_logged_in(session)
     lang = _ui_lang(session)
     stats = _compute_stats(session)
     time_stats = _compute_time_stats(session)
@@ -935,6 +937,7 @@ def get_stats(session) -> Any:
 
 @rt("/about")
 def get_about(session) -> Any:
+    _hydrate_progress_if_logged_in(session)
     lang = _ui_lang(session)
     return _render_page(
         session,
