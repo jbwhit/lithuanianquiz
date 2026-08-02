@@ -38,6 +38,12 @@ def sample_rows() -> list[dict]:
             "kokia_kaina_compound": None,
             "years": "metų",
         },
+        {
+            "number": 21,
+            "kokia_kaina": "dvidešimt",
+            "kokia_kaina_compound": "vienas",
+            "years": "metai",
+        },
     ]
 
 
@@ -62,6 +68,18 @@ class TestDegreeForm:
     def test_decade(self, sample_rows: list[dict]) -> None:
         assert _degree_form(sample_rows[4]) == "laipsnių"
 
+    def test_eleven_is_exception_not_singular(self) -> None:
+        assert _degree_form({"number": 11, "years": "metų"}) == "laipsnių"
+
+    def test_twenty_one_is_singular(self) -> None:
+        assert _degree_form({"number": 21, "years": "metai"}) == "laipsnis"
+
+    def test_thirty_one_is_singular(self) -> None:
+        assert _degree_form({"number": 31, "years": "metai"}) == "laipsnis"
+
+    def test_ninety_one_is_singular(self) -> None:
+        assert _degree_form({"number": 91, "years": "metai"}) == "laipsnis"
+
 
 class TestCorrectAnswer:
     def test_produce_simple(
@@ -78,6 +96,14 @@ class TestCorrectAnswer:
         assert (
             engine.correct_answer("produce", sample_rows[3], negative=False)
             == "dvidešimt penki laipsniai"
+        )
+
+    def test_produce_compound_ending_in_one_is_singular(
+        self, engine: WeatherEngine, sample_rows: list[dict]
+    ) -> None:
+        assert (
+            engine.correct_answer("produce", sample_rows[5], negative=False)
+            == "dvidešimt vienas laipsnis"
         )
 
     def test_produce_negative(

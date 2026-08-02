@@ -13,16 +13,21 @@ SIGN_TYPES: list[str] = ["positive", "negative"]
 
 
 def _degree_form(row: dict[str, Any]) -> str:
-    """Pick laipsnis/laipsniai/laipsnių based on same rule as years column.
+    """Pick laipsnis/laipsniai/laipsnių to match Lithuanian cardinal-noun
+    agreement — the same rule the DB already encodes in `euro_nom`:
 
-    - number == 0 → laipsnių (gen. pl., same as 10-19/decades)
-    - number == 1 → laipsnis (nom. sg.)
-    - years == "metai" (2-9, compounds ending 2-9) → laipsniai (nom. pl.)
+    - number == 0 → laipsnių (gen. pl.)
+    - number % 100 == 11 → laipsnių (gen. pl.) — the "11" exception
+    - number % 10 == 1 → laipsnis (nom. sg.) — includes 21, 31, ... 91
+    - years == "metai" (other 2-9-ending numbers/compounds) → laipsniai (nom. pl.)
     - years == "metų" (10-19, decades) → laipsnių (gen. pl.)
     """
-    if row["number"] == 0:
+    number = row["number"]
+    if number == 0:
         return "laipsnių"
-    if row["number"] == 1:
+    if number % 100 == 11:
+        return "laipsnių"
+    if number % 10 == 1:
         return "laipsnis"
     if row["years"] == "metai":
         return "laipsniai"
