@@ -117,11 +117,12 @@ def test_is_valid_mix_modules_rejects_non_finite_and_bool_counts() -> None:
     """A fail-closed validator must reject NaN/Infinity (Python's json
     module happily round-trips them, and they'd otherwise feed straight
     into Thompson sampling) and bool (an int subclass that isn't a valid
-    counter)."""
+    counter) — on either field, not just `correct`."""
     base = {"correct": 1.0, "incorrect": 1.0}
-    for bad_correct in (float("nan"), float("inf"), float("-inf"), True):
-        value = {"time": {**base, "correct": bad_correct}}
-        assert auth._is_valid_mix_modules(value) is False
+    for field in ("correct", "incorrect"):
+        for bad_value in (float("nan"), float("inf"), float("-inf"), True):
+            value = {"time": {**base, field: bad_value}}
+            assert auth._is_valid_mix_modules(value) is False
 
 
 def test_is_valid_mix_modules_rejects_oversized_integers() -> None:
