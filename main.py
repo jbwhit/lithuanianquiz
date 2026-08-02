@@ -683,9 +683,11 @@ def get_login(req, session) -> Any:
     if session.get("auth"):
         return RedirectResponse("/", status_code=303)
     lang = _ui_lang(session)
+    state = secrets.token_urlsafe(32)
+    session["oauth_state"] = state
     return _render_page(
         session,
-        login_page_content(oauth.login_link(req), lang=lang),
+        login_page_content(oauth.login_link(req, state=state), lang=lang),
         page_title=_page_title(session, "Log in", "Prisijungti"),
         current_path="/login",
     )
