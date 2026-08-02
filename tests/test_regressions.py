@@ -1293,3 +1293,56 @@ def test_compact_logged_in_session_is_wired_as_after_hook() -> None:
         "_compact_logged_in_session missing from app.after — the strip "
         "won't run and the cookie bloat will reappear"
     )
+
+
+def test_set_language_does_not_wipe_db_progress_for_logged_in_user(
+    monkeypatch,
+) -> None:
+    """Regression: /set-language must hydrate DB progress into the session
+    before calling save_progress, or it persists the stripped (cookie-only)
+    session over real DB data — wiping all progress."""
+    db = _SQLiteDB()
+    monkeypatch.setattr(auth, "_db", db)
+
+    auth.save_progress(
+        "user-hydrate-lang",
+        {
+            "correct_count": 42,
+            "incorrect_count": 7,
+            "performance": {"kokia": {"correct": 40.0, "incorrect": 6.0}},
+        },
+    )
+
+    class _Req:
+        headers = {"referer": "/prices"}
+
+    # Simulates the cookie a logged-in user actually carries: DB-authoritative
+    # keys already stripped by _compact_logged_in_session.
+    session: dict = {"auth": "user-hydrate-lang", "user_name": "Test User"}
+    main.get_set_language(_Req(), session, lang="lt")
+
+    reloaded: dict = {}
+    auth.load_progress("user-hydrate-lang", reloaded)
+    assert reloaded["correct_count"] == 42
+    assert reloaded["incorrect_count"] == 7
+
+
+def test_set_diacritic_mode_does_not_wipe_db_progress_for_logged_in_user(
+    monkeypatch,
+) -> None:
+    """Same bug as /set-language, for /set-diacritic-mode."""
+    db = _SQLiteDB()
+    monkeypatch.setattr(auth, "_db", db)
+
+    auth.save_progress(
+        "user-hydrate-diacritic",
+        {"correct_count": 12, "incorrect_count": 3},
+    )
+
+    session: dict = {"auth": "user-hydrate-diacritic"}
+    main.get_set_diacritic_mode(session, enabled="1", next_path="/prices")
+
+    reloaded: dict = {}
+    auth.load_progress("user-hydrate-diacritic", reloaded)
+    assert reloaded["correct_count"] == 12
+    assert reloaded["incorrect_count"] == 3

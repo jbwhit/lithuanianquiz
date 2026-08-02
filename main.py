@@ -678,6 +678,7 @@ def get_login(req, session) -> Any:
 
 @rt("/set-language")
 def get_set_language(req, session, lang: str = "en") -> Any:
+    _hydrate_progress_if_logged_in(session)
     session[UI_LANGUAGE_KEY] = normalize_ui_lang(lang)
     _refresh_cached_questions(session)
     if session.get("auth"):
@@ -696,6 +697,7 @@ def get_set_language(req, session, lang: str = "en") -> Any:
 
 @rt("/set-diacritic-mode")
 def get_set_diacritic_mode(session, enabled: str = "0", next_path: str = "/") -> Any:
+    _hydrate_progress_if_logged_in(session)
     session[_DIACRITIC_MODE_KEY] = enabled == "1"
     if session.get("auth"):
         save_progress(session["auth"], session)
