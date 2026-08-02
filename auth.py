@@ -154,17 +154,24 @@ def upsert_user(google_id: str, email: str, name: str) -> None:
     )
 
 
-def load_progress(google_id: str, session: dict[str, Any]) -> None:
-    """Merge saved DB progress into the session."""
+def load_progress(google_id: str, session: dict[str, Any]) -> bool:
+    """Merge saved DB progress into the session.
+
+    Returns True if a valid DB row was found and merged into `session`.
+    Returns False both when there's no row yet (new user) and when an
+    existing row is unusable (corrupt JSON / wrong shape) — in both cases
+    the caller should treat the current session as authoritative and may
+    save it back, which self-heals a corrupted row.
+    """
     row = _db.execute(
         "SELECT data FROM user_progress WHERE google_id = ?", [google_id]
     ).fetchone()
     if not row:
-        return
+        return False
 
     data = _load_progress_payload(row[0], google_id)
     if data is None:
-        return
+        return False
 
     session["diacritic_tolerant"] = _get_bool(data, "diacritic_tolerant")
 
@@ -206,6 +213,8 @@ def load_progress(google_id: str, session: dict[str, Any]) -> None:
         session.pop("mix_modules", None)
 
     session[UI_LANGUAGE_KEY] = normalize_ui_lang(data.get(UI_LANGUAGE_KEY))
+
+    return True
 
 
 def save_progress(google_id: str, session: dict[str, Any]) -> None:
@@ -271,7 +280,9 @@ class QuizOAuth(OAuth):
         self, info: Any, ident: str, session: Any, state: Any
     ) -> RedirectResponse:
         upsert_user(ident, info.get("email", ""), info.get("name", ""))
-        load_progress(ident, session)
+        had_progress = load_progress(ident, session)
+        if not had_progress:
+            save_progress(ident, session)
         session["user_name"] = info.get("name", "")
         session["user_email"] = info.get("email", "")
         return RedirectResponse("/", status_code=303)

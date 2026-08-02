@@ -24,6 +24,17 @@ class _SQLiteDB:
             )
             """
         )
+        self.conn.execute(
+            """
+            CREATE TABLE users (
+                google_id TEXT PRIMARY KEY,
+                email TEXT,
+                name TEXT,
+                created_at TEXT,
+                last_login TEXT
+            )
+            """
+        )
         self.conn.commit()
 
     def execute(self, sql: str, params: list[str] | None = None):
@@ -1346,3 +1357,47 @@ def test_set_diacritic_mode_does_not_wipe_db_progress_for_logged_in_user(
     auth.load_progress("user-hydrate-diacritic", reloaded)
     assert reloaded["correct_count"] == 12
     assert reloaded["incorrect_count"] == 3
+
+
+def test_get_auth_persists_anonymous_progress_for_new_user(monkeypatch) -> None:
+    """Regression: a brand-new user's anonymous (cookie-only) progress must
+    be saved to the DB on first login. load_progress no-ops when there's no
+    existing DB row, so without an explicit save the progress is discarded
+    the moment the post-login response strips it from the cookie."""
+    db = _SQLiteDB()
+    monkeypatch.setattr(auth, "_db", db)
+
+    session: dict = {
+        "correct_count": 15,
+        "incorrect_count": 4,
+        "performance": {"kokia": {"correct": 10.0, "incorrect": 3.0}},
+    }
+    info = {"email": "new@example.com", "name": "New User"}
+    main.oauth.get_auth(info, "new-user-id", session, state=None)
+
+    reloaded: dict = {}
+    auth.load_progress("new-user-id", reloaded)
+    assert reloaded["correct_count"] == 15
+    assert reloaded["incorrect_count"] == 4
+
+
+def test_get_auth_self_heals_corrupted_progress_row(monkeypatch) -> None:
+    """A row that exists but fails to parse (corrupt JSON) must be treated
+    the same as "no row" — the anonymous session is saved over it, rather
+    than leaving the corrupted row stuck forever (load_progress silently
+    no-ops on it on every future login too)."""
+    db = _SQLiteDB()
+    monkeypatch.setattr(auth, "_db", db)
+    db.execute(
+        "INSERT INTO user_progress (google_id, data, updated_at) VALUES (?, ?, ?)",
+        ["user-corrupt", "{not json", "2026-03-02T00:00:00+00:00"],
+    )
+
+    session: dict = {"correct_count": 8, "incorrect_count": 1}
+    info = {"email": "healed@example.com", "name": "Healed User"}
+    main.oauth.get_auth(info, "user-corrupt", session, state=None)
+
+    reloaded: dict = {}
+    auth.load_progress("user-corrupt", reloaded)
+    assert reloaded["correct_count"] == 8
+    assert reloaded["incorrect_count"] == 1
