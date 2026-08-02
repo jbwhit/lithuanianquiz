@@ -8,7 +8,7 @@ from typing import Any
 
 from dotenv import load_dotenv
 
-from dbpath import resolve_db_path
+from dbpath import ensure_db_seeded, resolve_db_path
 from fasthtml.common import RedirectResponse
 from fasthtml.oauth import GoogleAppClient, OAuth
 from fastlite import database
@@ -16,6 +16,7 @@ from i18n import UI_LANGUAGE_KEY, normalize_ui_lang
 
 load_dotenv()
 
+ensure_db_seeded(resolve_db_path())
 _db = database(resolve_db_path())
 
 auth_client = GoogleAppClient(
