@@ -2,6 +2,7 @@
 
 import json
 import logging
+import math
 import os
 from datetime import UTC, datetime
 from typing import Any
@@ -99,7 +100,14 @@ def _get_bool(data: dict[str, Any], key: str, default: bool = False) -> bool:
 
 
 def _is_valid_mix_modules(value: Any) -> bool:
-    """Validate persisted mix-module counters before loading."""
+    """Validate persisted mix-module counters before loading.
+
+    Counters are ints only until the first thompson.bump() call, which
+    gamma-decays them into floats — both types must be accepted (but not
+    bool, an int subclass, and not NaN/Infinity, which json round-trips
+    happily but would corrupt Thompson sampling) or every post-bump save
+    gets silently dropped on the next load.
+    """
     if not isinstance(value, dict) or not value:
         return False
     for stats in value.values():
@@ -107,7 +115,18 @@ def _is_valid_mix_modules(value: Any) -> bool:
             return False
         correct = stats.get("correct")
         incorrect = stats.get("incorrect")
-        if not isinstance(correct, int) or not isinstance(incorrect, int):
+        if isinstance(correct, bool) or isinstance(incorrect, bool):
+            return False
+        if not isinstance(correct, (int, float)) or not isinstance(
+            incorrect, (int, float)
+        ):
+            return False
+        try:
+            if not math.isfinite(correct) or not math.isfinite(incorrect):
+                return False
+        except OverflowError:
+            # A JSON integer with no size limit (e.g. 10**400) can't be
+            # converted to float — treat it as invalid, don't crash.
             return False
         if correct < 0 or incorrect < 0:
             return False
@@ -154,17 +173,24 @@ def upsert_user(google_id: str, email: str, name: str) -> None:
     )
 
 
-def load_progress(google_id: str, session: dict[str, Any]) -> None:
-    """Merge saved DB progress into the session."""
+def load_progress(google_id: str, session: dict[str, Any]) -> bool:
+    """Merge saved DB progress into the session.
+
+    Returns True if a valid DB row was found and merged into `session`.
+    Returns False both when there's no row yet (new user) and when an
+    existing row is unusable (corrupt JSON / wrong shape) — in both cases
+    the caller should treat the current session as authoritative and may
+    save it back, which self-heals a corrupted row.
+    """
     row = _db.execute(
         "SELECT data FROM user_progress WHERE google_id = ?", [google_id]
     ).fetchone()
     if not row:
-        return
+        return False
 
     data = _load_progress_payload(row[0], google_id)
     if data is None:
-        return
+        return False
 
     session["diacritic_tolerant"] = _get_bool(data, "diacritic_tolerant")
 
@@ -206,6 +232,8 @@ def load_progress(google_id: str, session: dict[str, Any]) -> None:
         session.pop("mix_modules", None)
 
     session[UI_LANGUAGE_KEY] = normalize_ui_lang(data.get(UI_LANGUAGE_KEY))
+
+    return True
 
 
 def save_progress(google_id: str, session: dict[str, Any]) -> None:
@@ -271,7 +299,9 @@ class QuizOAuth(OAuth):
         self, info: Any, ident: str, session: Any, state: Any
     ) -> RedirectResponse:
         upsert_user(ident, info.get("email", ""), info.get("name", ""))
-        load_progress(ident, session)
+        had_progress = load_progress(ident, session)
+        if not had_progress:
+            save_progress(ident, session)
         session["user_name"] = info.get("name", "")
         session["user_email"] = info.get("email", "")
         return RedirectResponse("/", status_code=303)

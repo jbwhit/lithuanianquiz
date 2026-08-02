@@ -24,6 +24,17 @@ class _SQLiteDB:
             )
             """
         )
+        self.conn.execute(
+            """
+            CREATE TABLE users (
+                google_id TEXT PRIMARY KEY,
+                email TEXT,
+                name TEXT,
+                created_at TEXT,
+                last_login TEXT
+            )
+            """
+        )
         self.conn.commit()
 
     def execute(self, sql: str, params: list[str] | None = None):
@@ -76,6 +87,51 @@ def test_save_and_load_progress_persists_mix_fields(monkeypatch) -> None:
     }
     assert loaded_session["ui_lang"] == "lt"
     assert loaded_session["diacritic_tolerant"] is True
+
+
+def test_save_and_load_progress_persists_bumped_mix_counts(monkeypatch) -> None:
+    """Regression: after the first thompson.bump() call, mix_modules counts
+    are floats (gamma-decayed), not ints. _is_valid_mix_modules must accept
+    them or the adaptive weighting silently resets on every hydrate."""
+    from thompson import bump
+
+    db = _SQLiteDB()
+    monkeypatch.setattr(auth, "_db", db)
+
+    mix_modules = {}
+    bump(mix_modules, "time", is_correct=True)
+    bump(mix_modules, "prices", is_correct=False)
+    assert isinstance(
+        mix_modules["time"]["correct"], float
+    )  # sanity: real bump() output
+
+    auth.save_progress("user-float-mix", {"mix_modules": mix_modules})
+
+    loaded_session: dict = {}
+    auth.load_progress("user-float-mix", loaded_session)
+
+    assert loaded_session["mix_modules"] == mix_modules
+
+
+def test_is_valid_mix_modules_rejects_non_finite_and_bool_counts() -> None:
+    """A fail-closed validator must reject NaN/Infinity (Python's json
+    module happily round-trips them, and they'd otherwise feed straight
+    into Thompson sampling) and bool (an int subclass that isn't a valid
+    counter) — on either field, not just `correct`."""
+    base = {"correct": 1.0, "incorrect": 1.0}
+    for field in ("correct", "incorrect"):
+        for bad_value in (float("nan"), float("inf"), float("-inf"), True):
+            value = {"time": {**base, field: bad_value}}
+            assert auth._is_valid_mix_modules(value) is False
+
+
+def test_is_valid_mix_modules_rejects_oversized_integers() -> None:
+    """JSON integers have no size limit, so a corrupted/crafted payload
+    could contain one too large to convert to float. math.isfinite()
+    raises OverflowError on that instead of returning False — the
+    validator must catch it and fail closed, not crash the caller."""
+    value = {"time": {"correct": 10**400, "incorrect": 1}}
+    assert auth._is_valid_mix_modules(value) is False
 
 
 def test_load_progress_defaults_diacritic_mode_to_strict(monkeypatch) -> None:
@@ -678,6 +734,16 @@ def test_set_language_route_returns_303_over_http() -> None:
     assert resp.headers["location"] == "/age"
 
 
+def test_set_language_rejects_protocol_relative_redirect() -> None:
+    class _Req:
+        headers = {"referer": "https://evil.com//phish.example/x"}
+
+    session: dict = {}
+    response = main.get_set_language(_Req(), session, lang="lt")
+
+    assert response.headers["location"] == "/"
+
+
 def test_set_diacritic_mode_route_updates_session_and_redirects() -> None:
     session: dict = {}
     response = main.get_set_diacritic_mode(
@@ -698,6 +764,25 @@ def test_set_diacritic_mode_rejects_non_local_redirects() -> None:
     assert session["diacritic_tolerant"] is False
     assert response.status_code == 303
     assert response.headers.get("location") == "/"
+
+
+def test_set_diacritic_mode_rejects_protocol_relative_redirect() -> None:
+    session: dict = {}
+    response = main.get_set_diacritic_mode(
+        session, enabled="1", next_path="//evil.example/phish"
+    )
+
+    assert response.headers["location"] == "/"
+
+
+def test_set_diacritic_mode_rejects_backslash_protocol_relative_redirect() -> None:
+    """Some browsers treat a leading /\\ the same as // (protocol-relative)."""
+    session: dict = {}
+    response = main.get_set_diacritic_mode(
+        session, enabled="1", next_path="/\\evil.example"
+    )
+
+    assert response.headers["location"] == "/"
 
 
 def test_set_language_rewrites_age_question_mid_session() -> None:
@@ -1293,3 +1378,141 @@ def test_compact_logged_in_session_is_wired_as_after_hook() -> None:
         "_compact_logged_in_session missing from app.after — the strip "
         "won't run and the cookie bloat will reappear"
     )
+
+
+def test_set_language_does_not_wipe_db_progress_for_logged_in_user(
+    monkeypatch,
+) -> None:
+    """Regression: /set-language must hydrate DB progress into the session
+    before calling save_progress, or it persists the stripped (cookie-only)
+    session over real DB data — wiping all progress."""
+    db = _SQLiteDB()
+    monkeypatch.setattr(auth, "_db", db)
+
+    auth.save_progress(
+        "user-hydrate-lang",
+        {
+            "correct_count": 42,
+            "incorrect_count": 7,
+            "performance": {"kokia": {"correct": 40.0, "incorrect": 6.0}},
+        },
+    )
+
+    class _Req:
+        headers = {"referer": "/prices"}
+
+    # Simulates the cookie a logged-in user actually carries: DB-authoritative
+    # keys already stripped by _compact_logged_in_session.
+    session: dict = {"auth": "user-hydrate-lang", "user_name": "Test User"}
+    main.get_set_language(_Req(), session, lang="lt")
+
+    reloaded: dict = {}
+    auth.load_progress("user-hydrate-lang", reloaded)
+    assert reloaded["correct_count"] == 42
+    assert reloaded["incorrect_count"] == 7
+
+
+def test_set_diacritic_mode_does_not_wipe_db_progress_for_logged_in_user(
+    monkeypatch,
+) -> None:
+    """Same bug as /set-language, for /set-diacritic-mode."""
+    db = _SQLiteDB()
+    monkeypatch.setattr(auth, "_db", db)
+
+    auth.save_progress(
+        "user-hydrate-diacritic",
+        {"correct_count": 12, "incorrect_count": 3},
+    )
+
+    session: dict = {"auth": "user-hydrate-diacritic"}
+    main.get_set_diacritic_mode(session, enabled="1", next_path="/prices")
+
+    reloaded: dict = {}
+    auth.load_progress("user-hydrate-diacritic", reloaded)
+    assert reloaded["correct_count"] == 12
+    assert reloaded["incorrect_count"] == 3
+
+
+def test_get_auth_persists_anonymous_progress_for_new_user(monkeypatch) -> None:
+    """Regression: a brand-new user's anonymous (cookie-only) progress must
+    be saved to the DB on first login. load_progress no-ops when there's no
+    existing DB row, so without an explicit save the progress is discarded
+    the moment the post-login response strips it from the cookie."""
+    db = _SQLiteDB()
+    monkeypatch.setattr(auth, "_db", db)
+
+    session: dict = {
+        "correct_count": 15,
+        "incorrect_count": 4,
+        "performance": {"kokia": {"correct": 10.0, "incorrect": 3.0}},
+    }
+    info = {"email": "new@example.com", "name": "New User"}
+    main.oauth.get_auth(info, "new-user-id", session, state=None)
+
+    reloaded: dict = {}
+    auth.load_progress("new-user-id", reloaded)
+    assert reloaded["correct_count"] == 15
+    assert reloaded["incorrect_count"] == 4
+
+
+def test_get_auth_self_heals_corrupted_progress_row(monkeypatch) -> None:
+    """A row that exists but fails to parse (corrupt JSON) must be treated
+    the same as "no row" — the anonymous session is saved over it, rather
+    than leaving the corrupted row stuck forever (load_progress silently
+    no-ops on it on every future login too)."""
+    db = _SQLiteDB()
+    monkeypatch.setattr(auth, "_db", db)
+    db.execute(
+        "INSERT INTO user_progress (google_id, data, updated_at) VALUES (?, ?, ?)",
+        ["user-corrupt", "{not json", "2026-03-02T00:00:00+00:00"],
+    )
+
+    session: dict = {"correct_count": 8, "incorrect_count": 1}
+    info = {"email": "healed@example.com", "name": "Healed User"}
+    main.oauth.get_auth(info, "user-corrupt", session, state=None)
+
+    reloaded: dict = {}
+    auth.load_progress("user-corrupt", reloaded)
+    assert reloaded["correct_count"] == 8
+    assert reloaded["incorrect_count"] == 1
+
+
+def test_get_home_hydrates_progress_for_logged_in_user(monkeypatch) -> None:
+    """Regression: get_home() never hydrated DB progress, so a logged-in
+    user's persisted ui_lang was ignored (the cookie has it stripped by
+    _compact_logged_in_session) and the landing page silently fell back
+    to English."""
+    db = _SQLiteDB()
+    monkeypatch.setattr(auth, "_db", db)
+    auth.save_progress("user-home", {"ui_lang": "lt"})
+
+    session: dict = {"auth": "user-home", "user_name": "Test User"}
+    main.get_home(session)
+
+    assert session.get(main.UI_LANGUAGE_KEY) == "lt"
+
+
+def test_get_about_hydrates_progress_for_logged_in_user(monkeypatch) -> None:
+    """Same bug as get_home(), for the /about page."""
+    db = _SQLiteDB()
+    monkeypatch.setattr(auth, "_db", db)
+    auth.save_progress("user-about", {"ui_lang": "lt"})
+
+    session: dict = {"auth": "user-about"}
+    main.get_about(session)
+
+    assert session.get(main.UI_LANGUAGE_KEY) == "lt"
+
+
+def test_get_stats_hydrates_progress_for_logged_in_user(monkeypatch) -> None:
+    """Regression: get_stats() never hydrated DB progress, so a logged-in
+    user's /stats page rendered all zeros regardless of real progress."""
+    db = _SQLiteDB()
+    monkeypatch.setattr(auth, "_db", db)
+    auth.save_progress("user-stats", {"correct_count": 42, "incorrect_count": 3})
+
+    session: dict = {"auth": "user-stats"}
+    main.get_stats(session)
+
+    assert session.get("correct_count") == 42
+    assert session.get("incorrect_count") == 3
