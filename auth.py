@@ -297,7 +297,10 @@ class QuizOAuth(OAuth):
 
     def get_auth(
         self, info: Any, ident: str, session: Any, state: Any
-    ) -> RedirectResponse:
+    ) -> RedirectResponse | None:
+        expected_state = session.pop("oauth_state", None)
+        if not expected_state or state != expected_state:
+            return None
         upsert_user(ident, info.get("email", ""), info.get("name", ""))
         had_progress = load_progress(ident, session)
         if not had_progress:

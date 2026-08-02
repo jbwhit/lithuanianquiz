@@ -1442,12 +1442,13 @@ def test_get_auth_persists_anonymous_progress_for_new_user(monkeypatch) -> None:
     monkeypatch.setattr(auth, "_db", db)
 
     session: dict = {
+        "oauth_state": "test-state",
         "correct_count": 15,
         "incorrect_count": 4,
         "performance": {"kokia": {"correct": 10.0, "incorrect": 3.0}},
     }
     info = {"email": "new@example.com", "name": "New User"}
-    main.oauth.get_auth(info, "new-user-id", session, state=None)
+    main.oauth.get_auth(info, "new-user-id", session, state="test-state")
 
     reloaded: dict = {}
     auth.load_progress("new-user-id", reloaded)
@@ -1467,9 +1468,13 @@ def test_get_auth_self_heals_corrupted_progress_row(monkeypatch) -> None:
         ["user-corrupt", "{not json", "2026-03-02T00:00:00+00:00"],
     )
 
-    session: dict = {"correct_count": 8, "incorrect_count": 1}
+    session: dict = {
+        "oauth_state": "test-state",
+        "correct_count": 8,
+        "incorrect_count": 1,
+    }
     info = {"email": "healed@example.com", "name": "Healed User"}
-    main.oauth.get_auth(info, "user-corrupt", session, state=None)
+    main.oauth.get_auth(info, "user-corrupt", session, state="test-state")
 
     reloaded: dict = {}
     auth.load_progress("user-corrupt", reloaded)
@@ -1559,3 +1564,59 @@ def test_answer_route_grades_stale_row_id_correctly() -> None:
     assert resp.status_code == 200
     assert "Correct!" in resp.text
     assert "vienas euras" not in resp.text
+
+
+def test_login_route_generates_and_stores_csrf_state() -> None:
+    """Regression: /login never generated or stored a CSRF state token,
+    so get_auth had nothing to validate the callback's state against —
+    an OAuth login-CSRF gap (an attacker could trick a victim into
+    completing a login flow that logs them into the attacker's account)."""
+    from starlette.testclient import TestClient
+
+    with TestClient(main.app) as client:
+        resp = client.get("/login")
+
+    assert resp.status_code == 200
+    set_cookie = resp.headers.get("set-cookie", "")
+    assert "session_=" in set_cookie
+    cookie_value = set_cookie.split("session_=", 1)[1].split(";", 1)[0]
+    session = _decode_session_cookie(cookie_value)
+
+    assert "oauth_state" in session
+    assert len(session["oauth_state"]) >= 16
+    assert f"state={session['oauth_state']}" in resp.text
+
+
+def test_get_auth_rejects_mismatched_csrf_state(monkeypatch) -> None:
+    """get_auth must reject a callback whose state doesn't match what
+    /login stored in the session."""
+    db = _SQLiteDB()
+    monkeypatch.setattr(auth, "_db", db)
+
+    session: dict = {"oauth_state": "expected-token"}
+    info = {"email": "victim@example.com", "name": "Victim"}
+    result = main.oauth.get_auth(info, "attacker-id", session, state="wrong-token")
+
+    assert not result
+    assert "auth" not in session
+    assert "user_name" not in session
+    assert "oauth_state" not in session  # single-use, popped even on rejection
+
+    reloaded: dict = {}
+    auth.load_progress("attacker-id", reloaded)
+    assert reloaded == {}  # nothing was ever persisted for this ident
+
+
+def test_get_auth_accepts_matching_csrf_state(monkeypatch) -> None:
+    """The happy path: a callback state matching what /login stored
+    proceeds as a normal login."""
+    db = _SQLiteDB()
+    monkeypatch.setattr(auth, "_db", db)
+
+    session: dict = {"oauth_state": "matching-token"}
+    info = {"email": "user@example.com", "name": "User"}
+    result = main.oauth.get_auth(info, "user-ok", session, state="matching-token")
+
+    assert result is not None
+    assert session.get("user_name") == "User"
+    assert "oauth_state" not in session
