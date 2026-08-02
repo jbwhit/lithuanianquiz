@@ -48,7 +48,7 @@ ALL_ROWS: list[dict[str, Any]] = list(_db.t["numbers"].rows)
 
 adaptive = AdaptiveLearning()
 price_rows = [r for r in ALL_ROWS if r["number"] >= 1]
-engine = ExerciseEngine(price_rows, adaptive)
+engine = ExerciseEngine(price_rows, adaptive, all_rows=ALL_ROWS)
 time_engine = TimeEngine()
 
 number_engine = NumberEngine(ALL_ROWS)

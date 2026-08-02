@@ -1522,7 +1522,7 @@ def test_answer_route_does_not_500_on_stale_row_id() -> None:
     """Regression: a stale row_id=0 cookie (0 is excluded from price
     rows -- price_rows = [r for r in ALL_ROWS if r["number"] >= 1])
     previously crashed /answer with a 500 (KeyError from
-    ExerciseEngine.get_row). Falls back to the first row instead."""
+    ExerciseEngine.get_row)."""
     from starlette.testclient import TestClient
 
     session = {
@@ -1533,6 +1533,29 @@ def test_answer_route_does_not_500_on_stale_row_id() -> None:
 
     with TestClient(main.app) as client:
         client.cookies.set("session_", _encode_session_cookie(session))
-        resp = client.post("/answer", data={"user_answer": "vienas euras"})
+        resp = client.post("/answer", data={"user_answer": "nulis eurų"})
 
     assert resp.status_code == 200
+
+
+def test_answer_route_grades_stale_row_id_correctly() -> None:
+    """Regression: falling back to an arbitrary row (e.g. row 1) instead
+    of the real excluded row misgrades a stale question — a user shown
+    "Kokia kaina? (€0)" who correctly answers "nulis eurų" must not be
+    told the answer was "vienas euras." (row 1's answer, unrelated to
+    what they were actually asked)."""
+    from starlette.testclient import TestClient
+
+    session = {
+        "row_id": 0,
+        "exercise_type": "kokia",
+        "current_question": "Kokia kaina? (€0)",
+    }
+
+    with TestClient(main.app) as client:
+        client.cookies.set("session_", _encode_session_cookie(session))
+        resp = client.post("/answer", data={"user_answer": "nulis eurų"})
+
+    assert resp.status_code == 200
+    assert "Correct!" in resp.text
+    assert "vienas euras" not in resp.text

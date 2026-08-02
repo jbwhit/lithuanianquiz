@@ -108,11 +108,27 @@ SAMPLE_COMPOUND_ROW = {
     "euro_acc": "eurą",
 }
 
+# number == 0 is excluded from eligible exercise rows (a fresh "how much
+# does X cost? €0" question makes no sense) but still exists in the full
+# dataset -- a stale session cookie can still reference it.
+EXCLUDED_ZERO_ROW = {
+    "number": 0,
+    "kokia_kaina": "nulis",
+    "kokia_kaina_compound": None,
+    "euro_nom": "eurų",
+    "kiek_kainuoja": "nulį",
+    "kiek_kainuoja_compound": None,
+    "euro_acc": "eurų",
+}
+
 
 class TestExerciseEngine:
     @pytest.fixture()
     def engine(self) -> ExerciseEngine:
-        return ExerciseEngine([SAMPLE_ROW, SAMPLE_COMPOUND_ROW])
+        return ExerciseEngine(
+            [SAMPLE_ROW, SAMPLE_COMPOUND_ROW],
+            all_rows=[EXCLUDED_ZERO_ROW, SAMPLE_ROW, SAMPLE_COMPOUND_ROW],
+        )
 
     def test_correct_answer_kokia(self, engine: ExerciseEngine) -> None:
         ans = engine.correct_answer("kokia", SAMPLE_ROW)
@@ -167,14 +183,23 @@ class TestExerciseEngine:
     def test_get_row(self, engine: ExerciseEngine) -> None:
         assert engine.get_row(1) == SAMPLE_ROW
 
-    def test_get_row_falls_back_to_first_row_for_unknown_number(
+    def test_get_row_falls_back_to_full_dataset_for_excluded_number(
         self, engine: ExerciseEngine
     ) -> None:
-        """Regression: a stale session cookie can carry a row_id that no
-        longer exists (e.g. 0, which price rows exclude). get_row() must
-        fall back to the first row instead of raising KeyError and 500ing
-        the /answer route."""
-        assert engine.get_row(0) == SAMPLE_ROW
+        """Regression: a stale session cookie can carry a row_id that's
+        excluded from eligible exercise rows (e.g. 0, which price rows
+        exclude) but still exists in the full dataset. get_row() must
+        grade against the real row, not an arbitrary/unrelated one —
+        otherwise a stale "€0" question gets graded against row 1's
+        answer, misgrading a genuinely correct "nulis eurų" as wrong."""
+        assert engine.get_row(0) == EXCLUDED_ZERO_ROW
+
+    def test_get_row_falls_back_to_first_row_for_truly_unknown_number(self) -> None:
+        """A number absent from both the eligible rows and the full
+        dataset (never a real row_id in production) still shouldn't
+        crash — falls back to the first eligible row as a last resort."""
+        engine = ExerciseEngine([SAMPLE_ROW, SAMPLE_COMPOUND_ROW])
+        assert engine.get_row(999) == SAMPLE_ROW
 
     def test_generate_returns_dict(self, engine: ExerciseEngine) -> None:
         ex = engine.generate({})

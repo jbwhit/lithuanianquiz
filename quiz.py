@@ -95,19 +95,31 @@ class ExerciseEngine:
         self,
         rows: list[dict[str, Any]],
         adaptive: Any | None = None,
+        all_rows: list[dict[str, Any]] | None = None,
     ) -> None:
         self.rows = rows
         self.by_number: dict[int, dict[str, Any]] = {r["number"]: r for r in rows}
+        self._fallback_by_number: dict[int, dict[str, Any]] = (
+            {r["number"]: r for r in all_rows}
+            if all_rows is not None
+            else self.by_number
+        )
         self.adaptive = adaptive
 
     def get_row(self, number: int) -> dict[str, Any]:
-        """Look up a row by number, falling back to the first row.
+        """Look up a row by number.
 
-        A session cookie can carry a stale row_id from before the price
-        rows changed (e.g. 0, which is excluded) or persist across a
-        year; falling back avoids a 500 on /answer for those users.
+        A stale session cookie can carry a row_id excluded from eligible
+        exercise rows (e.g. 0, which price rows exclude since "how much
+        does X cost? €0" isn't a sensible fresh question) but still
+        present in the full dataset — fall back to `all_rows` so that
+        row is graded correctly instead of against an unrelated one.
+        Only falls back to the first eligible row if the number doesn't
+        exist anywhere at all (never expected in production).
         """
-        return self.by_number.get(number, self.rows[0])
+        if number in self.by_number:
+            return self.by_number[number]
+        return self._fallback_by_number.get(number, self.rows[0])
 
     def generate(self, session: dict[str, Any]) -> dict[str, Any]:
         """Return an exercise dict using adaptive selection if available."""
